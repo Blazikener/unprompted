@@ -1,7 +1,7 @@
 """Self-check for the mention logic: python3 backend/test_server.py"""
 from datetime import date
 
-from server import check, classify, find_quote, mention_re, score
+from server import check, classify, find_quote, mention_re, parse, score
 
 
 def raw(**kw):
@@ -32,7 +32,14 @@ assert classify(raw(**said("nothing here")), "Tim Hortons", [])[0] == "unverifie
 q = find_quote(raw(frames=[{"timestampSeconds": 2.1, "url": "f2"}, {"timestampSeconds": 9, "url": "f9"}],
                    **said("Morning.", "I love Tim", "Hortons coffee", "Bye.")), rx)
 assert q["start"] == 2.0 and q["core"] == "I love Tim Hortons coffee" and q["frame"] == "f2"
-assert q["text"][q["hit"][0]:q["hit"][1]] == "Tim Hortons" and q["text"].startswith("Morning.") and q["exact"]
+assert q["text"][q["hit"][0]:q["hit"][1]] == "Tim Hortons" and q["text"].startswith("Morning.")
+
+# Accuracy: a generic word from a multi-word brand is not a mention ("Al Ain water" vs "water").
+assert classify(raw(**said("drink more water every day")), "Al Ain water", [])[0] == "unverified"
+assert mention_re(["Tim Hortons"]).search("my Tim Horton order") and mention_re(["Starbucks"]).search("a Starbuck run")
+assert not mention_re(["Tims"]).search("Tim is here")  # short words keep their s
+filters = parse({"brand": "Al Ain water", "variants": "Masafi"})[2]["transcript"]
+assert filters["includesExactly"]["values"] == ["Al Ain water"] and filters["includesFuzzy"]["values"] == ["Masafi"]
 
 assert score(3, 1, 10**6, 8.0)["total"] == 100
 assert score(0, 0, 0, None)["total"] == 0

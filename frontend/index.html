@@ -890,6 +890,11 @@
     }
     // Oriane's total includes fuzzy matches; only claim "said out loud" for videos with transcript evidence.
     const verified = videos.filter((v) => v.quote).length;
+    if (!verified) {
+      $('#summary').replaceChildren('Oriane found ', h('strong', {}, fmt(s.totalCount)), ' loose matches for ', h('strong', {}, s.brand), ', but none of them actually say it.');
+      $('#meta').textContent = 'Try the name people say out loud: a shorter version, a nickname, or the Arabic spelling under "Also listen for".';
+      return;
+    }
     const scope = videos.length >= s.totalCount ? 'Of those' : `In the top ${videos.length}`;
     $('#summary').replaceChildren(
       'Oriane matched ', h('strong', {}, num('total', s.totalCount)), ` creator ${s.totalCount === 1 ? 'video' : 'videos'} for `, h('strong', {}, s.brand),
@@ -1209,8 +1214,7 @@
           v.label ? h('span', { class: 'kind kind-flag' }, v.label) : h('span', { class: `kind kind-${v.kind}` }, KINDS[v.kind]?.label || v.kind),
           h('span', {}, `${fmt(v.views)} views`),
           h('span', {}, date(v.publishedAt)),
-          v.hits > 1 ? h('span', {}, `said ${v.hits}×`) : null,
-          q && !q.exact ? h('span', {}, 'close match') : null),
+          v.hits > 1 ? h('span', {}, `said ${v.hits}×`) : null),
         h('a', { class: 'link', href: v.url, target: '_blank', rel: 'noopener' }, `Open on ${platform} ↗`)));
   }
 

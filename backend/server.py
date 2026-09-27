@@ -121,7 +121,8 @@ class ApiError(Exception):
 def term_pattern(term):
     """Regex for one brand term, tolerant of spacing and punctuation: "TimHortons", "Tim Horton's"."""
     words = re.findall(r"[^\W_]+", term.lower().replace("'", "").replace("’", ""))
-    words = [re.escape(w[:-1]) + "['’]?s" if w.endswith("s") and len(w) > 3 else re.escape(w) for w in words]
+    words = [re.escape(w[:-1]) + ("(?:['’]?s)?" if len(w) >= 6 else "['’]?s") if w.endswith("s") and len(w) > 3
+             else re.escape(w) for w in words]
     # Arabic glues prepositions onto words (بستاربكس), so only Latin terms get a leading boundary.
     return ("(?<![^\\W_])" if term.isascii() else "") + r"[\W_]*".join(words)
 
@@ -137,38 +138,31 @@ def nearest_frame(raw, seconds):
     return min(frames, key=lambda f: abs(f["timestampSeconds"] - seconds))["url"]
 
 
-def close_re(brand):
-    """Looser pattern for speech-to-text misspellings: the brand's longest word minus its last letters."""
-    stem = max(re.findall(r"[^\W_]+", brand.lower()), key=len)
-    return re.compile(term_pattern(stem[:max(4, len(stem) - 2)]), re.IGNORECASE)
-
-
 def text_quote(text, rx, frame):
     """Evidence from caption text (no timestamp): the match with some context around it."""
     m = rx.search(text)
     a = max(0, m.start() - 80)
     snippet = text[a:m.end() + 80]
-    return {"start": None, "text": snippet, "hit": [m.start() - a, m.end() - a], "core": snippet, "frame": frame, "exact": True}
+    return {"start": None, "text": snippet, "hit": [m.start() - a, m.end() - a], "core": snippet, "frame": frame}
 
 
-def find_quote(raw, rx, close=None):
-    """First transcript moment matching rx (then the looser `close`), with one chunk of context either side."""
+def find_quote(raw, rx):
+    """First transcript moment matching rx, with one chunk of context either side."""
     chunks = raw.get("transcriptChunks") or []
-    for pattern in filter(None, (rx, close)):
-        for i, chunk in enumerate(chunks):
-            # Search chunk + next chunk so a name split across chunks ("Tim" | "Hortons") still matches.
-            nxt = chunks[i + 1]["text"] if i + 1 < len(chunks) else ""
-            m = pattern.search(chunk["text"] + " " + nxt)
-            if not m or m.start() >= len(chunk["text"]):
-                continue
-            spans = m.end() > len(chunk["text"])
-            core = chunk["text"] + (" " + nxt if spans else "")
-            before = chunks[i - 1]["text"] + " " if i else ""
-            after_i = i + 2 if spans else i + 1
-            after = " " + chunks[after_i]["text"] if after_i < len(chunks) else ""
-            a = len(before) + m.start()
-            return {"start": chunk["startSeconds"], "text": before + core + after, "hit": [a, a + len(m.group())],
-                    "core": core, "frame": nearest_frame(raw, chunk["startSeconds"]), "exact": pattern is rx}
+    for i, chunk in enumerate(chunks):
+        # Search chunk + next chunk so a name split across chunks ("Tim" | "Hortons") still matches.
+        nxt = chunks[i + 1]["text"] if i + 1 < len(chunks) else ""
+        m = rx.search(chunk["text"] + " " + nxt)
+        if not m or m.start() >= len(chunk["text"]):
+            continue
+        spans = m.end() > len(chunk["text"])
+        core = chunk["text"] + (" " + nxt if spans else "")
+        before = chunks[i - 1]["text"] + " " if i else ""
+        after_i = i + 2 if spans else i + 1
+        after = " " + chunks[after_i]["text"] if after_i < len(chunks) else ""
+        a = len(before) + m.start()
+        return {"start": chunk["startSeconds"], "text": before + core + after, "hit": [a, a + len(m.group())],
+                "core": core, "frame": nearest_frame(raw, chunk["startSeconds"])}
     return None
 
 
@@ -193,9 +187,9 @@ def classify(raw, brand, variants):
         kind = "tagged"
     else:
         kind = "spoken"
-    q = find_quote(raw, rx, close_re(brand))
+    q = find_quote(raw, rx)
     if kind == "spoken" and not q:
-        kind = "unverified"  # Oriane's fuzzy match with no transcript evidence we can show
+        kind = "unverified"  # Oriane matched it, but the brand isn't actually in the transcript
     return kind, len(rx.findall(raw.get("transcript") or "")), q
 
 
@@ -235,14 +229,23 @@ def parse(body):
     if platform not in ("all", "instagram", "tiktok") or lang not in ("any", "en", "ar") or days not in (30, 90, 365, 0):
         raise ApiError(400, "Invalid filter value.")
 
-    filters = {"transcript": {"includesFuzzy": {"values": [brand, *variants]}}}
+    # Fuzzy multi-word search matches loosely ("Al Ain water" pulled 72K videos about water), so multi-word
+    # names must appear as a phrase. Single words stay fuzzy to catch speech-to-text spellings.
+    phrases = [t for t in [brand, *variants] if len(re.findall(r"[^\W_]+", t)) > 1]
+    words = [t for t in [brand, *variants] if t not in phrases]
+    transcript = {"operator": "or"}
+    if phrases:
+        transcript["includesExactly"] = {"values": phrases}
+    if words:
+        transcript["includesFuzzy"] = {"values": words}
+    filters = {"transcript": transcript}
     if platform != "all":
         filters["platform"] = {"includes": [platform]}
     if lang != "any":
         filters["transcriptLanguage"] = {"includes": [lang]}
     if days:
         filters["publishedAt"] = {"after": (date.today() - timedelta(days=days)).isoformat()}
-    params = {"variants": variants, "platform": platform, "lang": lang, "days": days}
+    params = {"variants": variants, "platform": platform, "lang": lang, "days": days, "match": 2}
     return brand, variants, filters, params
 
 
