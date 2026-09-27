@@ -1,0 +1,1699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unprompted</title>
+<meta name="description" content="Find the creators already talking about your brand on camera.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Frame: deep forest chrome around a white work surface */
+    --forest: oklch(0.26 0.055 160);
+    --forest-2: oklch(0.315 0.06 160);
+    --forest-3: oklch(0.36 0.06 160);
+    --forest-line: oklch(0.42 0.05 160);
+    --on-forest: oklch(0.97 0.01 160);
+    --on-forest-2: oklch(0.81 0.035 160);
+    --cinema: oklch(0.2 0.035 160);
+    /* Signature: the highlighter */
+    --lime: oklch(0.92 0.19 122);
+    --lime-strong: oklch(0.87 0.2 124);
+    --lime-soft: oklch(0.965 0.065 120);
+    /* Work surface */
+    --bg: oklch(1 0 0);
+    --panel: oklch(0.975 0.008 160);
+    --ink: oklch(0.21 0.025 160);
+    --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160);
+    --line-2: oklch(0.85 0.012 160);
+    --moss: oklch(0.44 0.12 160);
+    --moss-soft: oklch(0.955 0.03 160);
+    /* Data roles */
+    --spoken: oklch(0.44 0.12 160);
+    --tagged: oklch(0.7 0.12 205);
+    --tagged-soft: oklch(0.955 0.035 205);
+    --tagged-ink: oklch(0.4 0.08 210);
+    --sponsored: oklch(0.73 0.17 52);
+    --sponsored-soft: oklch(0.96 0.045 60);
+    --sponsored-ink: oklch(0.47 0.13 45);
+    --owned: oklch(0.84 0.01 160);
+    --unverified: oklch(0.92 0.005 160);
+    --coral: oklch(0.55 0.2 27);
+    --coral-soft: oklch(0.965 0.03 25);
+    --coral-ink: oklch(0.45 0.16 27);
+    --coral-line: oklch(0.88 0.07 25);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --serif: "Newsreader", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --z-sticky: 10;
+    --bar-h: 76px;
+    color-scheme: light;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 0.9375rem/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; border-radius: 4px; }
+  [hidden] { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .muted { color: var(--ink-2); }
+  .small { font-size: 0.8125rem; }
+  .icon { display: inline-flex; width: 14px; height: 14px; flex: none; }
+  .icon svg { width: 100%; height: 100%; }
+  .verified { color: var(--moss); margin-left: 4px; vertical-align: -2px; }
+  mark {
+    color: var(--ink); padding: 0 0.12em; border-radius: 2px;
+    background: linear-gradient(transparent 12%, var(--lime) 12%, var(--lime) 92%, transparent 92%);
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+
+  /* Shell */
+  .app { display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 100vh; }
+  .side { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 22px 16px 18px; background: var(--forest); color: var(--on-forest); display: flex; flex-direction: column; }
+  .side :focus-visible, .searchbar :focus-visible { outline-color: var(--lime); }
+  .side > * { flex-shrink: 0; } /* a long saved list scrolls the sidebar instead of squashing it */
+  .wordmark { align-self: flex-start; font-weight: 700; font-size: 1.375rem; letter-spacing: -0.02em; color: var(--on-forest); text-decoration: none; margin-left: 6px; }
+  .wordmark span { position: relative; z-index: 0; color: var(--ink); padding: 0 0.04em; }
+  .wordmark span::before { content: ""; position: absolute; z-index: -1; inset: 0.08em -0.1em 0.02em -0.06em; background: var(--lime); transform: skewX(-10deg); border-radius: 3px; }
+  .new-search { display: flex; align-items: center; gap: 8px; width: 100%; height: 42px; margin: 0 0 20px; padding: 0 12px 0 14px; border: 0; border-radius: 10px; background: var(--lime); color: var(--ink); font-weight: 700; cursor: pointer; transition: background-color 0.15s var(--ease), transform 0.12s var(--ease); }
+  .new-search:hover { background: var(--lime-strong); }
+  .new-search:active { transform: translateY(1px); }
+  .new-search .plus { font-size: 1.25rem; line-height: 1; }
+  .new-search kbd { margin-left: auto; padding: 1px 7px; border-radius: 5px; background: oklch(0.21 0.025 160 / 0.12); font: 500 0.75rem var(--mono); }
+  .tagline { margin: 8px 6px 20px; font-size: 0.8125rem; color: var(--on-forest-2); line-height: 1.4; }
+  .side-h { font-size: 0.8125rem; font-weight: 600; margin: 0 6px 6px; }
+  .saved { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 2px; }
+  .saved > li.muted { padding: 6px; color: var(--on-forest-2); }
+  .saved-item { all: unset; box-sizing: border-box; width: 100%; display: grid; gap: 1px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background-color 0.18s var(--ease); }
+  .saved-item:hover { background: var(--forest-2); }
+  .saved-item[aria-current="true"] { background: var(--forest-3); }
+  .saved-item[aria-current="true"] .saved-brand { color: var(--lime); }
+  .saved-item:focus-visible { outline: 2px solid var(--lime); outline-offset: -2px; }
+  .saved-brand { font-weight: 600; font-size: 0.875rem; transition: color 0.18s var(--ease); }
+  .saved-meta, .saved-tags { font-size: 0.75rem; color: var(--on-forest-2); }
+  .fx-switch { margin: 0 0 24px; padding: 12px; border: 0; border-radius: 12px; background: var(--forest-2); }
+  .fx-switch legend { float: left; width: 100%; padding: 0; margin-bottom: 8px; font-size: 0.75rem; font-weight: 600; }
+  .fx-switch .seg-opts { height: 32px; background: var(--forest); }
+  .fx-switch .seg-opts label { flex: 1; justify-content: center; padding: 0 4px; font-size: 0.75rem; }
+  .fx-note { clear: both; margin: 8px 0 0; font-size: 0.6875rem; line-height: 1.4; color: var(--on-forest-2); }
+  .side-foot { margin: auto 6px 0; font-size: 0.75rem; color: var(--on-forest-2); line-height: 1.45; }
+  .side-foot + .side-foot { margin-top: 10px; }
+  .side-foot a { color: var(--on-forest); }
+
+  /* Search bar */
+  .searchbar { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px 28px 16px; background: var(--forest); color: var(--on-forest); color-scheme: dark; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .f-brand { flex: 1 1 200px; }
+  .f-variants { flex: 1 1 190px; }
+  .field label, .seg legend { font-size: 0.75rem; font-weight: 500; color: var(--on-forest-2); padding: 0; }
+  .searchbar input[type="text"], .searchbar select { height: 40px; min-width: 0; padding: 0 12px; border: 1px solid var(--forest-line); border-radius: 8px; background: var(--forest-2); color: var(--on-forest); transition: border-color 0.15s var(--ease), background-color 0.15s var(--ease); }
+  .searchbar select { padding-right: 8px; cursor: pointer; }
+  .searchbar input[type="text"]:hover, .searchbar select:hover { border-color: oklch(0.56 0.05 160); }
+  .searchbar input[type="text"]:focus-visible, .searchbar select:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; border-color: var(--lime); border-radius: 8px; }
+  .searchbar input::placeholder { color: oklch(0.72 0.03 160); }
+  .seg { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .seg legend { margin-bottom: 4px; }
+  .seg-opts { display: flex; height: 40px; padding: 3px; gap: 2px; border: 1px solid var(--forest-line); border-radius: 8px; background: var(--forest-2); }
+  .seg-opts label { position: relative; display: flex; align-items: center; padding: 0 11px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; color: var(--on-forest-2); cursor: pointer; transition: background-color 0.2s var(--ease), color 0.2s var(--ease); }
+  .seg-opts label:hover { color: var(--on-forest); }
+  .seg-opts input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+  .seg-opts label:has(input:checked) { background: var(--lime); color: var(--ink); }
+  .seg-opts label:has(input:focus-visible) { outline: 2px solid var(--lime); outline-offset: 2px; }
+  .hint { flex-basis: 100%; margin: 0; font-size: 0.8125rem; color: var(--on-forest-2); }
+  .hint b { color: var(--lime); font-weight: 600; }
+  .scan { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; overflow: hidden; }
+  .scan span { display: block; height: 100%; background: var(--lime); box-shadow: 0 0 14px var(--lime); transform-origin: left; transform: scaleX(0); transition: transform 0.5s var(--ease-expo); }
+  .scan.waiting span { width: 30%; transform: none; animation: seek-bar 1.1s var(--ease) infinite alternate; }
+  @keyframes seek-bar { from { transform: translateX(-100%); } to { transform: translateX(333%); } }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.12s var(--ease); }
+  .btn:active { transform: translateY(1px) scale(0.99); }
+  .btn-primary { background: var(--lime); color: var(--ink); min-width: 116px; }
+  .btn-primary:hover { background: var(--lime-strong); }
+  .btn-primary:disabled { cursor: progress; background: var(--lime-strong); }
+  .btn-quiet { background: var(--bg); border-color: var(--line-2); color: var(--ink); }
+  .btn-quiet:hover { border-color: var(--ink); }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
+  .wave { display: none; align-items: center; gap: 2px; height: 14px; }
+  .busy .wave, .wave.on { display: inline-flex; }
+  .wave i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; animation: wave 0.8s var(--ease) infinite alternate; }
+  .wave i:nth-child(2) { animation-delay: 0.16s; }
+  .wave i:nth-child(3) { animation-delay: 0.32s; }
+  .wave i:nth-child(4) { animation-delay: 0.48s; }
+  .wave i:nth-child(5) { animation-delay: 0.64s; }
+  @keyframes wave { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
+
+  /* Content */
+  .content { padding: 28px; max-width: 1480px; }
+  .error { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 20px; padding: 10px 12px 10px 16px; border: 1px solid var(--coral-line); border-radius: 10px; background: var(--coral-soft); color: var(--coral-ink); font-weight: 500; }
+
+  .intro { max-width: 760px; padding: 52px 0 24px; }
+  .intro h1 { margin: 0 0 16px; font-size: 2.75rem; line-height: 1.06; letter-spacing: -0.03em; font-weight: 700; text-wrap: balance; }
+  .intro .lede { margin: 0 0 28px; font-size: 1.125rem; color: var(--ink-2); max-width: 60ch; text-wrap: pretty; }
+  .intro .lede strong { color: var(--ink); font-weight: 600; }
+  .examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .examples > span { font-size: 0.8125rem; color: var(--ink-2); margin-right: 4px; }
+  .chip { height: 36px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg); font-weight: 600; cursor: pointer; transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease), transform 0.18s var(--ease-expo); }
+  .chip:hover { background: var(--lime); border-color: var(--lime); transform: translateY(-1px); }
+
+  .loading-msg { margin: 0 0 18px; color: var(--ink-2); font-weight: 500; }
+  .sk { border-radius: 6px; background: linear-gradient(90deg, var(--line) 0%, var(--panel) 50%, var(--line) 100%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .sk-line { height: 26px; margin-bottom: 10px; }
+  .sk-bar { height: 12px; margin: 24px 0 30px; border-radius: 999px; }
+  .sk-row { height: 44px; margin-bottom: 6px; }
+  .sk-panel { height: 520px; border-radius: 16px; }
+  .sk-tr td { padding: 4px 0 !important; border: 0 !important; }
+
+  .live { display: flex; align-items: center; gap: 16px; margin: 0 0 20px; padding: 14px 18px; border-radius: 14px; background: var(--forest); color: var(--on-forest); }
+  .live .wave { height: 22px; color: var(--lime); gap: 3px; }
+  .live .wave i { width: 4px; }
+  .ticker { flex: 1; min-width: 0; display: grid; gap: 4px; min-height: 3.6em; margin: 0; padding: 0; list-style: none; }
+  .ticker li { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: italic 400 1.0625rem/1.45 var(--serif); animation: tick-in 0.45s var(--ease-expo) both; }
+  .ticker li:nth-child(2) { opacity: 0.6; }
+  .ticker li:nth-child(3) { opacity: 0.32; }
+  .tick-who { margin-left: 10px; font: 500 0.75rem var(--mono); color: var(--on-forest-2); }
+  .ticker .muted { color: var(--on-forest-2); font-style: normal; font-family: var(--sans); }
+  @keyframes tick-in { from { opacity: 0; transform: translateY(-10px); filter: blur(4px); } }
+  .is-live.no-data .stats, .is-live.no-data .mix { visibility: hidden; }
+
+  .summary { margin: 0 0 6px; font-size: 1.625rem; line-height: 1.3; letter-spacing: -0.016em; font-weight: 500; max-width: 62ch; text-wrap: pretty; }
+  .summary strong { font-weight: 700; }
+  .meta { margin: 0 0 20px; font-size: 0.8125rem; color: var(--ink-2); }
+  .stats { display: flex; flex-wrap: wrap; margin: 0 0 22px; border-block: 1px solid var(--line); }
+  .stat { padding: 12px 26px 12px 0; margin-right: 26px; border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: 0; margin-right: 0; }
+  .stat dt { font-size: 0.8125rem; font-weight: 500; color: var(--ink-2); }
+  .stat dd { margin: 2px 0 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.014em; }
+  .stat .sub { display: block; font-size: 0.75rem; font-weight: 400; letter-spacing: 0; color: var(--ink-2); }
+  .stat.money dd { color: var(--moss); }
+  .cpm { width: 58px; height: 22px; padding: 0 4px; margin: 0 2px; border: 1px solid var(--line-2); border-radius: 5px; font-size: 0.75rem; }
+  .mix { margin-bottom: 30px; }
+  .mixbar { display: flex; gap: 3px; height: 14px; border-radius: 999px; overflow: hidden; background: var(--line); animation: reveal 0.8s var(--ease-expo) both; }
+  .mixbar span { min-width: 0; flex-basis: 0; }
+  [data-fx="live"] .mixbar span, [data-fx="fluid"] .mixbar span { transition: flex-grow 0.7s var(--ease-expo); }
+  @keyframes reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 0.8125rem; color: var(--ink-2); }
+  .legend .sw { display: inline-block; width: 12px; height: 12px; margin-right: 7px; border-radius: 4px; vertical-align: -2px; }
+  .legend b { margin-left: 5px; color: var(--ink); font-weight: 700; }
+  .is-empty .stats, .is-empty .mix, .is-empty .results-grid { display: none; }
+
+  .results-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(340px, 29vw, 430px); gap: 28px; align-items: start; }
+  .board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  .board-head h2, .detail h3 { margin: 0; font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; }
+  .count { color: var(--ink-2); font-weight: 500; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+  .toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--moss); cursor: pointer; }
+  .table-wrap { overflow-x: auto; }
+  .board-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .board-table th { padding: 8px; border-bottom: 1px solid var(--line-2); font-size: 0.75rem; font-weight: 500; color: var(--ink-2); text-align: left; white-space: nowrap; }
+  .board-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+  .board-table .n { text-align: right; }
+  .board-table tbody tr { cursor: pointer; transition: background-color 0.18s var(--ease); }
+  .board-table tbody tr:hover { background: var(--panel); }
+  .board-table tbody tr.is-selected { background: var(--lime-soft); }
+  .board-table tr.is-new { animation: flash 1.8s var(--ease) both; }
+  @keyframes flash { from { background-color: var(--lime); } }
+  .board-table tr.empty { cursor: default; }
+  .board-table tr.empty td { padding: 28px 8px; white-space: normal; color: var(--ink-2); }
+  .rank { color: var(--ink-2); width: 28px; }
+  .is-selected .rank { color: var(--ink); font-weight: 700; }
+  .creator { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 250px; }
+  .avatar { width: 32px; height: 32px; flex: none; border-radius: 50%; object-fit: cover; background: var(--line); }
+  .who { display: grid; min-width: 0; }
+  .name { all: unset; display: block; overflow: hidden; text-overflow: ellipsis; font-weight: 600; cursor: pointer; border-radius: 3px; }
+  .name:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  .handle { display: flex; align-items: center; gap: 5px; margin: 0; min-width: 0; font-size: 0.8125rem; color: var(--ink-2); }
+  .handle-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .cam { display: block; color: var(--moss); font-size: 0.75rem; font-weight: 600; }
+  .score-n { display: inline-block; min-width: 22px; font-weight: 700; }
+  .meter { display: inline-block; width: 52px; height: 5px; margin-left: 6px; border-radius: 3px; background: var(--line); overflow: hidden; vertical-align: middle; }
+  .meter > span { display: block; height: 100%; border-radius: 3px; background: var(--moss); transform-origin: left; animation: grow 0.7s var(--ease-expo) both; }
+  .still .meter > span { animation: none; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .badge { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .badge.untapped { background: var(--moss-soft); color: var(--moss); }
+  .badge.paid { background: var(--sponsored-soft); color: var(--sponsored-ink); }
+  .is-selected .badge.untapped { background: var(--bg); }
+  .more { margin-top: 14px; }
+
+  /* Detail */
+  .detail { position: sticky; top: calc(var(--bar-h) + 20px); max-height: calc(100vh - var(--bar-h) - 40px); overflow: auto; border-radius: 16px; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 18px 40px -24px oklch(0.2 0.05 160 / 0.45); overscroll-behavior: contain; }
+  .detail-body { animation: rise 0.24s var(--ease) both; }
+  [data-fx="fluid"] .detail-body { animation: none; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+  .detail-hero { padding: 20px; background: var(--forest); color: var(--on-forest); }
+  .detail-hero .handle { color: var(--on-forest-2); flex-wrap: wrap; }
+  .detail-hero .link { color: var(--lime); }
+  .detail-hero .verified { color: var(--lime); }
+  .detail-rest { padding: 20px; }
+  .detail-head { display: flex; align-items: center; gap: 14px; }
+  .avatar-lg { width: 60px; height: 60px; flex: none; border-radius: 50%; object-fit: cover; background: var(--forest-3); box-shadow: 0 0 0 3px var(--forest-2); }
+  .detail-head h2 { margin: 0; font-size: 1.25rem; line-height: 1.25; letter-spacing: -0.014em; }
+  .link { color: var(--moss); font-weight: 600; font-size: 0.8125rem; text-decoration: none; }
+  .link:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .empty-detail { margin: 0; padding: 20px; }
+  .score { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; margin-top: 18px; }
+  .score-total { display: grid; justify-items: center; gap: 6px; }
+  .gauge-wrap { position: relative; display: grid; place-items: center; width: 88px; height: 88px; }
+  .gauge { position: absolute; inset: 0; }
+  .gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+  .g-track { fill: none; stroke: var(--line); stroke-width: 7; }
+  .g-arc { fill: none; stroke: var(--moss); stroke-width: 7; stroke-linecap: round; }
+  .on-dark .g-track { stroke: oklch(1 0 0 / 0.14); }
+  .on-dark .g-arc { stroke: var(--lime); filter: drop-shadow(0 0 6px oklch(0.92 0.19 122 / 0.45)); }
+  .gauge.sweep .g-arc { animation: sweep 1.2s var(--ease-expo) both; }
+  @keyframes sweep { from { stroke-dashoffset: var(--c); } }
+  .gauge-wrap .num { position: relative; font-size: 1.875rem; font-weight: 700; letter-spacing: -0.03em; }
+  .score-label { font-size: 0.6875rem; font-weight: 500; color: var(--ink-2); text-align: center; line-height: 1.2; }
+  .detail-hero .score-label { color: var(--on-forest-2); }
+  .score-parts { display: grid; gap: 8px; margin: 0; }
+  .part { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .part dt { font-size: 0.8125rem; font-weight: 600; }
+  .part .why { display: block; font-size: 0.75rem; font-weight: 400; color: var(--ink-2); }
+  .detail-hero .part .why, .detail-hero .part-n { color: var(--on-forest-2); }
+  .part dd { display: flex; align-items: center; gap: 8px; margin: 0; }
+  .part .meter { width: 64px; margin: 0; }
+  .detail-hero .meter { background: oklch(1 0 0 / 0.14); }
+  .detail-hero .meter > span { background: var(--lime); }
+  .part-n { min-width: 42px; text-align: right; font-size: 0.8125rem; color: var(--ink-2); }
+  .detail h3 { margin-bottom: 12px; }
+  .moments { display: grid; gap: 18px; margin: 0 0 24px; padding: 0; list-style: none; }
+  .moment { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 14px; }
+  .frame { position: relative; display: block; width: 88px; aspect-ratio: 9 / 16; overflow: hidden; border-radius: 10px; background: var(--line); }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s var(--ease-expo); }
+  .frame:hover img { transform: scale(1.06); }
+  .ts { position: absolute; left: 5px; bottom: 5px; padding: 3px 5px; border-radius: 4px; background: oklch(0.2 0.02 160 / 0.85); color: #fff; font: 500 0.75rem/1 var(--mono); }
+  .play-badge { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--lime); color: var(--ink); box-shadow: 0 3px 10px oklch(0 0 0 / 0.3); transition: transform 0.25s var(--ease-expo); }
+  .play-badge .icon { width: 10px; height: 10px; margin-left: 1px; }
+  a:hover > .play-badge { transform: scale(1.18); }
+  .moment blockquote { margin: 0; font: italic 400 1.0625rem/1.45 var(--serif); text-wrap: pretty; overflow-wrap: anywhere; }
+  .moment blockquote::before { content: "\201C"; }
+  .moment blockquote::after { content: "\201D"; }
+  .moment-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0 4px; font-size: 0.8125rem; color: var(--ink-2); }
+  .kind { padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .kind-spoken { background: var(--spoken); color: #fff; }
+  .kind-tagged { background: var(--tagged-soft); color: var(--tagged-ink); }
+  .kind-sponsored { background: var(--sponsored-soft); color: var(--sponsored-ink); }
+  .kind-owned, .kind-unverified { background: var(--panel); color: var(--ink-2); }
+  .kind-flag { background: var(--coral); color: #fff; }
+  .outreach-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .detail .outreach-head h3 { margin: 0; }
+  .dm-lang { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line-2); border-radius: 8px; }
+  .dm-lang-btn { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: background-color 0.15s var(--ease), color 0.15s var(--ease); }
+  .dm-lang-btn:hover { color: var(--ink); }
+  .dm-lang-btn[aria-pressed="true"] { background: var(--forest); color: var(--on-forest); }
+  .outreach textarea { display: block; width: 100%; min-height: 200px; padding: 12px; border: 1px solid var(--line-2); border-radius: 10px; font-size: 0.875rem; line-height: 1.5; resize: vertical; }
+  .outreach textarea:focus-visible { outline: 2px solid var(--moss); outline-offset: 1px; border-color: var(--moss); border-radius: 10px; }
+  .outreach-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; }
+
+  /* Score check */
+  .check { margin: 0 0 22px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+  .check-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .check .intro-text { margin: 0 0 12px; }
+  .check .score { margin: 12px 0 4px; }
+  .verdict { padding: 4px 11px; border-radius: 999px; font-size: 0.8125rem; font-weight: 700; white-space: nowrap; }
+  .v-ready-to-pitch { background: var(--lime); color: var(--ink); }
+  .v-review-first { background: oklch(0.86 0.13 75); color: oklch(0.3 0.06 60); }
+  .v-risky { background: var(--coral); color: #fff; }
+  .verdict-mini { display: block; margin-top: 3px; font-size: 0.75rem; font-weight: 700; background: none; }
+  .verdict-mini.v-ready-to-pitch { color: var(--moss); }
+  .verdict-mini.v-review-first { color: var(--sponsored-ink); }
+  .verdict-mini.v-risky { color: var(--coral-ink); }
+  .detail h4 { margin: 18px 0 10px; font-size: 0.875rem; font-weight: 700; }
+  .check-error { margin: 0 0 12px; color: var(--coral-ink); font-size: 0.8125rem; font-weight: 500; }
+  .check .sk-check { height: 120px; margin-top: 12px; border-radius: 12px; }
+  .mood-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .mood-grid a { position: relative; display: block; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 8px; background: var(--line); }
+  .mood-grid img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s var(--ease-expo); }
+  .mood-grid a:hover img { transform: scale(1.06); }
+  .mood-views { position: absolute; left: 4px; bottom: 4px; padding: 2px 4px; border-radius: 3px; background: oklch(0.2 0.02 160 / 0.82); color: #fff; font: 500 0.6875rem/1 var(--mono); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+  .tag { padding: 2px 8px; border-radius: 999px; background: var(--moss-soft); font-size: 0.75rem; font-weight: 500; color: var(--moss); }
+  .bench { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+  .bench th, .bench td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+  .bench th { font-weight: 700; vertical-align: bottom; }
+  .bench th:first-child, .bench td:first-child { text-align: left; color: var(--ink-2); font-weight: 500; }
+  .bench .win { font-weight: 700; color: var(--moss); }
+  .bench .win::after { content: " ●"; font-size: 0.5rem; vertical-align: 2px; color: var(--lime-strong); }
+  .bench select { max-width: 140px; height: 28px; padding: 0 4px; font-size: 0.8125rem; font-weight: 700; }
+  .text-btn { all: unset; color: var(--moss); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .text-btn:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; border-radius: 2px; }
+  .check-foot { margin: 14px 0 0; }
+
+  /* Landing: the start screen holds the whole form */
+  .is-landing .app { grid-template-columns: minmax(0, 1fr); }
+  .is-landing .side { display: none; }
+  #search { view-transition-name: search-form; }
+  .wordmark { view-transition-name: wordmark; }
+  .landing { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 96px 28px 120px; overflow: hidden; background: var(--forest); color: var(--on-forest); }
+  .landing-top { position: absolute; top: 24px; left: 28px; right: 28px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .landing-top .wordmark { margin-left: 0; font-size: 1.5rem; }
+  .landing-top a:not(.wordmark) { color: var(--on-forest-2); font-size: 0.8125rem; text-decoration: none; }
+  .landing-top a:not(.wordmark):hover { color: var(--on-forest); }
+  .landing-inner { position: relative; z-index: 1; width: min(980px, 100%); }
+  .landing h1 { max-width: 15ch; margin: 0 0 18px; font-size: clamp(2.5rem, 5.6vw, 4.625rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 700; text-wrap: balance; }
+  .landing .lede { max-width: 58ch; margin: 0 0 34px; font-size: 1.1875rem; color: var(--on-forest-2); text-wrap: pretty; }
+  .landing .lede strong { color: var(--on-forest); font-weight: 600; }
+  .landing h1, .landing .lede, #landing-slot, .landing-after { animation: land-in 0.8s var(--ease-expo) both; }
+  .landing .lede { animation-delay: 0.08s; }
+  #landing-slot { animation-delay: 0.16s; }
+  .landing-after { animation-delay: 0.26s; }
+  @keyframes land-in { from { opacity: 0; transform: translateY(16px); } }
+  .hero-form { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: end; gap: 16px 14px; padding: 22px; border-radius: 22px; background: var(--forest-2); box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.07), 0 40px 80px -40px oklch(0.08 0.03 160 / 0.9); }
+  .hero-form .f-brand { grid-area: 1 / 1 / 2 / 6; }
+  .hero-form .f-variants { grid-area: 1 / 6 / 2 / 10; }
+  .hero-form .btn-primary { grid-area: 1 / 10 / 2 / 13; }
+  .hero-form .seg { grid-area: 2 / 1 / 3 / 5; }
+  .hero-form #days-field { grid-area: 2 / 5 / 3 / 9; }
+  .hero-form #lang-field { grid-area: 2 / 9 / 3 / 13; }
+  .hero-form .hint, .hero-form .landing-error { grid-column: 1 / -1; }
+  body:not(.is-landing) #landing-error { display: none; }
+  .hero-form input[type="text"], .hero-form select { height: 54px; font-size: 1.0625rem; background: var(--forest); }
+  .hero-form .seg-opts { height: 54px; background: var(--forest); }
+  .hero-form .seg-opts label { flex: 1; justify-content: center; }
+  .hero-form .btn-primary { height: 54px; font-size: 1.0625rem; box-shadow: 0 10px 30px -12px oklch(0.92 0.19 122 / 0.7); }
+  .hero-form .field label, .hero-form .seg legend { font-size: 0.8125rem; }
+  .landing-error { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--coral-soft); color: var(--coral-ink); font-weight: 500; }
+  .landing-after { display: grid; gap: 18px; margin-top: 24px; }
+  .landing .examples > span, .recent-h { font-size: 0.8125rem; color: var(--on-forest-2); }
+  .landing .chip { border-color: oklch(1 0 0 / 0.22); background: transparent; color: var(--on-forest); }
+  .landing .chip:hover { background: var(--lime); border-color: var(--lime); color: var(--ink); }
+  .recent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .recent-h { margin-right: 4px; }
+  .recent-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .recent-list button { all: unset; box-sizing: border-box; display: grid; padding: 7px 12px; border-radius: 10px; background: var(--forest-2); cursor: pointer; transition: background-color 0.18s var(--ease), transform 0.18s var(--ease-expo); }
+  .recent-list button:hover { background: var(--forest-3); transform: translateY(-1px); }
+  .recent-list button:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+  .recent-list b { font-size: 0.8125rem; font-weight: 600; }
+  .recent-list span { font-size: 0.6875rem; color: var(--on-forest-2); }
+  .proof { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 44px 0 0; padding: 0; list-style: none; font-size: 0.875rem; color: var(--on-forest-2); }
+  .proof li { display: flex; align-items: center; gap: 8px; }
+  .proof li::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--lime); transform: rotate(45deg); flex: none; }
+  .listen-wave { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; display: flex; align-items: flex-end; gap: 6px; padding: 0 28px; opacity: 0.9; pointer-events: none; mask-image: linear-gradient(to top, #000 20%, transparent); -webkit-mask-image: linear-gradient(to top, #000 20%, transparent); }
+  .listen-wave i { flex: 1; height: var(--h); border-radius: 3px 3px 0 0; background: oklch(1 0 0 / 0.07); transform-origin: bottom; animation: listen 2.4s var(--ease) infinite alternate; animation-delay: var(--d); }
+  .listen-wave i.hot { background: oklch(0.92 0.19 122 / 0.5); }
+  @keyframes listen { from { transform: scaleY(0.35); } to { transform: scaleY(1); } }
+  ::view-transition-group(search-form) { animation-duration: 0.65s; animation-timing-function: var(--ease-expo); }
+  ::view-transition-old(search-form) { animation: 0.3s var(--ease) both vt-fade-out; }
+  ::view-transition-new(search-form) { animation: 0.45s var(--ease) 0.12s both vt-fade-in; }
+  ::view-transition-group(wordmark) { animation-duration: 0.65s; animation-timing-function: var(--ease-expo); }
+  @keyframes vt-fade-out { to { opacity: 0; } }
+  @keyframes vt-fade-in { from { opacity: 0; } }
+
+  /* Evidence player (Player preview) */
+  .player { width: min(1100px, calc(100vw - 32px)); height: min(780px, calc(100vh - 32px)); max-width: none; max-height: none; margin: auto; padding: 0; border: 0; border-radius: 18px; background: var(--cinema); color: var(--on-forest); overflow: hidden; box-shadow: 0 40px 100px -30px oklch(0.08 0.03 160 / 0.7); }
+  .player::backdrop { background: oklch(0.14 0.03 160 / 0.74); }
+  .player :focus-visible { outline-color: var(--lime); }
+  .player-shell { display: grid; grid-template-columns: auto minmax(0, 1fr); height: 100%; }
+  .player-stage { display: grid; place-items: center; padding: 22px; background: oklch(0.15 0.03 160); }
+  .pf { position: relative; height: calc(min(780px, 100vh - 32px) - 44px); aspect-ratio: 9 / 16; overflow: hidden; border-radius: 14px; background: oklch(0.24 0.03 160); }
+  .pf-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.28s var(--ease); }
+  .pf-img.on { opacity: 1; animation: drift 6s linear both; }
+  .pf-img.instant { transition: none; }
+  @keyframes drift { from { transform: scale(1); } to { transform: scale(1.06); } }
+  .pf-ts { position: absolute; left: 10px; bottom: 10px; padding: 5px 7px; border-radius: 5px; background: oklch(0.1 0 0 / 0.7); color: #fff; font: 500 0.8125rem/1 var(--mono); }
+  .pf-note { position: absolute; top: 10px; right: 10px; padding: 3px 8px; border-radius: 999px; background: oklch(0.1 0 0 / 0.55); color: oklch(1 0 0 / 0.9); font-size: 0.6875rem; }
+  .player-side { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
+  .player-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid oklch(1 0 0 / 0.08); }
+  .ph-who { display: grid; min-width: 0; }
+  .ph-who span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.8125rem; color: var(--on-forest-2); }
+  .ph-link { margin-left: auto; white-space: nowrap; color: var(--lime); font-size: 0.8125rem; font-weight: 600; text-decoration: none; }
+  .ph-link:hover { text-decoration: underline; }
+  .ph-close { flex: none; width: 34px; height: 34px; border: 1px solid oklch(1 0 0 / 0.18); border-radius: 50%; background: transparent; color: var(--on-forest); cursor: pointer; transition: border-color 0.15s var(--ease), color 0.15s var(--ease); }
+  .ph-close:hover { border-color: var(--lime); color: var(--lime); }
+  .captions { position: relative; overflow: auto; margin: 0; padding: 20px 14px 200px; list-style: none; scrollbar-width: thin; scrollbar-color: var(--forest-line) transparent; }
+  .cap { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; width: 100%; padding: 7px 8px; border-radius: 8px; cursor: pointer; color: oklch(0.7 0.02 160); font: italic 400 1.125rem/1.45 var(--serif); transition: color 0.2s var(--ease), background-color 0.2s var(--ease), transform 0.35s var(--ease-expo); }
+  .cap:hover { background: oklch(1 0 0 / 0.05); }
+  .cap:focus-visible { outline: 2px solid var(--lime); outline-offset: -2px; }
+  .is-active .cap { color: #fff; transform: translateX(6px); }
+  .cap-t { font: 500 0.75rem/2.1 var(--mono); font-style: normal; color: oklch(0.62 0.02 160); transition: color 0.2s var(--ease); }
+  .is-active .cap-t { color: var(--lime); }
+  .cap-empty { padding: 12px 8px; color: var(--on-forest-2); }
+  .m-brand { background: var(--lime); color: var(--ink); padding: 0 0.15em; border-radius: 3px; }
+  .m-flag { background: var(--coral); color: #fff; padding: 0 0.15em; border-radius: 3px; }
+  .player-controls { display: flex; align-items: center; gap: 14px; padding: 14px 18px 18px; border-top: 1px solid oklch(1 0 0 / 0.08); }
+  .play-btn { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border: 0; border-radius: 50%; background: var(--lime); color: var(--ink); cursor: pointer; transition: transform 0.15s var(--ease), background-color 0.15s var(--ease); }
+  .play-btn:hover { background: var(--lime-strong); }
+  .play-btn:active { transform: scale(0.94); }
+  .play-btn .icon { width: 18px; height: 18px; }
+  .timeline { position: relative; flex: 1; min-width: 60px; height: 32px; cursor: pointer; touch-action: none; border-radius: 4px; }
+  .timeline::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; border-radius: 1px; background: oklch(1 0 0 / 0.14); }
+  .tl-seg { position: absolute; top: 50%; height: 6px; margin-top: -3px; border-radius: 2px; background: oklch(1 0 0 / 0.34); }
+  .tl-seg.is-brand { height: 18px; margin-top: -9px; background: var(--lime); box-shadow: 0 0 10px oklch(0.92 0.19 122 / 0.55); }
+  .tl-seg.is-flag { height: 18px; margin-top: -9px; background: var(--coral); }
+  .tl-head { position: absolute; top: 2px; bottom: 2px; left: 0; width: 3px; margin-left: -1.5px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 3px var(--cinema); will-change: transform; }
+  .time { white-space: nowrap; font: 500 0.8125rem var(--mono); color: var(--on-forest-2); }
+  .jump { flex: none; height: 34px; padding: 0 12px; border: 1px solid oklch(1 0 0 / 0.2); border-radius: 999px; background: transparent; color: var(--on-forest); font-size: 0.8125rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s var(--ease), color 0.15s var(--ease); }
+  .jump:hover { border-color: var(--lime); color: var(--lime); }
+
+  ::view-transition-group(evidence) { animation-duration: 0.5s; animation-timing-function: var(--ease-expo); }
+  ::view-transition-old(evidence), ::view-transition-new(evidence) { height: 100%; object-fit: cover; overflow: clip; }
+  ::view-transition-group(creator) { animation-duration: 0.55s; animation-timing-function: var(--ease-expo); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.26s; }
+
+  @media (max-width: 1360px) { .hide-md { display: none; } }
+  @media (max-width: 1180px) {
+    .results-grid { grid-template-columns: minmax(0, 1fr); }
+    .detail { position: static; max-height: none; }
+    .hide-md { display: table-cell; }
+  }
+  @media (max-width: 760px) {
+    .landing { padding: 88px 16px 110px; }
+    .landing-top { left: 16px; right: 16px; }
+    .hero-form { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+    .hero-form > * { grid-area: auto / 1 / auto / -1 !important; }
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .side { position: static; height: auto; }
+    .saved { grid-auto-flow: column; grid-auto-columns: minmax(160px, 1fr); overflow-x: auto; }
+    .side-foot { display: none; }
+    .searchbar { position: static; padding: 14px 16px; }
+    .content { padding: 20px 16px; }
+    .summary { font-size: 1.25rem; }
+    .intro h1 { font-size: 2rem; }
+    .hide-sm, .hide-md { display: none; }
+    .stat { padding-right: 16px; margin-right: 16px; }
+    .player-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    .player-stage { padding: 12px; }
+    .pf { height: 40vh; }
+    .player-side { grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+    .ph-link { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  }
+</style>
+</head>
+<body data-fx="player" class="is-landing">
+<div class="app">
+  <aside class="side" aria-label="Saved searches">
+    <a class="wordmark" href="/">Un<span>prompted</span></a>
+    <p class="tagline">Creators already talking about your brand, on camera.</p>
+    <button id="new-search" class="new-search" type="button"><span class="plus" aria-hidden="true">+</span>New search<kbd aria-hidden="true">/</kbd></button>
+    <fieldset class="fx-switch">
+      <legend>Overdrive preview</legend>
+      <div class="seg-opts">
+        <label><input type="radio" name="fx" value="off">Off</label>
+        <label><input type="radio" name="fx" value="player">Player</label>
+        <label><input type="radio" name="fx" value="live">Live</label>
+        <label><input type="radio" name="fx" value="fluid">Fluid</label>
+      </div>
+      <p id="fx-note" class="fx-note"></p>
+    </fieldset>
+    <h2 class="side-h">Saved searches</h2>
+    <ol id="saved" class="saved"></ol>
+    <p class="side-foot">Every search is stored in your local Postgres. Reopening one costs no Oriane credits.</p>
+    <p class="side-foot">Video intelligence by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a></p>
+  </aside>
+
+  <main class="main">
+    <section id="landing" class="landing" aria-labelledby="landing-h">
+      <div class="landing-top">
+        <a class="wordmark home" href="/">Un<span>prompted</span></a>
+        <a href="https://oriane.xyz" target="_blank" rel="noopener">Video intelligence by Oriane ↗</a>
+      </div>
+      <div class="landing-inner">
+        <h1 id="landing-h">Find the creators who <mark>already love</mark> your brand.</h1>
+        <p class="lede">Unprompted listens to what creators <strong>say on camera</strong> across Instagram and TikTok, then hands you the receipts: the quote, the timestamp and the frame. Caption tools miss a lot of it. In the brands we sampled, <strong>27 to 34% of mentions were spoken only</strong>.</p>
+        <div id="landing-slot">
+    <form id="search" class="searchbar hero-form" autocomplete="off">
+      <div class="field f-brand">
+        <label for="brand">Brand</label>
+        <input id="brand" name="brand" type="text" required minlength="2" maxlength="60" placeholder="e.g. Tim Hortons">
+      </div>
+      <div class="field f-variants">
+        <label for="variants">Also listen for</label>
+        <input id="variants" name="variants" type="text" maxlength="200" placeholder="Nicknames, e.g. Timmies">
+      </div>
+      <fieldset class="seg">
+        <legend>Platform</legend>
+        <div class="seg-opts">
+          <label><input type="radio" name="platform" value="all" checked>All</label>
+          <label><input type="radio" name="platform" value="instagram">Instagram</label>
+          <label><input type="radio" name="platform" value="tiktok">TikTok</label>
+        </div>
+      </fieldset>
+      <div class="field" id="days-field">
+        <label for="days">Period</label>
+        <select id="days" name="days">
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365" selected>Last 12 months</option>
+          <option value="0">All time</option>
+        </select>
+      </div>
+      <div class="field" id="lang-field">
+        <label for="lang">Spoken in</label>
+        <select id="lang" name="lang">
+          <option value="any">Any language</option>
+          <option value="en">English</option>
+          <option value="ar">Arabic</option>
+        </select>
+      </div>
+      <button id="go" class="btn btn-primary" type="submit"><span class="wave" aria-hidden="true"><i></i><i></i><i></i></span><span id="go-label">Listen</span></button>
+      <p id="hint" class="hint" hidden>Arabic transcripts spell brands in Arabic script. Add it under <b>Also listen for</b>, for example ستاربكس for Starbucks.</p>
+      <p id="landing-error" class="landing-error" role="alert" hidden></p>
+      <div id="scan" class="scan" hidden><span></span></div>
+    </form>
+        </div>
+        <div class="landing-after">
+          <div class="examples">
+            <span>Try</span>
+            <button type="button" class="chip" data-brand="Tim Hortons" data-variants="Timmies">Tim Hortons</button>
+            <button type="button" class="chip" data-brand="Starbucks" data-variants="">Starbucks</button>
+            <button type="button" class="chip" data-brand="Talabat" data-variants="">Talabat</button>
+            <button type="button" class="chip" data-brand="Shein" data-variants="">Shein</button>
+          </div>
+          <div id="recent" class="recent" hidden>
+            <span class="recent-h">Pick up where you left off</span>
+            <ul id="recent-list" class="recent-list"></ul>
+          </div>
+        </div>
+        <ul class="proof">
+          <li>Hears spoken mentions that never reach a caption</li>
+          <li>Every match comes with its quote, timestamp and frame</li>
+          <li>Searches are saved to Postgres and reopen for free</li>
+        </ul>
+      </div>
+      <div class="listen-wave" aria-hidden="true"></div>
+    </section>
+
+    <div class="content" hidden>
+      <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+      <div id="error" class="error" role="alert" hidden>
+        <span id="error-msg"></span>
+        <button id="retry" class="btn btn-quiet btn-sm" type="button">Try again</button>
+      </div>
+
+
+      <section id="loading" hidden>
+        <p id="loading-msg" class="loading-msg"></p>
+        <div aria-hidden="true">
+          <div class="sk sk-line" style="width: 74%"></div>
+          <div class="sk sk-line" style="width: 52%"></div>
+          <div class="sk sk-bar"></div>
+          <div class="results-grid">
+            <div><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>
+            <div class="sk sk-panel"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="results" hidden>
+        <div id="live" class="live" hidden>
+          <span class="wave on" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <ol id="ticker" class="ticker" aria-label="Quotes as they are heard"></ol>
+        </div>
+        <p id="summary" class="summary"></p>
+        <p id="meta" class="meta"></p>
+        <dl id="stats" class="stats"></dl>
+        <div class="mix">
+          <div id="mixbar" class="mixbar" role="img"></div>
+          <ul id="legend" class="legend"></ul>
+        </div>
+        <div class="results-grid">
+          <section aria-labelledby="board-h">
+            <div class="board-head">
+              <h2 id="board-h">Advocates <span id="board-count" class="count"></span></h2>
+              <label class="toggle"><input id="untapped" type="checkbox"> Untapped only</label>
+            </div>
+            <div class="table-wrap">
+              <table class="board-table">
+                <caption class="sr-only">Creators ranked by advocate score. Select a creator to see their mentions.</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" class="n">#</th>
+                    <th scope="col">Creator</th>
+                    <th scope="col" class="n hide-sm">Followers</th>
+                    <th scope="col" class="n" title="Videos mentioning the brand without a sponsorship disclosure">Unprompted</th>
+                    <th scope="col" class="n hide-sm">Views</th>
+                    <th scope="col" class="n hide-md">Eng.</th>
+                    <th scope="col">Score</th>
+                    <th scope="col" class="hide-sm">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+              </table>
+            </div>
+            <button id="more" class="btn btn-quiet btn-sm more" type="button" hidden></button>
+          </section>
+          <aside id="detail" class="detail" aria-label="Creator detail"></aside>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<dialog id="player" class="player" aria-label="Evidence player"></dialog>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const form = $('#search'), brandEl = $('#brand'), variantsEl = $('#variants');
+  const PLATFORM = { instagram: 'Instagram', tiktok: 'TikTok' };
+  const LANG = { en: 'English', ar: 'Arabic' };
+  const KINDS = {
+    spoken: { label: 'On camera only', color: 'var(--spoken)' },
+    tagged: { label: 'In caption', color: 'var(--tagged)' },
+    sponsored: { label: 'Sponsored', color: 'var(--sponsored)' },
+    owned: { label: "Brand's own account", color: 'var(--owned)' },
+    unverified: { label: 'Fuzzy match', color: 'var(--unverified)' },
+  };
+  const FX = {
+    off: 'Plain dashboard, no preview effects.',
+    player: 'Click any video frame to replay the moment with its transcript.',
+    live: 'Searches stream in: rows land and re-rank as Oriane answers.',
+    fluid: 'Every change animates: rows glide, numbers roll, gauges sweep.',
+  };
+  const ICON = {
+    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>',
+    tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M13.5 3c.6 2.8 2.6 4.6 5.5 4.8"/></svg>',
+    verified: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2.4 1.8 3-.2 1 2.8 2.6 1.6-.8 2.9.8 2.9-2.6 1.6-1 2.8-3-.2L12 22l-2.4-1.8-3 .2-1-2.8L3 15.8l.8-2.9L3 10l2.6-1.6 1-2.8 3 .2z"/><path d="M8.5 12.5l2.3 2.2 4.7-5" fill="none" stroke="#173a2d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>',
+  };
+  const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+  const usd = new Intl.NumberFormat('en', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+  const langName = new Intl.DisplayNames(['en'], { type: 'language' });
+  const fmt = (n) => compact.format(n || 0);
+  const int = (n) => fmt(Math.round(n));
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const date = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+  const time = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const key = (c) => (c ? `${c.platform}:${c.handle}` : null);
+  const slug = (s) => s.toLowerCase().replace(/\s+/g, '-');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const ARABIC = /[؀-ۿ]/;
+
+  const state = {
+    data: null, byId: {}, selected: null, untappedOnly: false, showAll: false, busy: false, pending: false, cpm: 10,
+    checks: {}, checking: null, checkError: {}, compareWith: null, fx: 'player', nums: {}, live: null, dmLang: {},
+  };
+  try { state.cpm = Number(localStorage.getItem('cpm')) || 10; } catch {}
+  // Live and Fluid previews animate data changes; Player keeps the dashboard still and animates the player.
+  const animOn = () => !reduced.matches && (state.fx === 'live' || state.fx === 'fluid');
+
+  // DOM builder: strings become text nodes, so API data never reaches innerHTML.
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'html') el.innerHTML = v; // trusted constants only (ICON, gauge numbers)
+      else if (typeof v === 'function') el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat(Infinity)) {
+      if (kid != null && kid !== false && kid !== '') el.append(kid instanceof Node ? kid : String(kid));
+    }
+    return el;
+  }
+  const icon = (name, cls = 'icon') => h('span', { class: cls, html: ICON[name], 'aria-hidden': 'true' });
+  function img(src, fallback, attrs) {
+    const el = h('img', { src: src || fallback, loading: 'lazy', decoding: 'async', ...attrs });
+    el.addEventListener('error', () => {
+      if (fallback && el.src !== fallback) el.src = fallback;
+      else el.style.visibility = 'hidden';
+    });
+    return el;
+  }
+
+  // A number that rolls from its last shown value (Live/Fluid). Keys persist across renders.
+  function num(k, value, format = int, fromZero = false) {
+    const el = h('span', { class: 'num' }, format(value));
+    const from = state.nums[k] ?? (fromZero || state.live ? 0 : null);
+    state.nums[k] = value;
+    if (animOn() && from != null && from !== value) {
+      const t0 = performance.now(), dur = 900;
+      el.textContent = format(from);
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
+        el.textContent = format(p < 1 ? from + (value - from) * e : value);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    return el;
+  }
+
+  function gauge(value, dark, sweep) {
+    const r = 36, c = +(2 * Math.PI * r).toFixed(2), off = +(c * (1 - Math.max(0, Math.min(100, value)) / 100)).toFixed(2);
+    return h('span', {
+      class: `gauge${dark ? ' on-dark' : ''}${sweep ? ' sweep' : ''}`, 'aria-hidden': 'true',
+      html: `<svg viewBox="0 0 88 88"><circle class="g-track" cx="44" cy="44" r="${r}"/><circle class="g-arc" cx="44" cy="44" r="${r}" style="--c:${c};stroke-dasharray:${c};stroke-dashoffset:${off}"/></svg>`,
+    });
+  }
+  function scoreTotal(value, label, k, dark) {
+    const first = state.nums[k] == null;
+    return h('div', { class: 'score-total' },
+      h('div', { class: 'gauge-wrap' }, gauge(value, dark, animOn() && first), num(k, value, (n) => String(Math.round(n)), true)),
+      h('span', { class: 'score-label' }, label));
+  }
+
+  async function api(path, options) {
+    let res;
+    try { res = await fetch(path, options); } catch { throw new Error("Can't reach the Unprompted server."); }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Request failed (${res.status}).`);
+    return body;
+  }
+
+  // 'intro' is the landing screen: the form sits in the hero. Anything else moves it into the top bar.
+  let booted = false;
+  const onLanding = () => document.body.classList.contains('is-landing');
+  function setMode(landing) {
+    document.body.classList.toggle('is-landing', landing);
+    $('#landing').hidden = !landing;
+    $('.content').hidden = landing;
+    if (landing) $('#landing-slot').append(form);
+    else $('.main').insertBefore(form, $('.content'));
+    form.classList.toggle('hero-form', landing);
+    $('#go-label').textContent = state.busy ? 'Listening' : landing ? 'Start listening' : 'Listen';
+  }
+  function view(name) {
+    const landing = name === 'intro';
+    const apply = () => {
+      for (const id of ['loading', 'results']) $('#' + id).hidden = id !== name;
+      setMode(landing);
+    };
+    // The hero form morphs into the top bar (and back) when the screen changes.
+    if (booted && landing !== onLanding() && document.startViewTransition && !reduced.matches) return document.startViewTransition(apply).updateCallbackDone;
+    apply();
+    return Promise.resolve();
+  }
+  function setError(msg) {
+    $('#error').hidden = !msg;
+    $('#error-msg').textContent = msg;
+    $('#landing-error').hidden = !msg;
+    $('#landing-error').textContent = msg;
+  }
+  function setBusy(on, message) {
+    state.busy = on;
+    $('#go').disabled = on;
+    $('#go').classList.toggle('busy', on);
+    $('#go-label').textContent = on ? 'Listening' : onLanding() ? 'Start listening' : 'Listen';
+    $('#loading-msg').textContent = on ? message : '';
+    $('#status').textContent = message;
+  }
+  function flushPending() {
+    if (!state.pending) return;
+    state.pending = false;
+    form.requestSubmit();
+  }
+
+  async function run(request, busyText, failText) {
+    if (state.busy) return;
+    setError('');
+    setBusy(true, busyText);
+    view('loading');
+    const t0 = performance.now();
+    try {
+      const data = await request();
+      data.timing ??= { source: 'saved', ms: Math.round(performance.now() - t0) };
+      setBusy(false, `${data.search.brand}: ${plural(data.creators.length, 'advocate')} found.`);
+      show(data);
+      loadSaved();
+    } catch (err) {
+      setBusy(false, '');
+      view(state.data ? 'results' : 'intro');
+      setError(`${failText} ${err.message}`);
+    }
+    flushPending();
+  }
+
+  function formBody() {
+    return {
+      brand: brandEl.value.trim(),
+      variants: variantsEl.value,
+      platform: form.elements.platform.value,
+      days: Number(form.elements.days.value),
+      lang: form.elements.lang.value,
+    };
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (state.busy) { state.pending = true; return; }
+    const body = formBody();
+    if (state.fx === 'live') return runLive(body);
+    run(() => api('/api/searches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+      `Listening to creator videos for "${body.brand}". This usually takes 5 to 10 seconds.`, 'Search failed.');
+  });
+
+  const openSearch = (id) => run(() => api(`/api/searches/${id}`), 'Opening saved search.', "Couldn't open that search.");
+
+  function show(data) {
+    const s = data.search;
+    state.data = data;
+    state.byId = Object.fromEntries(data.videos.map((v) => [v.id, v]));
+    state.checks = data.checks || {};
+    state.checkError = {};
+    state.compareWith = null;
+    state.showAll = false;
+    state.selected = key(visibleCreators()[0]);
+    brandEl.value = s.brand;
+    variantsEl.value = (s.params.variants || []).join(', ');
+    form.elements.platform.value = s.params.platform;
+    form.elements.days.value = String(s.params.days);
+    form.elements.lang.value = s.params.lang;
+    updateHint();
+    history.replaceState(null, '', `#search=${s.id}`);
+    document.title = `${s.brand} · Unprompted`;
+    $('#results').classList.toggle('is-empty', !data.videos.length);
+    view('results');
+    renderSummary();
+    if (data.videos.length) { renderStats(); renderMix(); renderBoard(); renderDetail(); }
+    markSaved(s.id);
+  }
+
+  function renderSummary(live) {
+    const { search: s, videos } = state.data;
+    const spoken = videos.filter((v) => v.kind === 'spoken').length;
+    if (live) {
+      $('#summary').replaceChildren('Listening… heard ', h('strong', {}, num('heard', live.heard)), ` of ${live.expected} videos for `,
+        h('strong', {}, s.brand), '. So far ', h('mark', {}, num('spoken', spoken), spoken === 1 ? ' mentions it only on camera' : ' mention it only on camera'), '.');
+      $('#meta').textContent = `Oriane matched ${fmt(s.totalCount)} videos. Ranking the top ${live.expected} by transcript relevance as they land.`;
+      return;
+    }
+    if (!videos.length) {
+      $('#summary').replaceChildren('Nobody says ', h('strong', {}, s.brand), ' in the videos Oriane has indexed for this period.');
+      $('#meta').textContent = 'Try how people actually say it (a nickname or common misspelling in "Also listen for"), or widen the period to All time.';
+      return;
+    }
+    // Oriane's total includes fuzzy matches; only claim "said out loud" for videos with transcript evidence.
+    const verified = videos.filter((v) => v.quote).length;
+    if (!verified) {
+      $('#summary').replaceChildren('Oriane found ', h('strong', {}, fmt(s.totalCount)), ' loose matches for ', h('strong', {}, s.brand), ', but none of them actually say it.');
+      $('#meta').textContent = 'Try the name people say out loud: a shorter version, a nickname, or the Arabic spelling under "Also listen for".';
+      return;
+    }
+    const scope = videos.length >= s.totalCount ? 'Of those' : `In the top ${videos.length}`;
+    $('#summary').replaceChildren(
+      'Oriane matched ', h('strong', {}, num('total', s.totalCount)), ` creator ${s.totalCount === 1 ? 'video' : 'videos'} for `, h('strong', {}, s.brand),
+      ', with ', num('views', s.totalViews, fmt), ` views. ${scope}, `, h('strong', {}, num('verified', verified), verified === 1 ? ' says it out loud' : ' say it out loud'), ' and ',
+      h('mark', {}, num('spoken', spoken), spoken === 1 ? ' mentions it only on camera' : ' mention it only on camera'), ': no caption, no hashtag, invisible to social listening.');
+    $('#meta').textContent = `Search #${s.id}, saved ${date(s.createdAt)} at ${time(s.createdAt)}. ${videos.length >= s.totalCount ? (videos.length === 1 ? '1 video analysed' : `All ${videos.length} videos analysed`) : `Top ${videos.length} of ${fmt(s.totalCount)} videos ranked by transcript relevance`}.`;
+  }
+
+  function renderStats() {
+    const { videos, creators } = state.data;
+    const organicViews = videos.filter((v) => v.kind === 'spoken' || v.kind === 'tagged').reduce((sum, v) => sum + v.views, 0);
+    const emv = num('emv', (organicViews / 1000) * state.cpm, (n) => usd.format(n));
+    const cpm = h('input', {
+      type: 'number', min: '1', max: '500', step: '1', value: state.cpm, class: 'cpm', 'aria-label': 'Cost per thousand views, in US dollars',
+      oninput: (e) => {
+        state.cpm = Math.max(1, Number(e.target.value) || 1);
+        state.nums.emv = (organicViews / 1000) * state.cpm;
+        emv.textContent = usd.format(state.nums.emv);
+        try { localStorage.setItem('cpm', state.cpm); } catch {}
+      },
+    });
+    const stat = (label, value, sub, cls) => h('div', { class: `stat${cls ? ` ${cls}` : ''}` }, h('dt', {}, label), h('dd', {}, value, h('span', { class: 'sub' }, sub)));
+    const s = state.data.search, t = state.data.timing;
+    const took = state.live ? 'listening…' : s.fetchMs == null ? '–' : `${(s.fetchMs / 1000).toFixed(1)} s`;
+    const served = state.live ? 'Oriane pages landing now'
+      : !t || s.fetchMs == null ? (s.fetchMs == null ? 'not recorded for this search' : 'saved with this search')
+      : t.source === 'oriane' ? 'Oriane fetch + ranking, saved to Postgres'
+      : t.source === 'cache' ? `reused from Postgres in ${t.ms} ms, no credits`
+      : `reopened from Postgres in ${t.ms} ms`;
+    $('#stats').replaceChildren(
+      stat('Advocates', num('advocates', creators.length), 'creators with unprompted mentions'),
+      stat('Untapped', num('untapped', creators.filter((c) => !c.sponsored).length), 'no disclosed sponsored post found'),
+      stat('Organic views', num('organic', organicViews, fmt), 'on unprompted mentions'),
+      stat('Earned media value', emv, ['at $', cpm, ' CPM, estimated'], 'money'),
+      stat('Search time', took, served));
+  }
+
+  function renderMix() {
+    const counts = {};
+    for (const v of state.data.videos) counts[v.kind] = (counts[v.kind] || 0) + 1;
+    const kinds = Object.keys(KINDS).filter((k) => counts[k]);
+    const bar = $('#mixbar');
+    // Stable segments so Live/Fluid can glide their widths instead of redrawing.
+    if (!bar.children.length) bar.append(...Object.keys(KINDS).map((k) => h('span', { 'data-kind': k, style: `background: ${KINDS[k].color}` })));
+    for (const seg of bar.children) {
+      const n = counts[seg.dataset.kind] || 0;
+      seg.style.flexGrow = n;
+      seg.hidden = !n;
+      seg.title = `${KINDS[seg.dataset.kind].label}: ${n}`;
+    }
+    bar.setAttribute('aria-label', `Mention mix: ${kinds.map((k) => `${KINDS[k].label} ${counts[k]}`).join(', ')}`);
+    $('#legend').replaceChildren(...kinds.map((k) => h('li', {}, h('span', { class: 'sw', style: `background: ${KINDS[k].color}` }), KINDS[k].label, h('b', {}, counts[k]))));
+  }
+
+  function visibleCreators() {
+    const all = state.data.creators;
+    return state.untappedOnly ? all.filter((c) => !c.sponsored) : all;
+  }
+
+  function renderBoard() {
+    const tbody = $('#rows');
+    const anim = animOn();
+    const before = new Map();
+    if (anim) for (const tr of tbody.children) if (tr.dataset.key) before.set(tr.dataset.key, tr.getBoundingClientRect().top);
+    const list = visibleCreators();
+    const shown = state.showAll ? list : list.slice(0, 25);
+    $('#board-count').replaceChildren(num('board', list.length));
+    const empty = state.untappedOnly
+      ? 'Every advocate here has a sponsored post for this brand. Turn off "Untapped only" to see them.'
+      : 'No unprompted advocates yet. Every mention here is sponsored or from the brand itself.';
+    tbody.replaceChildren(...(shown.length ? shown.map(row) : [h('tr', { class: 'empty' }, h('td', { colspan: '8' }, empty))]));
+    $('#more').hidden = state.showAll || list.length <= 25;
+    $('#more').textContent = `Show all ${list.length} advocates`;
+    if (!anim) return;
+    // FLIP: rows that moved glide from their old position; new rows rise in.
+    let fresh = 0;
+    for (const tr of tbody.children) {
+      const top = before.get(tr.dataset.key);
+      if (top != null) {
+        tr.classList.add('still');
+        const dy = top - tr.getBoundingClientRect().top;
+        if (Math.abs(dy) > 1) tr.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], { duration: 620, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+      } else if (tr.dataset.key && (state.live || before.size)) {
+        tr.animate([{ opacity: 0, transform: 'translateY(14px) scale(0.985)' }, { opacity: 1, transform: 'none' }],
+          { duration: 520, delay: Math.min(fresh++, 14) * 38, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'backwards' });
+        if (state.live) tr.classList.add('is-new');
+      }
+    }
+  }
+
+  function row(c, i) {
+    const k = key(c), on = k === state.selected;
+    return h('tr', { class: on ? 'is-selected' : null, 'data-key': k, onclick: () => select(k) },
+      h('td', { class: 'n rank' }, i + 1),
+      h('td', {}, h('div', { class: 'creator' },
+        img(c.pfp, null, { class: 'avatar', alt: '' }),
+        h('div', { class: 'who' },
+          h('button', { type: 'button', class: 'name', 'aria-pressed': String(on) }, c.name || c.handle, c.verified ? icon('verified', 'icon verified') : null),
+          h('span', { class: 'handle' }, icon(c.platform), h('span', { class: 'handle-text' }, `@${c.handle}`))))),
+      h('td', { class: 'n hide-sm' }, fmt(c.followers)),
+      h('td', { class: 'n' }, c.organic, c.spoken ? h('span', { class: 'cam' }, `${c.spoken} on camera`) : null),
+      h('td', { class: 'n hide-sm' }, fmt(c.views)),
+      h('td', { class: 'n hide-md' }, c.er == null ? '–' : `${c.er.toFixed(1)}%`),
+      h('td', {}, h('span', { class: 'score-n' }, c.score.total), h('span', { class: 'meter', 'aria-hidden': 'true' }, h('span', { style: `width: ${c.score.total}%` }))),
+      h('td', { class: 'hide-sm' }, c.sponsored ? h('span', { class: 'badge paid' }, 'Paid before') : h('span', { class: 'badge untapped' }, 'Untapped'),
+        state.checks[k] ? h('span', { class: `verdict-mini v-${slug(state.checks[k].verdict)}` }, state.checks[k].verdict) : null));
+  }
+
+  function select(k) {
+    const apply = () => {
+      state.selected = k;
+      for (const tr of $('#rows').children) {
+        const on = tr.dataset.key === k;
+        tr.classList.toggle('is-selected', on);
+        tr.querySelector('.name')?.setAttribute('aria-pressed', String(on));
+      }
+      renderDetail();
+    };
+    const stacked = matchMedia('(max-width: 1180px)').matches;
+    const avatar = [...$('#rows').children].find((tr) => tr.dataset.key === k)?.querySelector('.avatar');
+    // Fluid: the avatar flies from the row into the detail header.
+    if (state.fx === 'fluid' && !reduced.matches && !stacked && document.startViewTransition && avatar && k !== state.selected) {
+      avatar.style.viewTransitionName = 'creator';
+      const vt = document.startViewTransition(() => {
+        avatar.style.viewTransitionName = '';
+        apply();
+        const big = $('#detail .avatar-lg');
+        if (big) big.style.viewTransitionName = 'creator';
+      });
+      vt.finished.finally(() => { const big = $('#detail .avatar-lg'); if (big) big.style.viewTransitionName = ''; });
+    } else apply();
+    if (stacked) $('#detail').scrollIntoView({ behavior: reduced.matches ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  function part(label, value, max, why) {
+    return h('div', { class: 'part' },
+      h('dt', {}, label, h('span', { class: 'why' }, why)),
+      h('dd', {}, h('span', { class: 'meter', 'aria-hidden': 'true' }, h('span', { style: `width: ${(value / max) * 100}%` })), h('span', { class: 'part-n' }, `${value}/${max}`)));
+  }
+
+  function renderDetail(keepScroll = false) {
+    const detail = $('#detail');
+    const scrollTop = detail.scrollTop;
+    const brand = state.data.search.brand;
+    const c = state.data.creators.find((x) => key(x) === state.selected);
+    if (!c) {
+      detail.replaceChildren(h('p', { class: 'muted empty-detail' }, state.live ? 'Ranking advocates as videos arrive…' : `Select a creator to see the moments they mention ${brand}.`));
+      return;
+    }
+    const k = key(c);
+    const vids = c.videoIds.map((id) => state.byId[id]).filter(Boolean);
+    const best = vids.find((v) => v.kind === 'spoken' && v.quote) || vids.find((v) => v.kind === 'tagged' && v.quote) || vids[0];
+    const s = c.score;
+    const lang = state.dmLang[k] || (best?.lang === 'ar' ? 'ar' : 'en');
+    const dm = h('textarea', { rows: '9', 'aria-label': 'Outreach message draft', lang, dir: lang === 'ar' ? 'rtl' : 'ltr' });
+    dm.value = draft(c, best, state.data.search, lang);
+    const langBtn = (code, label) => h('button', {
+      type: 'button', class: 'dm-lang-btn', lang: code, 'aria-pressed': String(lang === code),
+      onclick: () => { state.dmLang[k] = code; renderDetail(true); },
+    }, label);
+    const copy = h('button', {
+      type: 'button', class: 'btn btn-quiet btn-sm',
+      onclick: async () => {
+        try { await navigator.clipboard.writeText(dm.value); } catch { dm.select(); document.execCommand('copy'); }
+        copy.textContent = 'Copied';
+        setTimeout(() => { copy.textContent = 'Copy message'; }, 1800);
+      },
+    }, 'Copy message');
+
+    detail.replaceChildren(h('div', { class: 'detail-body' },
+      h('div', { class: 'detail-hero' },
+        h('header', { class: 'detail-head' },
+          img(c.pfp, null, { class: 'avatar-lg', alt: '' }),
+          h('div', { class: 'who' },
+            h('h2', {}, c.name || c.handle, c.verified ? icon('verified', 'icon verified') : null),
+            h('p', { class: 'handle' }, icon(c.platform), h('span', { class: 'handle-text' }, `@${c.handle} · ${fmt(c.followers)} followers`)),
+            h('a', { class: 'link', href: c.profileUrl, target: '_blank', rel: 'noopener' }, `View on ${PLATFORM[c.platform]} ↗`))),
+        h('section', { class: 'score', 'aria-label': `Advocate score ${s.total} out of 100` },
+          scoreTotal(s.total, 'Advocate score', `score:${k}`, true),
+          h('dl', { class: 'score-parts' },
+            part('Loyalty', s.loyalty, 40, plural(c.organic, 'unprompted video')),
+            part('Reach', s.reach, 30, `${fmt(c.views)} organic views`),
+            part('Engagement', s.engagement, 20, c.er == null ? 'no data' : `${c.er.toFixed(1)}% per view`),
+            part('On camera', s.spoken, 10, c.spoken ? `said it on camera in ${plural(c.spoken, 'video')}` : 'caption mentions only')))),
+      h('div', { class: 'detail-rest' },
+        scoreCheck(c),
+        h('section', {},
+          h('h3', {}, 'Moments ', h('span', { class: 'count' }, vids.length)),
+          h('ol', { class: 'moments' }, vids.map(moment))),
+        h('section', { class: 'outreach' },
+          h('div', { class: 'outreach-head' },
+            h('h3', {}, 'Outreach draft'),
+            h('div', { class: 'dm-lang', role: 'group', 'aria-label': 'Draft language' }, langBtn('en', 'English'), langBtn('ar', 'العربية'))),
+          dm,
+          h('div', { class: 'outreach-actions' }, copy, h('span', { class: 'muted small' }, 'Quotes their own words back. Edit before sending.'))))));
+    detail.scrollTop = keepScroll ? scrollTop : 0;
+  }
+
+  // Score check = Oriane's Creator Checker (brand safety) + Account Benchmark + Account Moodboard, in one pass.
+  function scoreCheck(c) {
+    const k = key(c), res = state.checks[k], brand = state.data.search.brand;
+    const error = state.checkError[k] ? h('p', { class: 'check-error', role: 'alert' }, state.checkError[k]) : null;
+    const head = h('div', { class: 'check-head' }, h('h3', {}, 'Score check'), res ? h('span', { class: `verdict v-${slug(res.verdict)}` }, res.verdict) : null);
+    if (!res) {
+      const busy = state.checking === k;
+      return h('section', { class: 'check', 'aria-busy': String(busy) },
+        head,
+        h('p', { class: 'muted small intro-text' }, 'Brand safety, performance benchmark and a moodboard from their last 30 videos.'),
+        error,
+        h('button', { type: 'button', class: `btn btn-quiet btn-sm${busy ? ' busy' : ''}`, disabled: Boolean(state.checking), onclick: () => runCheck(c) },
+          h('span', { class: 'wave', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')), busy ? 'Watching their last 30 videos' : 'Run score check'),
+        busy ? h('div', { class: 'sk sk-check', 'aria-hidden': 'true' }) : null);
+    }
+    const p = res.performance, s = res.safety;
+    return h('section', { class: 'check' },
+      head,
+      error,
+      h('div', { class: 'score' },
+        scoreTotal(res.total, 'Check score', `check:${k}`, false),
+        h('dl', { class: 'score-parts' },
+          part('Brand safety', s.score, 100, s.flagged ? `${s.flagged} of ${res.videos} videos flagged` : `no flags in ${res.videos} videos`),
+          part('Performance', p.score, 100, `${p.medianEr.toFixed(1)}% eng. · ${Math.round(p.watchRate * 100)}% of followers watch · ${p.posts30d} posts in 30 days`),
+          part('Brand affinity', res.affinity.score, 100, `mentions ${brand} in ${plural(res.affinity.mentions, 'video')}`))),
+      s.flags.length ? [h('h4', {}, 'Flagged moments'), h('ol', { class: 'moments' }, s.flags.map((f) => moment({ ...f, label: f.category })))] : null,
+      h('h4', {}, 'Moodboard'),
+      h('div', { class: 'mood-grid' }, res.moodboard.frames.map((f) => h('a', {
+        href: f.url, target: '_blank', rel: 'noopener', 'aria-label': state.fx === 'player' && f.id ? `Play post with ${fmt(f.views)} views` : `Open post with ${fmt(f.views)} views`,
+        onclick: (e) => { if (wantsPlayer(e) && f.id) { e.preventDefault(); openPlayer(f.id, e.currentTarget.querySelector('img')); } },
+      }, img(f.image, null, { alt: '' }), h('span', { class: 'mood-views' }, fmt(f.views)), state.fx === 'player' && f.id ? h('span', { class: 'play-badge' }, icon('play')) : null))),
+      res.moodboard.hashtags.length ? h('div', { class: 'tags' }, res.moodboard.hashtags.map(([tag]) => h('span', { class: 'tag' }, tag))) : null,
+      h('p', { class: 'muted small' }, languages(res.moodboard.languages)),
+      benchmark(c, res),
+      h('p', { class: 'muted small check-foot' }, `Checked ${ago(res.createdAt)} from ${plural(res.videos, 'recent video')}. `,
+        h('button', { type: 'button', class: 'text-btn', disabled: Boolean(state.checking), onclick: () => runCheck(c, true) }, 'Re-run')));
+  }
+
+  function languages(langs) {
+    const total = Object.values(langs).reduce((a, b) => a + b, 0);
+    if (!total) return 'No speech detected in recent videos.';
+    const name = (code) => { try { return langName.of(code); } catch { return code; } };
+    return `Spoken language: ${Object.entries(langs).sort((a, b) => b[1] - a[1]).map(([code, n]) => `${name(code)} ${Math.round((n / total) * 100)}%`).join(' · ')}`;
+  }
+
+  function benchmark(c, res) {
+    const others = state.data.creators.filter((x) => key(x) !== key(c) && state.checks[key(x)]);
+    if (!others.length) return h('p', { class: 'muted small' }, 'Run a score check on another advocate to benchmark them side by side.');
+    const other = others.find((x) => key(x) === state.compareWith) || others[0];
+    const o = state.checks[key(other)];
+    const pct = (n) => `${n.toFixed(1)}%`;
+    const rows = [
+      ['Check score', res.total, o.total],
+      ['Brand safety', res.safety.score, o.safety.score],
+      ['Performance', res.performance.score, o.performance.score],
+      ['Brand affinity', res.affinity.score, o.affinity.score],
+      ['Median views', res.performance.medianViews, o.performance.medianViews, fmt],
+      ['Engagement', res.performance.medianEr, o.performance.medianEr, pct],
+      ['Posts, last 30 days', res.performance.posts30d, o.performance.posts30d],
+      ['Followers', res.performance.followers, o.performance.followers, fmt],
+    ];
+    const pick = h('select', { 'aria-label': 'Benchmark against', onchange: (e) => { state.compareWith = e.target.value; renderDetail(true); } },
+      others.map((x) => h('option', { value: key(x), selected: key(x) === key(other) }, x.name || x.handle)));
+    return [
+      h('h4', {}, 'Benchmark'),
+      h('table', { class: 'bench' },
+        h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, 'Metric')), h('th', { scope: 'col' }, c.name || c.handle), h('th', { scope: 'col' }, pick))),
+        h('tbody', {}, rows.map(([label, a, b, f = String]) => h('tr', {},
+          h('th', { scope: 'row' }, label),
+          h('td', { class: a > b ? 'win' : null }, f(a)),
+          h('td', { class: b > a ? 'win' : null }, f(b)))))),
+    ];
+  }
+
+  async function runCheck(c, fresh = false) {
+    if (state.checking) return;
+    const k = key(c), searchId = state.data.search.id, previous = state.checks[k];
+    state.checking = k;
+    delete state.checkError[k];
+    if (fresh) { delete state.checks[k]; delete state.nums[`check:${k}`]; }
+    renderDetail(true);
+    let res, failed;
+    try {
+      res = await api('/api/checks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: c.platform, handle: c.handle, brand: state.data.search.brand, variants: (state.data.search.params.variants || []).join(', '), fresh }),
+      });
+    } catch (err) { failed = err; }
+    state.checking = null;
+    if (state.data.search.id !== searchId) { renderDetail(true); return; } // user moved on; the result is saved in Postgres
+    if (res) {
+      state.checks[k] = res;
+      $('#status').textContent = `Score check for @${c.handle}: ${res.verdict}, ${res.total} out of 100.`;
+    } else {
+      if (previous) state.checks[k] = previous;
+      state.checkError[k] = `Score check failed. ${failed.message}`;
+    }
+    renderBoard();
+    renderDetail(true);
+  }
+
+  function moment(v) {
+    const q = v.quote, platform = PLATFORM[v.platform], at = q && q.start != null ? clock(q.start) : null;
+    const playable = state.fx === 'player' && v.id;
+    return h('li', { class: 'moment' },
+      h('a', {
+        class: 'frame', href: v.url, target: '_blank', rel: 'noopener',
+        'aria-label': `${playable ? 'Play' : 'Open'} this ${platform} post${at ? `, moment at ${at}` : ''}`,
+        onclick: (e) => { if (wantsPlayer(e) && v.id) { e.preventDefault(); openPlayer(v.id, e.currentTarget.querySelector('img'), { start: q?.start ?? null, flag: v.label || null }); } },
+      },
+        img(q?.frame || v.thumb, v.thumb, { alt: '' }),
+        at ? h('span', { class: 'ts' }, at) : null,
+        playable ? h('span', { class: 'play-badge' }, icon('play')) : null),
+      h('div', {},
+        q
+          ? h('blockquote', { dir: 'auto', lang: v.lang }, q.text.slice(0, q.hit[0]), h('mark', {}, q.text.slice(q.hit[0], q.hit[1])), q.text.slice(q.hit[1]))
+          : h('p', { class: 'muted' }, 'Oriane matched this video by fuzzy search; there is no exact quote to show.'),
+        h('p', { class: 'moment-meta' },
+          v.label ? h('span', { class: 'kind kind-flag' }, v.label) : h('span', { class: `kind kind-${v.kind}` }, KINDS[v.kind]?.label || v.kind),
+          h('span', {}, `${fmt(v.views)} views`),
+          h('span', {}, date(v.publishedAt)),
+          v.hits > 1 ? h('span', {}, `said ${v.hits}×`) : null),
+        h('a', { class: 'link', href: v.url, target: '_blank', rel: 'noopener' }, `Open on ${platform} ↗`)));
+  }
+
+  const AR_PLATFORM = { instagram: 'إنستغرام', tiktok: 'تيك توك' };
+  const dateAr = (iso) => (iso ? new Date(iso).toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+  // English drafts name the brand in Latin script, Arabic drafts in Arabic script, using whichever spellings the search has.
+  const brandName = (search, arabic) => [search.brand, ...(search.params.variants || [])].find((n) => ARABIC.test(n) === arabic) || search.brand;
+
+  function draft(c, v, search, lang) {
+    const first = (c.name || c.handle).trim().split(/\s+/)[0];
+    const quote = v?.quote ? v.quote.core.trim() : null;
+    if (lang === 'ar') {
+      const brand = brandName(search, true), platform = AR_PLATFORM[c.platform];
+      const where = quote
+        ? `فيديو ${platform} الذي نشرته في ${dateAr(v.publishedAt)}، عندما قلت "${quote}" عند الدقيقة ${clock(v.quote.start)}`
+        : `محتواك على ${platform} عن ${brand}`;
+      return `مرحبًا ${first}،\n\nأعمل في فريق الشراكات مع صنّاع المحتوى لدى ${brand}. شاهد فريقنا ${where}، وأسعدنا ذلك كثيرًا.\n\nواضح أنك تحب ${brand}، ونودّ أن نتعاون معك بشكل رسمي. هل يناسبك أن نتحدث هذا الأسبوع؟\n\nمع التحية،\n`;
+    }
+    const brand = brandName(search, false), platform = PLATFORM[c.platform];
+    const where = quote
+      ? `your ${platform} video from ${date(v.publishedAt)}, where you said "${quote}" about ${clock(v.quote.start)} in`
+      : `your ${platform} posts about ${brand}`;
+    return `Hi ${first},\n\nI work on creator partnerships for ${brand}. The team came across ${where}, and it made our day.\n\nYou clearly already enjoy ${brand}, so we'd love to work with you properly. Open to a quick chat this week?\n\nBest,\n`;
+  }
+
+  function ago(iso) {
+    const s = (Date.now() - new Date(iso)) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return date(iso);
+  }
+
+  async function loadSaved() {
+    let list;
+    try { list = await api('/api/searches'); } catch {
+      $('#saved').replaceChildren(h('li', { class: 'muted small' }, "Couldn't load saved searches."));
+      return;
+    }
+    $('#saved').replaceChildren(...(list.length ? list.map((s) => {
+      const p = s.params;
+      const tags = [p.platform !== 'all' && PLATFORM[p.platform], p.lang !== 'any' && LANG[p.lang], p.days !== 365 && (p.days ? `${p.days} days` : 'All time')].filter(Boolean);
+      return h('li', {}, h('button', { type: 'button', class: 'saved-item', 'data-id': s.id, onclick: () => openSearch(s.id) },
+        h('span', { class: 'saved-brand' }, s.brand),
+        h('span', { class: 'saved-meta' }, `${fmt(s.totalCount)} found${s.fetchMs != null ? ` · ${(s.fetchMs / 1000).toFixed(1)} s` : ''} · ${ago(s.createdAt)}`),
+        tags.length ? h('span', { class: 'saved-tags' }, tags.join(' · ')) : null));
+    }) : [h('li', { class: 'muted small' }, 'Your searches will show up here.')]));
+    if (state.data) markSaved(state.data.search.id);
+    const recent = list.slice(0, 4);
+    $('#recent').hidden = !recent.length;
+    $('#recent-list').replaceChildren(...recent.map((s) => h('li', {}, h('button', { type: 'button', onclick: () => openSearch(s.id) },
+      h('b', {}, s.brand), h('span', {}, `${fmt(s.totalCount)} found · ${ago(s.createdAt)}`)))));
+  }
+
+  function markSaved(id) {
+    for (const b of document.querySelectorAll('.saved-item')) {
+      if (Number(b.dataset.id) === id) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    }
+  }
+
+  // ---------- Live preview: stream four pages from Oriane and rank as they land ----------
+  async function readLines(res, onEvent) {
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i);
+        buf = buf.slice(i + 1);
+        if (line.trim()) await onEvent(JSON.parse(line));
+      }
+    }
+    if (buf.trim()) await onEvent(JSON.parse(buf));
+  }
+
+  // Pages land within a few hundred ms of each other; pace them so each batch is visible.
+  async function paced(fn) {
+    const wait = state.live ? Math.max(0, state.live.next - performance.now()) : 0;
+    if (wait) await sleep(wait);
+    fn();
+    if (state.live) state.live.next = performance.now() + (reduced.matches ? 0 : 480);
+  }
+
+  function scan(ratio) {
+    const el = $('#scan');
+    if (ratio == null) { el.hidden = true; return; }
+    el.hidden = false;
+    el.classList.toggle('waiting', ratio === 0);
+    el.firstElementChild.style.transform = ratio ? `scaleX(${ratio})` : '';
+  }
+
+  function startLive(brand) {
+    state.live = { seen: new Set(), queue: [], timer: 0, next: 0 };
+    state.nums = {};
+    state.selected = null;
+    const results = $('#results');
+    results.classList.add('is-live', 'no-data');
+    results.classList.remove('is-empty');
+    $('#live').hidden = false;
+    $('#ticker').replaceChildren(h('li', { class: 'muted' }, `Listening for “${brand}” across Instagram and TikTok…`));
+    $('#summary').replaceChildren('Listening for ', h('strong', {}, brand), '…');
+    $('#meta').textContent = 'Four pages of Oriane results, ranked as they land.';
+    $('#rows').replaceChildren(...Array.from({ length: 6 }, () => h('tr', { class: 'sk-tr' }, h('td', { colspan: '8' }, h('div', { class: 'sk sk-row' })))));
+    $('#board-count').textContent = '';
+    $('#detail').replaceChildren(h('p', { class: 'muted empty-detail' }, 'Ranking advocates as videos arrive…'));
+    scan(0);
+    view('results');
+  }
+
+  function liveUpdate(data, heard) {
+    state.data = data;
+    state.byId = Object.fromEntries(data.videos.map((v) => [v.id, v]));
+    state.checks = data.checks || {};
+    const expected = Math.min(100, data.search.totalCount) || heard;
+    $('#results').classList.remove('no-data');
+    renderSummary({ heard, expected });
+    renderStats();
+    renderMix();
+    renderBoard();
+    scan(heard / expected);
+    tickerPush(data.videos);
+  }
+
+  function tickerPush(videos) {
+    const L = state.live;
+    if (!L) return;
+    for (const v of videos) {
+      if (L.seen.has(v.id)) continue;
+      L.seen.add(v.id);
+      if (v.kind === 'spoken' && v.quote) L.queue.push(v);
+    }
+    if (!L.timer) tickerNext();
+  }
+
+  function tickerNext() {
+    const L = state.live;
+    if (!L) return;
+    const v = L.queue.shift();
+    if (!v) { L.timer = 0; return; }
+    const q = v.quote, a = Math.max(0, q.hit[0] - 44), b = Math.min(q.text.length, q.hit[1] + 44);
+    const list = $('#ticker');
+    list.querySelector('.muted')?.remove();
+    list.prepend(h('li', { dir: 'auto' },
+      `${a ? '…' : ''}${q.text.slice(a, q.hit[0])}`, h('mark', {}, q.text.slice(q.hit[0], q.hit[1])), `${q.text.slice(q.hit[1], b)}${b < q.text.length ? '…' : ''}`,
+      h('span', { class: 'tick-who' }, `@${v.handle} · ${clock(q.start)}`)));
+    while (list.children.length > 3) list.lastElementChild.remove();
+    L.timer = setTimeout(tickerNext, 700);
+  }
+
+  function endLive() {
+    if (!state.live) return;
+    clearTimeout(state.live.timer);
+    state.live = null;
+    $('#results').classList.remove('is-live', 'no-data');
+    $('#live').hidden = true;
+    scan(1);
+    setTimeout(() => scan(null), 500);
+  }
+
+  async function runLive(body) {
+    if (state.busy) return;
+    setError('');
+    setBusy(true, `Listening to creator videos for "${body.brand}".`);
+    startLive(body.brand);
+    let final = null;
+    try {
+      let res;
+      try {
+        res = await fetch('/api/searches/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      } catch { throw new Error("Can't reach the Unprompted server."); }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || `Request failed (${res.status}).`);
+      }
+      await readLines(res, async (ev) => {
+        if (ev.type === 'error') throw new Error(ev.error);
+        if (ev.type === 'progress') await paced(() => liveUpdate(ev.data, ev.heard));
+        if (ev.type === 'done') final = ev.data;
+      });
+      if (!final) throw new Error('The stream ended before the search finished.');
+      await paced(() => {});
+      endLive();
+      setBusy(false, `${final.search.brand}: ${plural(final.creators.length, 'advocate')} found.`);
+      show(final);
+      loadSaved();
+    } catch (err) {
+      endLive();
+      setBusy(false, '');
+      if (state.data) show(state.data); else view('intro');
+      setError(`Search failed. ${err.message}`);
+    }
+    flushPending();
+  }
+
+  // ---------- Player preview: rebuild the moment from Oriane's frames and timed transcript ----------
+  const P = { data: null, t: 0, playing: false, raf: 0, last: 0, frameIdx: -2, chunkIdx: -2, layer: 0, token: 0, thumb: null, opening: false };
+  const dialog = $('#player');
+  const wantsPlayer = (e) => state.fx === 'player' && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button);
+
+  async function openPlayer(id, thumb, { start = null, flag = null } = {}) {
+    if (P.opening || dialog.open) return;
+    P.opening = true;
+    const s = state.data.search;
+    const qs = new URLSearchParams({ brand: s.brand, variants: (s.params.variants || []).join(',') });
+    if (flag) qs.set('flag', flag);
+    try {
+      buildPlayer(await api(`/api/videos/${encodeURIComponent(id)}?${qs}`));
+      seek(start == null ? 0 : Math.max(0, start - 1.5), true);
+      await Promise.race([P.imgs[P.layer].decode().catch(() => {}), sleep(600)]);
+      const reveal = () => {
+        if (thumb) thumb.style.viewTransitionName = '';
+        P.frameBox.style.viewTransitionName = 'evidence';
+        dialog.showModal();
+      };
+      if (thumb && document.startViewTransition && !reduced.matches) {
+        thumb.style.viewTransitionName = 'evidence';
+        await document.startViewTransition(reveal).finished.catch(() => {});
+      } else reveal();
+      P.frameBox.style.viewTransitionName = '';
+      P.thumb = thumb;
+      seek(P.t, true);
+      P.playBtn.focus({ preventScroll: true });
+      dialog.scrollTop = 0;
+      if (!reduced.matches) play();
+    } catch (err) {
+      setError(`Couldn't open the player. ${err.message}`);
+    } finally {
+      P.opening = false;
+    }
+  }
+
+  function marked(c) {
+    const spans = [...c.brand.map(([a, b]) => [a, b, 'm-brand']), ...c.flag.map(([a, b]) => [a, b, 'm-flag'])].sort((x, y) => x[0] - y[0]);
+    const out = [];
+    let pos = 0;
+    for (const [a, b, cls] of spans) {
+      if (a < pos) continue;
+      out.push(c.text.slice(pos, a), h('mark', { class: cls }, c.text.slice(a, b)));
+      pos = b;
+    }
+    out.push(c.text.slice(pos));
+    return out;
+  }
+
+  function buildPlayer(d) {
+    pause();
+    Object.assign(P, { data: d, t: 0, frameIdx: -2, chunkIdx: -2, layer: 0 });
+    P.imgs = [h('img', { class: 'pf-img', alt: '' }), h('img', { class: 'pf-img', alt: '' })];
+    P.tsEl = h('span', { class: 'pf-ts' }, '0:00');
+    P.frameBox = h('div', { class: 'pf' }, P.imgs, P.tsEl,
+      h('span', { class: 'pf-note' }, d.frames.length ? `${d.frames.length} frames, rebuilt from Oriane` : 'Cover image'));
+    P.chunkEls = d.chunks.map((c) => h('li', {}, h('button', { type: 'button', class: 'cap', onclick: () => { seek(c.start, true); play(); } },
+      h('span', { class: 'cap-t' }, clock(c.start)), h('span', { dir: 'auto' }, marked(c)))));
+    P.captions = h('ol', { class: 'captions', 'aria-label': 'Transcript' }, P.chunkEls.length ? P.chunkEls : h('li', { class: 'cap-empty' }, 'No speech in this video.'));
+    P.head = h('span', { class: 'tl-head' });
+    P.timeline = h('div', { class: 'timeline', role: 'slider', tabindex: '0', 'aria-label': 'Seek', 'aria-valuemin': '0', 'aria-valuemax': d.duration.toFixed(1) },
+      d.chunks.map((c) => h('span', {
+        class: `tl-seg${c.brand.length ? ' is-brand' : ''}${c.flag.length ? ' is-flag' : ''}`,
+        style: `left: ${(c.start / d.duration) * 100}%; width: ${Math.max(0.5, ((c.end - c.start) / d.duration) * 100)}%`,
+      })), P.head);
+    const scrub = (e) => { const r = P.timeline.getBoundingClientRect(); seek(((e.clientX - r.left) / r.width) * d.duration, true); };
+    P.timeline.addEventListener('pointerdown', (e) => { P.timeline.setPointerCapture(e.pointerId); P.scrubbing = true; P.resume = P.playing; pause(); scrub(e); });
+    P.timeline.addEventListener('pointermove', (e) => { if (P.scrubbing) scrub(e); });
+    P.timeline.addEventListener('pointerup', () => { P.scrubbing = false; if (P.resume) play(); });
+    P.timeline.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 10 : 2;
+      const moves = { ArrowLeft: -step, ArrowDown: -step, ArrowRight: step, ArrowUp: step };
+      if (e.key in moves) { e.preventDefault(); seek(P.t + moves[e.key], true); }
+      else if (e.key === 'Home') { e.preventDefault(); seek(0, true); }
+      else if (e.key === 'End') { e.preventDefault(); seek(d.duration, true); }
+    });
+    P.playBtn = h('button', { type: 'button', class: 'play-btn', 'aria-label': 'Play', onclick: toggle }, icon('play'));
+    P.timeEl = h('span', { class: 'time' });
+    const marks = d.chunks.filter((c) => c.brand.length || c.flag.length);
+    const jump = marks.length ? h('button', {
+      type: 'button', class: 'jump',
+      onclick: () => { const next = marks.find((c) => c.start > P.t + 1.2) || marks[0]; seek(Math.max(0, next.start - 1), true); play(); },
+    }, marks.some((c) => c.flag.length) ? 'Next flag' : 'Next mention') : null;
+    dialog.replaceChildren(h('div', { class: 'player-shell' },
+      h('div', { class: 'player-stage' }, P.frameBox),
+      h('div', { class: 'player-side' },
+        h('header', { class: 'player-head' },
+          img(d.pfp, null, { class: 'avatar', alt: '' }),
+          h('div', { class: 'ph-who' }, h('strong', {}, d.name || d.handle), h('span', {}, `@${d.handle} · ${date(d.publishedAt)} · ${fmt(d.views)} views`)),
+          h('a', { class: 'ph-link', href: d.url, target: '_blank', rel: 'noopener' }, `Open on ${PLATFORM[d.platform]} ↗`),
+          h('button', { type: 'button', class: 'ph-close', 'aria-label': 'Close player', onclick: closePlayer }, '✕')),
+        P.captions,
+        h('div', { class: 'player-controls' }, P.playBtn, P.timeline, P.timeEl, jump))));
+  }
+
+  function seek(t, instant = false) {
+    const d = P.data;
+    if (!d) return;
+    P.t = Math.max(0, Math.min(d.duration, t));
+    let fi = d.frames.length ? 0 : -1;
+    for (let i = 0; i < d.frames.length && d.frames[i].t <= P.t + 0.05; i++) fi = i;
+    if (fi !== P.frameIdx) showFrame(fi, instant);
+    let ci = -1;
+    for (let i = 0; i < d.chunks.length && d.chunks[i].start <= P.t; i++) ci = i;
+    if (ci !== P.chunkIdx) activateChunk(ci, instant);
+    P.head.style.transform = `translateX(${(P.t / d.duration) * P.timeline.clientWidth}px)`;
+    P.timeEl.textContent = `${clock(P.t)} / ${clock(d.duration)}`;
+    P.tsEl.textContent = clock(P.t);
+    P.timeline.setAttribute('aria-valuenow', P.t.toFixed(1));
+    P.timeline.setAttribute('aria-valuetext', `${clock(P.t)} of ${clock(d.duration)}`);
+  }
+
+  function showFrame(fi, instant) {
+    P.frameIdx = fi;
+    const url = fi >= 0 ? P.data.frames[fi].url : P.data.thumb;
+    if (!url) return;
+    const cur = P.imgs[P.layer], next = P.imgs[1 - P.layer], token = ++P.token;
+    const swap = () => {
+      if (token !== P.token) return;
+      next.classList.add('on');
+      cur.classList.remove('on');
+      P.layer = 1 - P.layer;
+    };
+    next.src = url;
+    if (instant) {
+      for (const el of P.imgs) el.classList.add('instant');
+      swap();
+      requestAnimationFrame(() => requestAnimationFrame(() => { for (const el of P.imgs) el.classList.remove('instant'); }));
+    } else next.decode().then(swap, swap);
+  }
+
+  function activateChunk(ci, instant) {
+    P.chunkEls[P.chunkIdx]?.classList.remove('is-active');
+    P.chunkIdx = ci;
+    const el = P.chunkEls[ci];
+    if (!el) return;
+    el.classList.add('is-active');
+    const list = P.captions;
+    if (list.clientHeight) list.scrollTo({ top: el.offsetTop - list.clientHeight / 2 + el.offsetHeight / 2, behavior: instant || reduced.matches ? 'auto' : 'smooth' });
+  }
+
+  function play() {
+    if (!P.data || P.playing) return;
+    if (P.t >= P.data.duration - 0.05) seek(0, true);
+    P.playing = true;
+    P.last = performance.now();
+    P.raf = requestAnimationFrame(tick);
+    syncPlay();
+  }
+  function pause() {
+    if (!P.playing) return;
+    P.playing = false;
+    cancelAnimationFrame(P.raf);
+    syncPlay();
+  }
+  const toggle = () => (P.playing ? pause() : play());
+  function tick(now) {
+    if (!P.playing) return;
+    const dt = Math.min(0.1, (now - P.last) / 1000);
+    P.last = now;
+    seek(P.t + dt);
+    if (P.t >= P.data.duration) { P.playing = false; syncPlay(); } else P.raf = requestAnimationFrame(tick);
+  }
+  function syncPlay() {
+    if (!P.playBtn) return;
+    P.playBtn.replaceChildren(icon(P.playing ? 'pause' : 'play'));
+    P.playBtn.setAttribute('aria-label', P.playing ? 'Pause' : 'Play');
+  }
+
+  function closePlayer() {
+    if (!dialog.open) return;
+    pause();
+    const thumb = P.thumb && P.thumb.isConnected && P.thumb.getBoundingClientRect().width ? P.thumb : null;
+    const hide = () => {
+      P.frameBox.style.viewTransitionName = '';
+      dialog.close();
+      if (thumb) thumb.style.viewTransitionName = 'evidence';
+    };
+    if (thumb && document.startViewTransition && !reduced.matches) {
+      P.frameBox.style.viewTransitionName = 'evidence';
+      document.startViewTransition(hide).finished.finally(() => { thumb.style.viewTransitionName = ''; });
+    } else hide();
+  }
+
+  dialog.addEventListener('cancel', (e) => { e.preventDefault(); closePlayer(); });
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) closePlayer(); });
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key === ' ' && !e.target.closest('button, a')) { e.preventDefault(); toggle(); }
+  });
+
+  // ---------- Preview switcher ----------
+  function setFx(fx, rerender = true) {
+    state.fx = FX[fx] ? fx : 'player';
+    document.body.dataset.fx = state.fx;
+    for (const r of document.querySelectorAll('input[name="fx"]')) r.checked = r.value === state.fx;
+    $('#fx-note').textContent = FX[state.fx];
+    try { localStorage.setItem('fx', state.fx); } catch {}
+    if (rerender && state.data && !state.live && state.data.videos.length) { renderBoard(); renderDetail(true); }
+  }
+  for (const r of document.querySelectorAll('input[name="fx"]')) r.addEventListener('change', () => setFx(r.value));
+  let initialFx = new URLSearchParams(location.search).get('fx');
+  if (!FX[initialFx]) { try { initialFx = localStorage.getItem('fx'); } catch {} }
+  setFx(initialFx, false);
+
+  // ---------- Filters re-run the search, so changing one always changes the results ----------
+  function updateHint() {
+    $('#hint').hidden = !(form.elements.lang.value === 'ar' && !ARABIC.test(brandEl.value + variantsEl.value));
+  }
+  for (const el of [...form.elements.platform, form.elements.days, form.elements.lang]) {
+    el.addEventListener('change', () => {
+      updateHint();
+      if (state.data && !onLanding() && brandEl.value.trim().length >= 2) form.requestSubmit();
+    });
+  }
+  brandEl.addEventListener('input', updateHint);
+  variantsEl.addEventListener('input', updateHint);
+
+  for (const chip of document.querySelectorAll('.chip')) {
+    chip.addEventListener('click', () => {
+      brandEl.value = chip.dataset.brand;
+      variantsEl.value = chip.dataset.variants;
+      form.requestSubmit();
+    });
+  }
+  $('#untapped').addEventListener('change', (e) => {
+    state.untappedOnly = e.target.checked;
+    state.showAll = false;
+    const list = visibleCreators();
+    if (!list.some((c) => key(c) === state.selected)) state.selected = key(list[0]);
+    renderBoard();
+    renderDetail();
+  });
+  $('#more').addEventListener('click', () => { state.showAll = true; renderBoard(); });
+  $('#retry').addEventListener('click', () => form.requestSubmit());
+  new ResizeObserver(() => document.documentElement.style.setProperty('--bar-h', `${form.offsetHeight}px`)).observe(form);
+
+  for (const a of document.querySelectorAll('.wordmark')) {
+    a.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button || state.busy) return;
+      e.preventDefault();
+      history.replaceState(null, '', location.pathname + location.search);
+      document.title = 'Unprompted';
+      setError('');
+      view('intro');
+    });
+  }
+  $('.listen-wave').append(...Array.from({ length: 64 }, (_, i) => h('i', {
+    class: i % 11 === 5 ? 'hot' : null,
+    style: `--h: ${Math.round(18 + 82 * Math.abs(Math.sin(i * 1.3)) * (0.55 + 0.45 * Math.sin(i / 6)))}%; --d: ${(-i * 0.11).toFixed(2)}s`,
+  })));
+
+  async function newSearch() {
+    if (state.busy) return;
+    form.reset();
+    updateHint();
+    history.replaceState(null, '', location.pathname + location.search);
+    document.title = 'Unprompted';
+    setError('');
+    await view('intro');
+    brandEl.focus();
+  }
+  $('#new-search').addEventListener('click', newSearch);
+  // "/" jumps to the brand field from anywhere, like a search box should.
+  addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || dialog.open || e.target.closest('input, textarea, select, [contenteditable]')) return;
+    e.preventDefault();
+    brandEl.focus();
+    brandEl.select();
+  });
+
+  addEventListener('hashchange', () => {
+    const m = location.hash.match(/^#search=(\d+)$/);
+    if (m && Number(m[1]) !== state.data?.search.id) openSearch(Number(m[1]));
+  });
+
+  setMode(true);
+  loadSaved();
+  const hash = location.hash.match(/^#search=(\d+)$/);
+  if (hash) openSearch(Number(hash[1]));
+  booted = true;
+</script>
+</body>
+</html>
