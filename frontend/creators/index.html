@@ -165,9 +165,31 @@
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; z-index: 20; }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid oklch(0 0 0 / 0.2); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .hero .btn-link { color: var(--on-forest-2); }
+  .hero .btn-link:hover { color: var(--lime); }
+  .recent { max-width: 860px; margin: 0 auto; padding: 32px 24px 0; }
+  .recent .section-h { margin: 0 0 10px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .card { display: flex; gap: 12px; align-items: center; text-align: left; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--bg); cursor: pointer; }
+  .card:hover { border-color: var(--ink); }
+  .card img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--panel); }
+  .card b { display: block; }
+  .card small { color: var(--ink-2); }
+  .banner { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 18px; border-radius: 12px; background: var(--forest); color: var(--on-forest); margin-bottom: 20px; }
+  .banner span { color: var(--on-forest-2); font-size: 0.875rem; }
+  .banner b { color: var(--on-forest); }
+  .empty { border: 1px dashed var(--line-2); border-radius: 14px; padding: 28px; text-align: center; color: var(--ink-2); }
+  .empty b { display: block; color: var(--ink); font-size: 1.0625rem; margin-bottom: 6px; }
+  aside .share-url { display: block; width: 100%; height: 34px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 10px; margin-top: 8px; background: var(--bg); font: 500 0.75rem var(--mono); }
+  aside p { margin: 0 0 8px; color: var(--ink-2); font-size: 0.8125rem; }
   @media (max-width: 860px) {
     .app { grid-template-columns: 1fr; } .how, .pricing { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; }
     .scan-form { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .bar { padding: 0 14px; gap: 10px; } .bar .who, .wordmark small { display: none; }
+    .hero { padding: 44px 18px 52px; } .how, .recent { padding-left: 18px; padding-right: 18px; } .app { padding: 18px; }
+    .brand-head { grid-template-columns: 1fr; } .receipt { grid-template-columns: 48px 1fr; } .receipt img { width: 48px; height: 72px; }
   }
 </style>
 </head>
@@ -191,8 +213,9 @@
       <input id="handle" placeholder="@yourhandle" autocomplete="off" spellcheck="false" required>
       <button class="btn btn-primary" type="submit" id="scan-btn">Find my brands</button>
     </form>
-    <div class="fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span></div>
+    <div class="fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="btn-link" type="button" id="sample">See a sample report</button></div>
   </div></section>
+  <section class="recent" id="recent" hidden><div class="section-h"><h3>Your scans</h3><small>pick up where you left off</small></div><div class="cards" id="recent-list"></div></section>
   <section class="how">
     <div><div class="n">01</div><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></div>
     <div><div class="n">02</div><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></div>
@@ -209,6 +232,7 @@
   <aside>
     <div class="box rate" id="rate"></div>
     <div class="box"><h4>Your scans</h4><ul class="hist" id="history"></ul><button class="btn btn-quiet btn-sm" id="new-scan" style="margin-top:10px">New scan</button></div>
+    <div class="box" id="share-box"><h4>Receipt page</h4><p>A public, read-only page of this report to drop in a pitch or your media kit.</p><button class="btn btn-quiet btn-sm" id="share">Copy public link</button><input class="share-url" id="share-url" readonly hidden></div>
     <div class="box"><h4>Brand missing?</h4><form id="report"><input placeholder="Brand we didn't catch" required maxlength="80"><button class="btn btn-quiet btn-sm" type="submit">Tell us</button></form></div>
   </aside>
 </main>
@@ -253,7 +277,7 @@ async function api(path, body, method) {
   if (!res.ok) { const e = new Error(data.error || res.statusText); e.status = res.status; throw e; }
   return data;
 }
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2800); }
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), Math.min(8000, 2200 + msg.length * 35)); }
 
 // ---- account bar
 function renderAccount() {
@@ -264,7 +288,7 @@ function renderAccount() {
     ${pro ? (S.user.billing && S.billing.enabled ? `<button class="btn btn-quiet btn-sm" id="portal">Billing</button>` : '') : `<button class="btn btn-primary btn-sm" id="up">Go Pro</button>`}
     <button class="btn btn-quiet btn-sm" id="signout">Sign out</button>`;
   el.style.display = 'flex'; el.style.gap = '10px'; el.style.alignItems = 'center';
-  $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; showLanding(); renderAccount(); };
+  $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; showLanding(); renderAccount(); loadHistory(); };
   if ($('#up')) $('#up').onclick = () => openUpgrade();
   if ($('#portal')) $('#portal').onclick = async () => { try { location.href = (await api('/billing/portal', {})).url; } catch (e) { toast(e.message); } };
 }
@@ -319,19 +343,20 @@ function startScan(platform, handle) {
   runScan(platform, handle);
 }
 async function runScan(platform, handle) {
-  const btn = $('#scan-btn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
+  const btn = $('#scan-btn'), inp = $('#handle'); btn.disabled = inp.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
   try { const scan = await api('/scans', { platform, handle }); showScan(scan); loadHistory(); }
   catch (e) { if (!(await paywalled(e))) toast(e.message); }
-  btn.disabled = false; btn.textContent = 'Find my brands';
+  btn.disabled = inp.disabled = false; btn.textContent = 'Find my brands';
 }
 async function openScan(id) { try { showScan(await api('/scans/' + id)); } catch (e) { toast(e.message); } }
 async function loadHistory() {
-  if (!S.user) return;
-  const rows = await api('/scans').catch(() => []);
+  const rows = S.user ? await api('/scans').catch(() => []) : [];
   $('#history').innerHTML = rows.length ? rows.map((r) => `<li><button data-id="${r.id}"><b>@${esc(r.handle)}</b> · ${PLATFORM[r.platform]}<small>${r.brands} brands · ${date(r.createdAt)}</small></button></li>`).join('') : '<li><small>No scans yet.</small></li>';
-  for (const b of $('#history').querySelectorAll('button')) b.onclick = () => openScan(+b.dataset.id);
+  $('#recent').hidden = !rows.length;
+  $('#recent-list').innerHTML = rows.slice(0, 6).map((r) => `<button class="card" data-id="${r.id}"><img src="${esc(r.pfp || '')}" alt=""><span><b>@${esc(r.handle)}</b><small>${PLATFORM[r.platform]} · ${r.brands} brands · ${date(r.createdAt)}</small></span></button>`).join('');
+  for (const b of document.querySelectorAll('#history button, #recent-list button')) b.onclick = () => openScan(+b.dataset.id);
 }
-function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; }
+function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (location.pathname !== '/creators/') history.replaceState({}, '', '/creators/'); }
 
 function showScan(scan) {
   S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {};
@@ -339,9 +364,12 @@ function showScan(scan) {
   render(); window.scrollTo({ top: 0 });
 }
 function render() {
-  const s = S.scan, p = s.profile, free = s.plan === 'free';
+  const s = S.scan, p = s.profile, free = s.plan === 'free', ro = !!s.shared;
   const locked = s.brands.filter((b) => b.locked).length;
+  document.title = ro ? `@${p.handle}'s brand receipts · Receipts by Unprompted` : 'Receipts by Unprompted';
   $('#result').innerHTML = `
+    ${s.sample ? `<div class="banner"><div><b>Sample report</b> <span>on fixture data, unlocked as Pro. Yours takes about ten seconds.</span></div><button class="btn btn-primary btn-sm" id="cta">Get my receipts, free</button></div>`
+      : ro ? `<div class="banner"><div><b>@${esc(p.handle)}'s brand receipts</b> <span>verified from ${p.videos} ${PLATFORM[p.platform]} videos with Receipts by Unprompted.</span></div><button class="btn btn-primary btn-sm" id="cta">Get yours, free</button></div>` : ''}
     <div class="profile">
       <img class="pfp" src="${esc(p.pfp || '')}" alt="">
       <div><h2>${esc(p.name || '@' + p.handle)} <span class="tag ${s.source}">${s.source === 'demo' ? 'Demo data' : 'Live'}</span></h2>
@@ -353,10 +381,15 @@ function render() {
       <div class="stat"><b>${num(p.medianViews)}</b><span>median views</span></div>
       <div class="stat"><b>${p.medianEr ?? '–'}%</b><span>median engagement</span></div>
     </div>
-    ${s.source === 'demo' ? `<p class="locked-note">Demo mode: this server has no ORIANE_API_KEY, so these are fixture videos. The flow is real; the data isn't.</p>` : ''}
-    <div class="section-h"><h3>Your brands, best pitch first</h3><small>unpaid mentions rank above past sponsors</small></div>
-    ${s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')}
-    ${free && locked ? `<div class="upsell"><div><b>${locked} more brand${locked === 1 ? '' : 's'} hidden</b><span>Pro shows every brand and receipt, checks who's paying, and drafts the pitch.</span></div><button class="btn btn-primary" id="upsell">Go Pro, $${S.billing.price}/mo</button></div>` : ''}`;
+    ${s.sample ? `<p class="locked-note">Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.</p>`
+      : s.source === 'demo' ? `<p class="locked-note">Demo mode: this server has no ORIANE_API_KEY, so these are fixture videos. The flow is real; the data isn't.</p>` : ''}
+    <div class="section-h"><h3>${ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'}</h3><small>unpaid mentions rank above past sponsors</small></div>
+    ${s.brands.length ? s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')
+      : `<div class="empty"><b>No catalog brand in these ${p.videos} videos</b>We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don't track yet, tell us in the sidebar and we'll add it.</div>`}
+    ${free && locked && !ro ? `<div class="upsell"><div><b>${locked} more brand${locked === 1 ? '' : 's'} hidden</b><span>Pro shows every brand and receipt, checks who's paying, and drafts the pitch.</span></div><button class="btn btn-primary" id="upsell">Go Pro, $${S.billing.price}/mo</button></div>` : ''}`;
+  $('#cta') && ($('#cta').onclick = () => { showLanding(); $('#handle').focus(); });
+  $('#rate').hidden = $('#share-box').hidden = ro; $('#new-scan').textContent = ro ? 'Scan my own handle' : 'New scan';
+  $('#share-url').hidden = true;
   $('#rate').innerHTML = `<h4>Your rate range</h4><b>$${s.rate.low.toLocaleString()} – $${s.rate.high.toLocaleString()}</b><small>per dedicated video, +$${s.rate.usage.toLocaleString()} for 30-day usage</small><small style="margin-top:6px">${esc(s.rate.basis)}. Rule of thumb; edit before you send.</small>`;
   if ($('#upsell')) $('#upsell').onclick = () => openUpgrade();
   for (const h of $('#result').querySelectorAll('.brand:not(.locked) .brand-head')) h.onclick = () => { const i = +h.dataset.i; S.open.has(i) ? S.open.delete(i) : S.open.add(i); render(); };
@@ -376,10 +409,10 @@ function brandCard(b, i) {
       <span class="status ${b.status}">${STATUS[b.status]}</span></div>
     ${open ? `<div class="brand-body">
       ${b.receipts.map(receipt).join('')}
-      <div class="actions">
+      ${S.scan.shared ? '' : `<div class="actions">
         <button class="btn btn-quiet btn-sm" data-act="activity" data-i="${i}">Who's paying for ${esc(b.brand)} right now?</button>
         <button class="btn btn-primary btn-sm" data-act="pitch" data-i="${i}">Draft my pitch</button>
-      </div>
+      </div>`}
       ${P.activity ? activityPanel(P.activity) : ''}${P.pitch ? pitchPanel(P.pitch, i) : ''}</div>` : ''}</article>`;
 }
 function receipt(r) {
@@ -392,7 +425,7 @@ function receipt(r) {
 function activityPanel(a) {
   const total = Object.values(a.tiers).reduce((x, y) => x + y, 0) || 1;
   return `<div class="panel"><h4>Sponsor check <span class="verdict ${a.verdict}">${VERDICT[a.verdict]}</span>${a.source === 'demo' ? '<span class="tag demo">demo</span>' : ''}</h4>
-    <div>${a.sponsored} disclosed creator post${a.sponsored === 1 ? '' : 's'} about ${esc(a.brand)} in the last ${a.windowDays} days, from ${a.creators} creator${a.creators === 1 ? '' : 's'}${a.lastPaid ? `, latest ${date(a.lastPaid)}` : ''}. ${a.videosSeen} videos checked.</div>
+    <div>${a.sponsored >= 100 ? '100+' : a.sponsored} disclosed creator post${a.sponsored === 1 ? '' : 's'} about ${esc(a.brand)} in the last ${a.windowDays} days, from ${a.creators} creator${a.creators === 1 ? '' : 's'}${a.lastPaid ? `, latest ${date(a.lastPaid)}` : ''}.</div>
     ${a.creators ? `<div class="tiers">${['nano', 'micro', 'mid', 'macro'].map((t) => `<i style="width:${a.tiers[t] / total * 100}%" title="${t}: ${a.tiers[t]}"></i>`).join('')}</div>
     <small style="color:var(--ink-2)">${['nano', 'micro', 'mid', 'macro'].map((t) => `${a.tiers[t]} ${t}`).join(' · ')} (by followers: &lt;10K, &lt;100K, &lt;500K, more)</small>` : ''}
     ${a.examples.length ? `<ul class="examples">${a.examples.map((e) => `<li>@${esc(e.handle)} (${num(e.followers)}) · ${num(e.views)} views · ${date(e.publishedAt)}${e.url && e.url !== '#demo' ? ` · <a href="${esc(e.url)}" target="_blank" rel="noopener">open</a>` : ''}</li>`).join('')}</ul>` : ''}</div>`;
@@ -409,6 +442,17 @@ async function action(act, i, btn) {
   } catch (e) { if (!(await paywalled(e, act === 'activity' ? `Pro checks which brands are paying creators right now.` : `Pro drafts pitches that quote your own videos.`))) toast(e.message); }
   btn.disabled = false;
 }
+$('#share').onclick = async () => {
+  try {
+    const { url } = await api(`/scans/${S.scan.id}/share`, {});
+    const out = $('#share-url'); out.value = url; out.hidden = false;
+    await navigator.clipboard.writeText(url).then(() => toast('Public link copied')).catch(() => { out.select(); toast('Link ready, copy it below'); });
+  } catch (e) { toast(e.message); }
+};
+async function openShared(path) {
+  try { showScan(await api(path)); } catch (e) { toast(e.message); showLanding(); }
+}
+$('#sample').onclick = () => openShared('/sample');
 $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#report input'); try { await api('/report', { text: inp.value, scan: S.scan?.id }); inp.value = ''; toast('Thanks, noted'); } catch (err) { toast(err.message); } };
 
 // ---- boot
@@ -419,7 +463,10 @@ $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#repor
   if (S.billing.demo) $('#fine').insertAdjacentHTML('beforeend', ` <span>Demo mode, try:</span> <button class="chip" type="button" data-demo="maya.eats">@maya.eats</button> <button class="chip" type="button" data-demo="sami.lifts">@sami.lifts</button>`);
   for (const c of document.querySelectorAll('[data-demo]')) c.onclick = () => { $('#handle').value = '@' + c.dataset.demo; startScan(S.platform, c.dataset.demo); };
   renderAccount(); loadHistory();
+  const shared = location.pathname.match(/^\/creators\/r\/([A-Za-z0-9_-]+)$/);
+  if (shared) openShared('/shared/' + shared[1]);
   const q = new URLSearchParams(location.search);
+  if (q.get('sample') === '1') openShared('/sample');
   if (q.get('upgraded') === '1') { toast(S.user?.plan === 'pro' ? "You're on Pro" : 'Payment received, your plan updates in a moment'); history.replaceState({}, '', '/creators/'); }
 })();
 </script>

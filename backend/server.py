@@ -535,6 +535,8 @@ class Handler(SimpleHTTPRequestHandler):
         elif path.startswith("/api/"):
             self.api(not_found)
         else:
+            if re.fullmatch(r"/creators/r/[^/]+", path):
+                self.path = "/creators/index.html"
             super().do_GET()
 
     def do_POST(self):

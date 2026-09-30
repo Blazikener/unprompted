@@ -159,4 +159,4 @@ def activity(brand, platform):
     for k in range(creators):
         tiers[["nano", "micro", "micro", "mid", "macro"][(h >> k) % 5]] += 1
     return {"windowDays": 90, "videosSeen": sponsored * 4 + h % 40, "sponsored": sponsored, "creators": creators, "tiers": tiers,
-            "lastPaid": (date.today() - timedelta(days=2 + h % 45)).isoformat() if sponsored else None, "examples": examples}
+            "lastPaid": max((e["publishedAt"] for e in examples), default=None), "examples": examples}

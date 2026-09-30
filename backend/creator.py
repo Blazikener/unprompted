@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS scans (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS scans_user ON scans (user_id, created_at DESC);
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS share_token text UNIQUE;  -- set once the owner publishes a receipt page
 CREATE TABLE IF NOT EXISTS brand_activity (
   brand      text NOT NULL,
   platform   text NOT NULL,
@@ -76,6 +77,9 @@ CREATE TABLE IF NOT EXISTS events (                -- funnel: scan, paywall, che
 """
 
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram"}
+# "so excited to partner with [BFF and] ClassPass": a disclosure verb at most three words before the brand.
+SPOKEN_DISCLOSURE = re.compile(r"(?:partner(?:ed|ing)? with|partnership with|sponsored by|sponsoring|thanks to|ad for|gifted by|"
+                               r"ambassador for|collab(?:oration)? with)\W+(?:[^\W_]+\W+){0,3}$", re.IGNORECASE)
 PRO_PRICE_USD = 29
 PLANS = {
     "free": {"scansPerWeek": 1, "brands": 3, "activity": False, "pitch": False},
@@ -111,8 +115,10 @@ class Reply:
 def brand_mentions(raw):
     """Every catalog brand this video mentions: (entry, kind, quote).
 
-    kind: sponsored (disclosed video that tags the brand, or co-authored with it), tagged (caption, hashtag or
-    @mention), spoken (only said on camera). Ambiguous names (Apple, Target) need a context word when spoken.
+    kind: sponsored (disclosed video that tags the brand, co-authored with it, or a disclosure said in the same
+    breath: "so excited to partner with X"), tagged (caption, hashtag or
+    @mention), spoken (only said on camera). Ambiguous names (Apple, Target, Jumeirah) need a context word in the
+    quote or caption unless the brand's own account is tagged.
     """
     caption = " ".join([raw.get("caption") or "", *(raw.get("hashtags") or [])])
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
@@ -127,17 +133,25 @@ def brand_mentions(raw):
         q = find_quote(raw, b["rx"])
         if not (in_handles or in_caption or q):
             continue
-        if q and b["context"] and not (in_caption or in_handles) and not any(w in q["text"].lower() for w in b["context"]):
-            continue
+        if b["context"] and not in_handles:
+            hay = ((q["text"] if q else "") + " " + (caption if in_caption else "")).lower()
+            if not any(w in hay for w in b["context"]):
+                continue
         if handles & co_authors or (disclosed and (in_caption or in_handles)):
+            kind = "sponsored"
+        elif q and SPOKEN_DISCLOSURE.search(q["text"][max(0, q["hit"][0] - 80):q["hit"][0]]):
             kind = "sponsored"
         elif in_caption or in_handles:
             kind = "tagged"
         else:
             kind = "spoken"
         if not q:
-            q = text_quote(caption, b["rx"], thumb) if in_caption else {
-                "start": None, "text": "@" + next(iter(handles & (mentioned | co_authors))), "hit": None, "core": None, "frame": thumb}
+            if in_caption:
+                q = text_quote(caption, b["rx"], thumb)
+            else:
+                tagged_as = "@" + next(iter(handles & (mentioned | co_authors)))
+                plain = (raw.get("caption") or "").strip()[:200] or tagged_as
+                q = {"start": None, "text": plain, "hit": None, "core": plain, "frame": thumb, "tag": tagged_as}
         yield b, kind, q
 
 
@@ -213,18 +227,22 @@ def draft_pitch(prof, row, activity, rate):
     when = " at %s" % fmt_ts(q.get("start")) if q.get("start") is not None else ""
     unpaid = row["organic"]
     views = fmt_num(row["organicViews"])
+    spoken = best["kind"] == "spoken"
     handle_line = "@%s on %s, %s followers, %s median views" % (prof["handle"], PLATFORM_NAMES[prof["platform"]],
                                                                 fmt_num(prof["followers"]), fmt_num(prof["medianViews"]))
-    subject = "Already a %s fan on camera: %s unpaid %s, %s views" % (row["brand"], unpaid, "mention" if unpaid == 1 else "mentions", views)
-    lines = [
-        "Hi %s team," % row["brand"],
-        "",
-        "I've talked about %s on my channel %s %s without being paid, and those videos have %s views so far." % (
-            row["brand"], unpaid, "time" if unpaid == 1 else "times", views),
-        "Here's one%s: \"%s\" (%s)" % (when, said, best["url"]),
-        "",
-        "%s. My audience already hears me recommend you, so a paid post would read like more of the same, not an ad." % handle_line,
-    ]
+    posts = "%s unpaid %s" % (unpaid, ("mention" if spoken else "post") + ("" if unpaid == 1 else "s"))
+    subject = "Already %s %s: %s, %s views" % ("talking about" if spoken else "featuring", row["brand"], posts, views)
+    if spoken:
+        proof = "I've talked about %s on camera %s %s without being paid, and those videos have %s views so far." % (
+            row["brand"], unpaid, "time" if unpaid == 1 else "times", views)
+        one = "Here's one%s: \"%s\" (%s)" % (when, said, best["url"])
+        why = "My audience already hears me recommend you, so a paid post would read like more of the same, not an ad."
+    else:
+        proof = "I've tagged or featured %s in %s of my posts without being paid, and those posts have %s views so far." % (
+            row["brand"], unpaid, views)
+        one = "Here's one: %s" % best["url"] if not said or said.startswith("@") else "Here's one: \"%s\" (%s)" % (said, best["url"])
+        why = "My audience already sees me use you, so a paid post would read like more of the same, not an ad."
+    lines = ["Hi %s team," % row["brand"], "", proof, one, "", "%s. %s" % (handle_line, why)]
     if activity and activity.get("sponsored"):
         lines += ["", "I noticed you've run %s disclosed creator posts in the last %s days, so I'm guessing the programme is live." % (
             activity["sponsored"], activity["windowDays"])]
@@ -267,8 +285,13 @@ def sponsor_activity(b, platform):
         result = demo.activity(b["name"], platform)
     else:
         brand, variants, filters, _ = server.parse({"brand": b["name"], "variants": ",".join(b["terms"][1:6]), "platform": platform, "days": 90})
-        data = server.oriane(filters, limit=100, sort="publishedAt")
-        results = data["data"]["results"]
+        # Brand mentions alone are mostly organic, so ask for disclosed posts: hashtag disclosures, then caption phrases.
+        seen = {}
+        for extra in ({"hashtags": {"exactMatch": {"values": ["#" + t for t in sorted(DISCLOSURE_TAGS)]}}},
+                      {"caption": {"operator": "or", "includesExactly": {"values": list(DISCLOSURE_PHRASES)}}}):
+            for r in server.oriane({**filters, **extra}, limit=100, sort="publishedAt")["data"]["results"]:
+                seen.setdefault(r["id"], r)
+        results = list(seen.values())
         paid = [r for r in results if server.classify(r, brand, variants)[0] == "sponsored"]
         creators = {r["profileHandle"]: r.get("profileFollowersCount") or 0 for r in paid}
         tiers = Counter(tier(f) for f in creators.values())
@@ -450,6 +473,34 @@ def load_scan(user, sid):
     return row
 
 
+def share_scan(user, sid):
+    """Publish a scan at /creators/r/<token>: a read-only receipt page the creator can send to a brand."""
+    row = load_scan(user, sid)
+    token = row["share_token"]
+    if not token:
+        token = secrets.token_urlsafe(9)
+        with connect() as db:
+            db.execute("UPDATE scans SET share_token = %s WHERE id = %s", (token, sid))
+        track(user["id"], "share", {"scan": sid})
+    return {"url": app_url() + "/creators/r/" + token, "token": token}
+
+
+def shared_view(token):
+    with connect() as db:
+        row = db.execute("SELECT s.*, u.plan FROM scans s JOIN users u ON u.id = s.user_id WHERE s.share_token = %s", (token,)).fetchone()
+    if not row:
+        raise ApiError(404, "This receipt page doesn't exist or was taken down.")
+    return {**scan_view(row, row["plan"]), "shared": True}
+
+
+def sample_view():
+    """The fixture creator as a full Pro report, so visitors can see the product before signing up."""
+    videos = demo.creator_videos("tiktok", "maya.eats")
+    row = {"id": 0, "platform": "tiktok", "handle": "maya.eats", "source": "demo", "created_at": now_iso(),
+           "profile": profile("tiktok", "maya.eats", videos), "brands": aggregate(videos)}
+    return {**scan_view(row, "pro"), "shared": True, "sample": True}
+
+
 def list_scans(user):
     with connect() as db:
         return db.execute('SELECT id, platform, handle, source, created_at AS "createdAt", jsonb_array_length(brands) AS brands,'
@@ -619,6 +670,11 @@ def dispatch(handler):
             return [{"name": b["name"], "category": b["category"]} for b in CATALOG]
         if path == "/scans":
             return list_scans(require_user(headers))
+        if path == "/sample":
+            return sample_view()
+        m = re.fullmatch(r"/shared/([A-Za-z0-9_-]{8,32})", path)
+        if m:
+            return shared_view(m.group(1))
         m = re.fullmatch(r"/scans/(\d+)", path)
         if m:
             u = require_user(headers)
@@ -641,6 +697,9 @@ def dispatch(handler):
     u = require_user(headers)
     if path == "/scans":
         return run_scan(u, body)
+    m = re.fullmatch(r"/scans/(\d+)/share", path)
+    if m:
+        return share_scan(u, int(m.group(1)))
     m = re.fullmatch(r"/scans/(\d+)/brands/([^/]+)/(activity|pitch)", path)
     if m:
         sid, name, feature = int(m.group(1)), unquote(m.group(2)), m.group(3)

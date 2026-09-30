@@ -65,6 +65,22 @@ def test_word_boundaries_and_ambiguous_names():
     assert kinds(video("I love my Nikes"))["Nike"] == "spoken"
     assert "Target" not in kinds(video("my target is 10k"))
     assert kinds(video("anything", caption="#target haul"))["Target"] == "tagged"
+    # place names that are also brands need hotel context, in captions too
+    assert "Jumeirah" not in kinds(video("brunch time", caption="café hopping in Jumeirah"))
+    assert kinds(video("we checked in to the Jumeirah beach hotel"))["Jumeirah"] == "spoken"
+    assert kinds(video("hi", mentions=["jumeirahgroup"]))["Jumeirah"] == "tagged"
+    assert "Beats" not in kinds(video("nothing beats a sunday roast"))
+
+
+def test_spoken_disclosure_is_sponsored():
+    assert kinds(video("so excited to partner with ClassPass on this"))["ClassPass"] == "sponsored"
+    assert kinds(video("I booked it on ClassPass"))["ClassPass"] == "spoken"
+
+
+def test_demo_activity_dates_agree():
+    for brand in ("Tim Hortons", "MyProtein", "Sephora"):
+        a = demo.activity(brand, "tiktok")
+        assert a["lastPaid"] == max((e["publishedAt"] for e in a["examples"]), default=None)
 
 
 def test_quote_has_receipt_fields():
@@ -190,10 +206,22 @@ def test_http_flow(base):
     status, hist = c.call("GET", "/api/creators/scans")
     assert status == 200 and [h["handle"] for h in hist] == ["sami.lifts", "maya.eats"]
 
-    # another user can't see this scan
+    # another user can't see this scan, but a published receipt page is public and read-only at the owner's plan
     other = Client(base)
     other.call("POST", "/api/creators/signup", {"email": "other@example.com", "password": "longenough"})
     assert other.call("GET", "/api/creators/scans/%d" % sid)[0] == 404
+    assert other.call("POST", "/api/creators/scans/%d/share" % sid, {})[0] == 404
+    status, link = c.call("POST", "/api/creators/scans/%d/share" % sid, {})
+    assert status == 200 and link["url"].endswith("/creators/r/" + link["token"])
+    assert c.call("POST", "/api/creators/scans/%d/share" % sid, {})[1]["token"] == link["token"]
+    status, pub = other.call("GET", "/api/creators/shared/" + link["token"])
+    assert status == 200 and pub["shared"] and pub["handle"] == "maya.eats" and not any(b.get("locked") for b in pub["brands"])
+    assert other.call("GET", "/api/creators/shared/nope12345")[0] == 404
+    with urllib.request.urlopen(base + "/creators/r/" + link["token"]) as res:
+        assert res.status == 200 and b"Receipts" in res.read()
+    status, sample = other.call("GET", "/api/creators/sample")
+    assert status == 200 and sample["sample"] and sample["source"] == "demo" and sample["plan"] == "pro"
+    assert sample["brands"][0]["brand"] == "Tim Hortons"
 
     # webhook: bad signature rejected, good one flips the plan
     payload = json.dumps({"type": "customer.subscription.deleted", "data": {"object": {"customer": "cus_1", "id": "sub_1"}}}).encode()
