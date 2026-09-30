@@ -9,6 +9,7 @@ import math
 import os
 import re
 import statistics
+import sys
 import time
 import traceback
 from collections import Counter
@@ -523,7 +524,9 @@ class Handler(SimpleHTTPRequestHandler):
         path = url.path
         m = re.fullmatch(r"/api/searches/(\d+)", path)
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
-        if path == "/api/searches":
+        if path.startswith("/api/creators/"):
+            self.api(lambda: creator.dispatch(self))
+        elif path == "/api/searches":
             self.api(list_searches)
         elif m:
             self.api(lambda: load(int(m.group(1))))
@@ -538,6 +541,8 @@ class Handler(SimpleHTTPRequestHandler):
         routes = {"/api/searches": run_search, "/api/checks": run_check,
                   "/api/searches/stream": lambda body: Stream(search_events(*parse(body)))}
         route = routes.get(urlparse(self.path).path)
+        if self.path.startswith("/api/creators/"):
+            return self.api(lambda: creator.dispatch(self))
         if not route:
             return self.api(not_found)
 
@@ -562,10 +567,15 @@ class Handler(SimpleHTTPRequestHandler):
             status, body = 500, {"error": "Something broke on our side. Check the server log."}
         if isinstance(body, Stream):
             return self.stream(body.events)
+        headers = []
+        if isinstance(body, creator.Reply):
+            status, body, headers = body.status, body.body, body.headers
         data = dumps(body)
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        for k, v in headers:
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
@@ -589,9 +599,18 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(dumps({"type": "error", "error": "Something broke on our side. Check the server log."}) + b"\n")
 
 
-if __name__ == "__main__":
+sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us back; don't load this file twice
+import creator  # noqa: E402
+
+
+def init_db():
     with psycopg.connect(DB_URL) as db:
         db.execute(SCHEMA)
+        db.execute(creator.SCHEMA)
+
+
+if __name__ == "__main__":
+    init_db()
     host, port = os.environ.get("HOST", "127.0.0.1"), int(os.environ.get("PORT", "8000"))
     print("Unprompted on http://%s:%d" % (host, port), flush=True)
     ThreadingHTTPServer((host, port), Handler).serve_forever()

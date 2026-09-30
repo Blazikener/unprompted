@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receipts by Unprompted</title>
+<meta name="description" content="Find the brands you already talk about on camera, prove it, and get paid by them.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: oklch(0.26 0.055 160); --forest-2: oklch(0.315 0.06 160); --forest-line: oklch(0.42 0.05 160);
+    --on-forest: oklch(0.97 0.01 160); --on-forest-2: oklch(0.81 0.035 160);
+    --lime: oklch(0.92 0.19 122); --lime-strong: oklch(0.87 0.2 124); --lime-soft: oklch(0.965 0.065 120);
+    --bg: oklch(1 0 0); --panel: oklch(0.975 0.008 160); --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160); --line-2: oklch(0.85 0.012 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160);
+    --spoken: oklch(0.44 0.12 160); --tagged-soft: oklch(0.955 0.035 205); --tagged-ink: oklch(0.4 0.08 210);
+    --sponsored-soft: oklch(0.96 0.045 60); --sponsored-ink: oklch(0.47 0.13 45);
+    --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25); --coral-ink: oklch(0.45 0.16 27);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 0.9375rem/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  mark { background: var(--lime); color: var(--ink); padding: 0 3px; border-radius: 3px; }
+  button { font: inherit; color: inherit; }
+  input, textarea { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 24px; background: var(--forest); color: var(--on-forest); }
+  .wordmark { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; text-decoration: none; display: flex; align-items: baseline; gap: 8px; }
+  .wordmark small { font-weight: 500; font-size: 0.75rem; color: var(--on-forest-2); }
+  .bar .grow { flex: 1; }
+  .bar .who { font-size: 0.8125rem; color: var(--on-forest-2); }
+  .plan { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--forest-line); }
+  .plan.pro { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap; background: transparent; transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.12s var(--ease); }
+  .btn:active { transform: translateY(1px) scale(0.99); }
+  .btn:disabled { opacity: 0.6; cursor: progress; }
+  .btn-primary { background: var(--lime); color: var(--ink); }
+  .btn-primary:hover { background: var(--lime-strong); }
+  .btn-quiet { background: var(--bg); border-color: var(--line-2); color: var(--ink); }
+  .btn-quiet:hover { border-color: var(--ink); }
+  .bar .btn-quiet { background: transparent; border-color: var(--forest-line); color: var(--on-forest); }
+  .bar .btn-quiet:hover { border-color: var(--on-forest); }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
+  .btn-link { background: none; border: 0; padding: 0; height: auto; color: var(--ink-2); text-decoration: underline; cursor: pointer; font-weight: 500; }
+
+  /* Landing */
+  .hero { background: var(--forest); color: var(--on-forest); padding: 64px 24px 72px; }
+  .hero-in { max-width: 860px; margin: 0 auto; }
+  .eyebrow { font: 500 0.75rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); }
+  h1 { font: italic 500 clamp(2.25rem, 5vw, 3.5rem)/1.05 var(--serif); letter-spacing: -0.01em; margin: 12px 0 16px; }
+  h1 em { font-style: italic; color: var(--lime); }
+  .hero p.lead { font-size: 1.125rem; color: var(--on-forest-2); max-width: 620px; margin: 0 0 32px; }
+  .scan-form { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; background: var(--forest-2); padding: 10px; border-radius: 14px; }
+  .seg { display: inline-flex; background: var(--forest); border-radius: 10px; padding: 4px; }
+  .seg button { height: 46px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: var(--on-forest-2); font-weight: 600; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--on-forest); color: var(--ink); }
+  .scan-form input { height: 54px; border: 0; border-radius: 10px; padding: 0 16px; font-size: 1.0625rem; background: var(--forest); color: var(--on-forest); }
+  .scan-form input::placeholder { color: var(--on-forest-2); opacity: 0.7; }
+  .scan-form .btn-primary { height: 54px; font-size: 1.0625rem; padding: 0 26px; }
+  .hero .fine { margin-top: 14px; font-size: 0.8125rem; color: var(--on-forest-2); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .chip { height: 32px; padding: 0 14px; border: 1px solid oklch(1 0 0 / 0.22); border-radius: 999px; background: transparent; color: var(--on-forest); font-weight: 600; cursor: pointer; }
+  .chip:hover { background: var(--lime); border-color: var(--lime); color: var(--ink); }
+  .how { max-width: 860px; margin: 0 auto; padding: 48px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .how h3 { margin: 0 0 6px; font-size: 1rem; }
+  .how p { margin: 0; color: var(--ink-2); font-size: 0.9375rem; }
+  .how .n { font: 500 0.75rem var(--mono); color: var(--moss); margin-bottom: 8px; }
+  .pricing { max-width: 860px; margin: 0 auto 64px; padding: 0 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .price { border: 1px solid var(--line-2); border-radius: 14px; padding: 22px; }
+  .price.pro { border-color: var(--ink); }
+  .price h3 { margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
+  .price h3 span { font: italic 500 1.75rem var(--serif); }
+  .price ul { margin: 14px 0 0; padding: 0; list-style: none; color: var(--ink-2); }
+  .price li { padding: 4px 0; }
+  .price li::before { content: "— "; color: var(--moss); }
+
+  /* App */
+  .app { max-width: 1080px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1fr 260px; gap: 28px; align-items: start; }
+  .profile { display: flex; gap: 18px; align-items: center; }
+  .pfp { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--panel); }
+  .profile h2 { margin: 0; font-size: 1.375rem; letter-spacing: -0.01em; }
+  .profile .meta { color: var(--ink-2); font-size: 0.875rem; display: flex; gap: 12px; flex-wrap: wrap; }
+  .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+  .tag.demo { background: var(--coral-soft); color: var(--coral-ink); }
+  .tag.live { background: var(--moss-soft); color: var(--moss); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
+  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--panel); }
+  .stat b { display: block; font: italic 500 1.75rem/1.1 var(--serif); }
+  .stat span { color: var(--ink-2); font-size: 0.8125rem; }
+  .section-h { display: flex; justify-content: space-between; align-items: baseline; margin: 28px 0 10px; }
+  .section-h h3 { margin: 0; font-size: 1.0625rem; }
+  .section-h small { color: var(--ink-2); }
+
+  .brand { border: 1px solid var(--line-2); border-radius: 14px; margin-bottom: 12px; overflow: hidden; background: var(--bg); }
+  .brand-head { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 16px 18px; cursor: pointer; align-items: center; }
+  .brand-head:hover { background: var(--panel); }
+  .brand-name { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+  .brand-name .cat { font: 500 0.6875rem var(--mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .brand-sub { color: var(--ink-2); font-size: 0.875rem; display: flex; gap: 12px; flex-wrap: wrap; }
+  .status { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-weight: 600; font-size: 0.75rem; }
+  .status.unpaid { background: var(--lime-soft); color: var(--moss); }
+  .status.past-sponsor { background: var(--tagged-soft); color: var(--tagged-ink); }
+  .status.sponsored-only { background: var(--sponsored-soft); color: var(--sponsored-ink); }
+  .brand.locked .brand-name b { filter: blur(6px); user-select: none; }
+  .brand.locked .brand-head { cursor: default; }
+  .brand-body { border-top: 1px solid var(--line); padding: 16px 18px 18px; }
+  .receipt { display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .receipt:last-child { border-bottom: 0; }
+  .receipt img { width: 64px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--panel); }
+  .receipt .q { font: italic 400 1.0625rem/1.4 var(--serif); }
+  .receipt .r-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; color: var(--ink-2); font-size: 0.8125rem; margin-top: 6px; }
+  .kind { display: inline-flex; height: 20px; padding: 0 7px; border-radius: 999px; align-items: center; font: 500 0.625rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+  .kind-spoken { background: var(--spoken); color: #fff; }
+  .kind-tagged { background: var(--tagged-soft); color: var(--tagged-ink); }
+  .kind-sponsored { background: var(--sponsored-soft); color: var(--sponsored-ink); }
+  .ts { font: 500 0.75rem var(--mono); }
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .panel { margin-top: 14px; border: 1px solid var(--line-2); border-radius: 12px; padding: 16px; background: var(--panel); }
+  .panel h4 { margin: 0 0 8px; font-size: 0.9375rem; display: flex; gap: 10px; align-items: center; }
+  .verdict { display: inline-flex; height: 24px; padding: 0 10px; border-radius: 999px; align-items: center; font-weight: 600; font-size: 0.75rem; }
+  .verdict.active { background: var(--lime); color: var(--ink); }
+  .verdict.some { background: var(--tagged-soft); color: var(--tagged-ink); }
+  .verdict.quiet { background: var(--line); color: var(--ink-2); }
+  .tiers { display: flex; gap: 4px; margin: 10px 0; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+  .tiers i { display: block; height: 100%; background: var(--moss); }
+  .tiers i:nth-child(2) { background: oklch(0.6 0.12 160); } .tiers i:nth-child(3) { background: oklch(0.72 0.1 160); } .tiers i:nth-child(4) { background: oklch(0.82 0.08 160); }
+  .examples { margin: 10px 0 0; padding: 0; list-style: none; font-size: 0.875rem; color: var(--ink-2); }
+  .examples li { padding: 4px 0; }
+  .pitch textarea { width: 100%; min-height: 260px; border: 1px solid var(--line-2); border-radius: 10px; padding: 12px; background: var(--bg); resize: vertical; line-height: 1.5; }
+  .pitch input { width: 100%; height: 40px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 12px; margin-bottom: 8px; background: var(--bg); font-weight: 600; }
+  .locked-note { color: var(--ink-2); font-size: 0.875rem; }
+  .upsell { border: 1px dashed var(--line-2); border-radius: 14px; padding: 18px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--lime-soft); }
+  .upsell b { display: block; }
+  .upsell span { color: var(--ink-2); font-size: 0.875rem; }
+
+  aside .box { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; background: var(--panel); }
+  aside h4 { margin: 0 0 8px; font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+  aside .rate b { font: italic 500 1.5rem var(--serif); display: block; }
+  aside .rate small { color: var(--ink-2); display: block; }
+  .hist { list-style: none; margin: 0; padding: 0; }
+  .hist li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.875rem; }
+  .hist li:last-child { border: 0; }
+  .hist button { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; width: 100%; }
+  .hist button:hover { color: var(--moss); }
+  .hist small { color: var(--ink-2); display: block; }
+  aside form input { width: 100%; height: 36px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 10px; margin-bottom: 8px; background: var(--bg); }
+
+  dialog { border: 0; border-radius: 16px; padding: 28px; width: min(420px, 92vw); box-shadow: 0 30px 80px -20px oklch(0 0 0 / 0.4); }
+  dialog::backdrop { background: oklch(0.2 0.035 160 / 0.6); }
+  dialog h3 { margin: 0 0 4px; font-size: 1.25rem; }
+  dialog p { margin: 0 0 16px; color: var(--ink-2); }
+  dialog label { display: block; font-size: 0.8125rem; font-weight: 600; margin: 10px 0 4px; }
+  dialog input { width: 100%; height: 42px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 12px; }
+  dialog .row { display: flex; gap: 10px; margin-top: 18px; align-items: center; }
+  dialog .row .grow { flex: 1; }
+  .err { color: var(--coral); font-size: 0.875rem; margin-top: 10px; min-height: 1.2em; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; z-index: 20; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid oklch(0 0 0 / 0.2); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; } .how, .pricing { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; }
+    .scan-form { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="wordmark" href="/creators/">Receipts <small>by Unprompted</small></a>
+  <div class="grow"></div>
+  <div id="account"></div>
+</header>
+
+<main id="landing">
+  <section class="hero"><div class="hero-in">
+    <div class="eyebrow">For TikTok and Instagram creators</div>
+    <h1>The brands you already talk about <em>should be paying you.</em></h1>
+    <p class="lead">Paste your handle. We read your videos' transcripts and find every brand you've said, tagged or featured, split unpaid mentions from ads, and give you the receipt: quote, timestamp, frame, views. Then pitch with proof.</p>
+    <form class="scan-form" id="scan-form">
+      <div class="seg" role="group" aria-label="Platform">
+        <button type="button" data-platform="tiktok" aria-pressed="true">TikTok</button>
+        <button type="button" data-platform="instagram" aria-pressed="false">Instagram</button>
+      </div>
+      <input id="handle" placeholder="@yourhandle" autocomplete="off" spellcheck="false" required>
+      <button class="btn btn-primary" type="submit" id="scan-btn">Find my brands</button>
+    </form>
+    <div class="fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span></div>
+  </div></section>
+  <section class="how">
+    <div><div class="n">01</div><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></div>
+    <div><div class="n">02</div><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></div>
+    <div><div class="n">03</div><h3>Pitch with proof</h3><p>See which brands are paying creators this quarter, then send a pitch that quotes your own words back to them.</p></div>
+  </section>
+  <section class="pricing">
+    <div class="price"><h3>Free <span>$0</span></h3><ul><li>1 scan a week</li><li>Top 3 brands with full receipts</li><li>Counts for everything else</li></ul></div>
+    <div class="price pro"><h3>Pro <span>$<span data-price>29</span>/mo</span></h3><ul><li>Every brand, every receipt</li><li>Who's paying creators for each brand right now</li><li>Pitch drafts with your rate range</li><li>50 scans a week, re-scan anytime</li></ul></div>
+  </section>
+</main>
+
+<main id="app" class="app" hidden>
+  <section id="result"></section>
+  <aside>
+    <div class="box rate" id="rate"></div>
+    <div class="box"><h4>Your scans</h4><ul class="hist" id="history"></ul><button class="btn btn-quiet btn-sm" id="new-scan" style="margin-top:10px">New scan</button></div>
+    <div class="box"><h4>Brand missing?</h4><form id="report"><input placeholder="Brand we didn't catch" required maxlength="80"><button class="btn btn-quiet btn-sm" type="submit">Tell us</button></form></div>
+  </aside>
+</main>
+
+<dialog id="auth">
+  <h3 id="auth-title">Create your account</h3>
+  <p>Free scan, no card. We'll save your receipts here.</p>
+  <form id="auth-form">
+    <label>Email</label><input name="email" type="email" required autocomplete="email">
+    <label>Password</label><input name="password" type="password" required minlength="8" autocomplete="new-password">
+    <div class="err" id="auth-err"></div>
+    <div class="row"><button class="btn-link" type="button" id="auth-toggle">I already have an account</button><span class="grow"></span><button class="btn btn-primary" type="submit" id="auth-submit">Continue</button></div>
+  </form>
+</dialog>
+
+<dialog id="upgrade">
+  <h3>Go Pro, $<span data-price>29</span>/month</h3>
+  <p id="upgrade-why">Unlock every brand, the sponsor check and pitch drafts.</p>
+  <ul class="price" style="list-style:none;border:0;padding:0;margin:0 0 8px">
+    <li>Every brand in your scan, every receipt</li><li>Sponsor activity check for any brand</li><li>Pitch drafts that quote your own video</li><li>50 scans a week</li>
+  </ul>
+  <div class="err" id="upgrade-err"></div>
+  <div class="row"><button class="btn-link" type="button" id="upgrade-close">Not now</button><span class="grow"></span><button class="btn btn-primary" id="upgrade-go">Continue to checkout</button></div>
+</dialog>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n ?? 0);
+const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const date = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram' };
+const STATUS = { unpaid: 'Unpaid mentions', 'past-sponsor': 'Past sponsor, still mentioning', 'sponsored-only': 'Sponsored only' };
+const VERDICT = { active: 'Actively paying creators', some: 'Some paid posts', quiet: 'Quiet lately' };
+
+const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {} };
+
+async function api(path, body, method) {
+  const res = await fetch('/api/creators' + path, body === undefined ? { method: method || 'GET' }
+    : { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({ error: 'Bad response' }));
+  if (!res.ok) { const e = new Error(data.error || res.statusText); e.status = res.status; throw e; }
+  return data;
+}
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2800); }
+
+// ---- account bar
+function renderAccount() {
+  const el = $('#account');
+  if (!S.user) { el.innerHTML = `<button class="btn btn-quiet btn-sm" id="signin">Sign in</button>`; $('#signin').onclick = () => openAuth('login'); return; }
+  const pro = S.user.plan === 'pro';
+  el.innerHTML = `<span class="who">${esc(S.user.email)}</span> <span class="plan ${pro ? 'pro' : ''}">${pro ? 'Pro' : 'Free'}</span>
+    ${pro ? (S.user.billing && S.billing.enabled ? `<button class="btn btn-quiet btn-sm" id="portal">Billing</button>` : '') : `<button class="btn btn-primary btn-sm" id="up">Go Pro</button>`}
+    <button class="btn btn-quiet btn-sm" id="signout">Sign out</button>`;
+  el.style.display = 'flex'; el.style.gap = '10px'; el.style.alignItems = 'center';
+  $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; showLanding(); renderAccount(); };
+  if ($('#up')) $('#up').onclick = () => openUpgrade();
+  if ($('#portal')) $('#portal').onclick = async () => { try { location.href = (await api('/billing/portal', {})).url; } catch (e) { toast(e.message); } };
+}
+
+// ---- auth
+function openAuth(mode) {
+  S.mode = mode;
+  $('#auth-title').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
+  $('#auth-toggle').textContent = mode === 'signup' ? 'I already have an account' : 'Create an account instead';
+  $('#auth-err').textContent = '';
+  $('#auth').showModal();
+}
+$('#auth-toggle').onclick = () => openAuth(S.mode === 'signup' ? 'login' : 'signup');
+$('#auth-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target); $('#auth-submit').disabled = true;
+  try {
+    const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', { email: f.get('email'), password: f.get('password') });
+    S.user = user; $('#auth').close(); renderAccount();
+    if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); } else loadHistory();
+  } catch (err) { $('#auth-err').textContent = err.message; }
+  $('#auth-submit').disabled = false;
+};
+
+// ---- upgrade
+function openUpgrade(why) {
+  $('#upgrade-why').textContent = why || 'Unlock every brand, the sponsor check and pitch drafts.';
+  $('#upgrade-err').textContent = '';
+  const go = $('#upgrade-go');
+  if (!S.user) { openAuth('signup'); return; }
+  if (S.billing.enabled) go.textContent = 'Continue to checkout';
+  else if (S.billing.devSwitch) go.textContent = 'Switch to Pro (dev)';
+  else go.textContent = 'Checkout not configured';
+  $('#upgrade').showModal();
+}
+$('#upgrade-close').onclick = () => $('#upgrade').close();
+$('#upgrade-go').onclick = async () => {
+  try {
+    if (S.billing.enabled) { location.href = (await api('/billing/checkout', {})).url; return; }
+    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: 'pro' })).user; $('#upgrade').close(); renderAccount(); toast("You're on Pro"); if (S.scan) await openScan(S.scan.id); return; }
+    $('#upgrade-err').textContent = 'Set STRIPE_SECRET_KEY and STRIPE_PRICE_PRO on the server to enable checkout.';
+  } catch (e) { $('#upgrade-err').textContent = e.message; }
+};
+async function paywalled(err, why) { if (err.status === 402) { openUpgrade(why || err.message); return true; } if (err.status === 401) { openAuth('login'); return true; } return false; }
+
+// ---- scanning
+for (const b of document.querySelectorAll('.seg button')) b.onclick = () => { S.platform = b.dataset.platform; for (const x of b.parentNode.children) x.setAttribute('aria-pressed', x === b); };
+$('#scan-form').onsubmit = (e) => { e.preventDefault(); const h = $('#handle').value.trim().replace(/^@/, ''); if (h) startScan(S.platform, h); };
+$('#new-scan').onclick = showLanding;
+function startScan(platform, handle) {
+  if (!S.user) { S.pending = { platform, handle }; openAuth('signup'); return; }
+  runScan(platform, handle);
+}
+async function runScan(platform, handle) {
+  const btn = $('#scan-btn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
+  try { const scan = await api('/scans', { platform, handle }); showScan(scan); loadHistory(); }
+  catch (e) { if (!(await paywalled(e))) toast(e.message); }
+  btn.disabled = false; btn.textContent = 'Find my brands';
+}
+async function openScan(id) { try { showScan(await api('/scans/' + id)); } catch (e) { toast(e.message); } }
+async function loadHistory() {
+  if (!S.user) return;
+  const rows = await api('/scans').catch(() => []);
+  $('#history').innerHTML = rows.length ? rows.map((r) => `<li><button data-id="${r.id}"><b>@${esc(r.handle)}</b> · ${PLATFORM[r.platform]}<small>${r.brands} brands · ${date(r.createdAt)}</small></button></li>`).join('') : '<li><small>No scans yet.</small></li>';
+  for (const b of $('#history').querySelectorAll('button')) b.onclick = () => openScan(+b.dataset.id);
+}
+function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; }
+
+function showScan(scan) {
+  S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {};
+  $('#landing').hidden = true; $('#app').hidden = false;
+  render(); window.scrollTo({ top: 0 });
+}
+function render() {
+  const s = S.scan, p = s.profile, free = s.plan === 'free';
+  const locked = s.brands.filter((b) => b.locked).length;
+  $('#result').innerHTML = `
+    <div class="profile">
+      <img class="pfp" src="${esc(p.pfp || '')}" alt="">
+      <div><h2>${esc(p.name || '@' + p.handle)} <span class="tag ${s.source}">${s.source === 'demo' ? 'Demo data' : 'Live'}</span></h2>
+      <div class="meta"><a href="${esc(p.url)}" target="_blank" rel="noopener">@${esc(p.handle)} on ${PLATFORM[p.platform]}</a><span>${num(p.followers)} followers</span><span>${p.videos} videos read</span><span>${p.window ? date(p.window[0]) + ' – ' + date(p.window[1]) : ''}</span></div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>${s.totalBrands}</b><span>brands you mention</span></div>
+      <div class="stat"><b>${s.unpaidBrands}</b><span>never paid you</span></div>
+      <div class="stat"><b>${num(p.medianViews)}</b><span>median views</span></div>
+      <div class="stat"><b>${p.medianEr ?? '–'}%</b><span>median engagement</span></div>
+    </div>
+    ${s.source === 'demo' ? `<p class="locked-note">Demo mode: this server has no ORIANE_API_KEY, so these are fixture videos. The flow is real; the data isn't.</p>` : ''}
+    <div class="section-h"><h3>Your brands, best pitch first</h3><small>unpaid mentions rank above past sponsors</small></div>
+    ${s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')}
+    ${free && locked ? `<div class="upsell"><div><b>${locked} more brand${locked === 1 ? '' : 's'} hidden</b><span>Pro shows every brand and receipt, checks who's paying, and drafts the pitch.</span></div><button class="btn btn-primary" id="upsell">Go Pro, $${S.billing.price}/mo</button></div>` : ''}`;
+  $('#rate').innerHTML = `<h4>Your rate range</h4><b>$${s.rate.low.toLocaleString()} – $${s.rate.high.toLocaleString()}</b><small>per dedicated video, +$${s.rate.usage.toLocaleString()} for 30-day usage</small><small style="margin-top:6px">${esc(s.rate.basis)}. Rule of thumb; edit before you send.</small>`;
+  if ($('#upsell')) $('#upsell').onclick = () => openUpgrade();
+  for (const h of $('#result').querySelectorAll('.brand:not(.locked) .brand-head')) h.onclick = () => { const i = +h.dataset.i; S.open.has(i) ? S.open.delete(i) : S.open.add(i); render(); };
+  for (const b of $('#result').querySelectorAll('[data-act]')) b.onclick = (e) => { e.stopPropagation(); action(b.dataset.act, +b.dataset.i, b); };
+  for (const b of $('#result').querySelectorAll('[data-copy]')) b.onclick = () => { navigator.clipboard.writeText($(b.dataset.copy).value); toast('Copied'); };
+}
+function counts(b) {
+  return [b.spoken && `${b.spoken} said on camera`, b.tagged && `${b.tagged} tagged`, b.sponsored && `${b.sponsored} disclosed ad${b.sponsored > 1 ? 's' : ''}`, b.organicViews && `${num(b.organicViews)} unpaid views`].filter(Boolean).map((t) => `<span>${t}</span>`).join('');
+}
+function lockedCard(b, i) {
+  return `<article class="brand locked"><div class="brand-head"><div><div class="brand-name"><b>${'Hidden brand'}</b><span class="cat">${esc(b.category)}</span></div><div class="brand-sub">${counts(b)}</div></div><span class="status ${b.status}">${STATUS[b.status]}</span></div></article>`;
+}
+function brandCard(b, i) {
+  const open = S.open.has(i), P = S.panels[i] || {};
+  return `<article class="brand"><div class="brand-head" data-i="${i}">
+      <div><div class="brand-name"><b>${esc(b.brand)}</b><span class="cat">${esc(b.category)}</span></div><div class="brand-sub">${counts(b)}<span>last ${date(b.lastMention)}</span></div></div>
+      <span class="status ${b.status}">${STATUS[b.status]}</span></div>
+    ${open ? `<div class="brand-body">
+      ${b.receipts.map(receipt).join('')}
+      <div class="actions">
+        <button class="btn btn-quiet btn-sm" data-act="activity" data-i="${i}">Who's paying for ${esc(b.brand)} right now?</button>
+        <button class="btn btn-primary btn-sm" data-act="pitch" data-i="${i}">Draft my pitch</button>
+      </div>
+      ${P.activity ? activityPanel(P.activity) : ''}${P.pitch ? pitchPanel(P.pitch, i) : ''}</div>` : ''}</article>`;
+}
+function receipt(r) {
+  const q = r.quote || {}; let text = esc(q.text || r.caption || '');
+  if (q.hit && q.text) { const a = Math.max(0, q.hit[0] - 120), z = Math.min(q.text.length, q.hit[1] + 120);
+    text = (a ? '…' : '') + esc(q.text.slice(a, q.hit[0])) + '<mark>' + esc(q.text.slice(q.hit[0], q.hit[1])) + '</mark>' + esc(q.text.slice(q.hit[1], z)) + (z < q.text.length ? '…' : ''); }
+  return `<div class="receipt"><a href="${esc(r.url)}" target="_blank" rel="noopener"><img src="${esc(q.frame || '')}" alt=""></a>
+    <div><div class="q">${text}</div><div class="r-meta"><span class="kind kind-${r.kind}">${r.kind === 'spoken' ? 'said on camera' : r.kind}</span>${q.start != null ? `<span class="ts">${clock(q.start)}</span>` : ''}<span>${num(r.views)} views</span><span>${date(r.publishedAt)}</span><a href="${esc(r.url)}" target="_blank" rel="noopener">Open video</a></div></div></div>`;
+}
+function activityPanel(a) {
+  const total = Object.values(a.tiers).reduce((x, y) => x + y, 0) || 1;
+  return `<div class="panel"><h4>Sponsor check <span class="verdict ${a.verdict}">${VERDICT[a.verdict]}</span>${a.source === 'demo' ? '<span class="tag demo">demo</span>' : ''}</h4>
+    <div>${a.sponsored} disclosed creator post${a.sponsored === 1 ? '' : 's'} about ${esc(a.brand)} in the last ${a.windowDays} days, from ${a.creators} creator${a.creators === 1 ? '' : 's'}${a.lastPaid ? `, latest ${date(a.lastPaid)}` : ''}. ${a.videosSeen} videos checked.</div>
+    ${a.creators ? `<div class="tiers">${['nano', 'micro', 'mid', 'macro'].map((t) => `<i style="width:${a.tiers[t] / total * 100}%" title="${t}: ${a.tiers[t]}"></i>`).join('')}</div>
+    <small style="color:var(--ink-2)">${['nano', 'micro', 'mid', 'macro'].map((t) => `${a.tiers[t]} ${t}`).join(' · ')} (by followers: &lt;10K, &lt;100K, &lt;500K, more)</small>` : ''}
+    ${a.examples.length ? `<ul class="examples">${a.examples.map((e) => `<li>@${esc(e.handle)} (${num(e.followers)}) · ${num(e.views)} views · ${date(e.publishedAt)}${e.url && e.url !== '#demo' ? ` · <a href="${esc(e.url)}" target="_blank" rel="noopener">open</a>` : ''}</li>`).join('')}</ul>` : ''}</div>`;
+}
+function pitchPanel(p, i) {
+  return `<div class="panel pitch"><h4>Pitch draft</h4><input id="subj-${i}" value="${esc(p.subject)}"><textarea id="body-${i}">${esc(p.body)}</textarea>
+    <div class="actions"><button class="btn btn-quiet btn-sm" data-copy="#body-${i}">Copy body</button><button class="btn btn-quiet btn-sm" data-copy="#subj-${i}">Copy subject</button><span class="locked-note" style="align-self:center">Edit the rate and the ask before sending.</span></div></div>`;
+}
+async function action(act, i, btn) {
+  const b = S.scan.brands[i]; btn.disabled = true;
+  try {
+    const out = await api(`/scans/${S.scan.id}/brands/${encodeURIComponent(b.brand)}/${act}`, {});
+    S.panels[i] = { ...(S.panels[i] || {}), [act]: out }; render();
+  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `Pro checks which brands are paying creators right now.` : `Pro drafts pitches that quote your own videos.`))) toast(e.message); }
+  btn.disabled = false;
+}
+$('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#report input'); try { await api('/report', { text: inp.value, scan: S.scan?.id }); inp.value = ''; toast('Thanks, noted'); } catch (err) { toast(err.message); } };
+
+// ---- boot
+(async () => {
+  const me = await api('/me').catch(() => ({ user: null, billing: { enabled: false, price: 29 } }));
+  S.user = me.user; S.billing = me.billing;
+  for (const el of document.querySelectorAll('[data-price]')) el.textContent = S.billing.price;
+  if (S.billing.demo) $('#fine').insertAdjacentHTML('beforeend', ` <span>Demo mode, try:</span> <button class="chip" type="button" data-demo="maya.eats">@maya.eats</button> <button class="chip" type="button" data-demo="sami.lifts">@sami.lifts</button>`);
+  for (const c of document.querySelectorAll('[data-demo]')) c.onclick = () => { $('#handle').value = '@' + c.dataset.demo; startScan(S.platform, c.dataset.demo); };
+  renderAccount(); loadHistory();
+  const q = new URLSearchParams(location.search);
+  if (q.get('upgraded') === '1') { toast(S.user?.plan === 'pro' ? "You're on Pro" : 'Payment received, your plan updates in a moment'); history.replaceState({}, '', '/creators/'); }
+})();
+</script>
+</body>
+</html>
