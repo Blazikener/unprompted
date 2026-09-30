@@ -25,6 +25,8 @@ The same transcript index, pointed the other way. A creator pastes their TikTok 
 
 - Backend: `backend/creator.py` (routes under `/api/creators/*`), brand dictionary in `backend/brands.py`, fixture creators in `backend/demo.py`.
 - Accounts are email + password (scrypt), sessions are HttpOnly cookies. Billing is Stripe Checkout + webhooks and stays disabled until `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` and `STRIPE_WEBHOOK_SECRET` are set; `DEV_PLAN_SWITCH=1` gives a local plan toggle instead.
-- Without `ORIANE_API_KEY` (or with `DEMO_MODE=1`) the scan runs on two fixture creators, `@maya.eats` and `@sami.lifts`, and the UI labels everything as demo data.
+- Without `ORIANE_API_KEY` (or with `DEMO_MODE=1`) the scan runs on two fixture creators, `@maya.eats` and `@sami.lifts`, and the UI labels everything as demo data. `/creators/?sample=1` shows that fixture as a full Pro report to logged-out visitors in any mode.
+- A creator can publish a scan as a read-only receipt page (`POST /api/creators/scans/<id>/share` → `/creators/r/<token>`), gated at the owner's plan, to drop into a pitch or media kit.
+- `python3 backend/prospect.py` (needs the Oriane key) ranks real creators who name-drop paying brands unpaid and writes `first-users.md` with a DM per creator; that file is personal data and gitignored.
 - Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend` (needs `createdb unprompted_test`; the suite truncates it). Lint: `ruff check backend`.
 - Why this product: see `docs/MARKET-VALIDATION.md`.
