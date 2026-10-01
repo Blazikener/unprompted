@@ -272,6 +272,9 @@ def oriane(filters, limit=100, sort="transcriptRelevance", offset=0):
             msg = json.loads(e.read())["error"]["message"]
         except (ValueError, KeyError, TypeError):
             msg = e.reason
+        if e.code in (401, 402, 403):  # key or wallet problem: ours to fix, not the user's
+            print("oriane auth/billing error %s: %s" % (e.code, msg), file=sys.stderr)
+            raise ApiError(503, "Scanning is paused on our side for a moment (data provider). Nothing was taken from your quota; try again shortly.")
         raise ApiError(502, "Oriane returned %s: %s" % (e.code, msg))
     except OSError as e:
         raise ApiError(502, "Can't reach Oriane (%s)." % e)

@@ -116,6 +116,21 @@ def test_gate_hides_names_beyond_free_limit():
     assert creator.gate(rows, "pro") == rows
 
 
+def test_oriane_wallet_error_is_ours_not_the_users(monkeypatch):
+    import io
+    from urllib import error
+
+    def broke(req, timeout=0):
+        body = io.BytesIO(b'{"error":{"message":"The wallet does not have enough credits."}}')
+        raise error.HTTPError(req.full_url, 402, "Payment Required", {}, body)
+
+    monkeypatch.setenv("ORIANE_API_KEY", "k")
+    monkeypatch.setattr(server.request, "urlopen", broke)
+    with pytest.raises(server.ApiError) as e:
+        server.oriane({"platform": {"includes": ["tiktok"]}})
+    assert e.value.status == 503 and "quota" in str(e.value) and "402" not in str(e.value)
+
+
 def test_stripe_signature():
     payload, secret = b'{"type":"x"}', "whsec_test"
     ts = int(time.time())
