@@ -7,6 +7,7 @@ Oriane credits. Cover and caption URLs are signed and expire after a few days.
 """
 import json
 import re
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from urllib import error, request
@@ -55,13 +56,20 @@ def find_key(obj, key):
     return None
 
 
+def log(handle, what):
+    print("tiktok_public @%s: %s" % (handle, what), file=sys.stderr, flush=True)
+
+
 def creator_page(handle):
     """(user info, latest video ids) from the embed page; (None, []) when TikTok shows nothing public."""
     try:
-        page = find_key(embedded_state(get(EMBED_URL % handle)), "videoList")
-    except (error.URLError, OSError, ValueError):
+        html = get(EMBED_URL % handle)
+    except (error.URLError, OSError, ValueError) as e:
+        log(handle, "embed failed: %r" % e)
         return None, []
+    page = find_key(embedded_state(html), "videoList")
     if not page:
+        log(handle, "embed had no videoList (%d bytes, state=%s)" % (len(html), embedded_state(html) is not None))
         return None, []
     return page.get("userInfo") or {}, [v["id"] for v in page["videoList"] if v.get("id")]
 
@@ -70,7 +78,8 @@ def video_detail(handle, video_id):
     try:
         state = embedded_state(get(VIDEO_URL % (handle, video_id)))
         return state["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
-    except (error.URLError, OSError, ValueError, KeyError, TypeError):
+    except (error.URLError, OSError, ValueError, KeyError, TypeError) as e:
+        log(handle, "video %s failed: %r" % (video_id, e))
         return None
 
 
@@ -153,4 +162,5 @@ def fetch(handle, limit=MAX_VIDEOS):
     with ThreadPoolExecutor(WORKERS) as pool:
         items = [it for it in pool.map(lambda v: video_detail(handle, v), ids[:limit]) if it and it.get("id")]
         subs = list(pool.map(subtitles, items))
+    log(handle, "%d/%d videos, %d with captions" % (len(items), len(ids[:limit]), sum(1 for c, _ in subs if c)))
     return [as_oriane(handle, it, user or {}, chunks, lang) for it, (chunks, lang) in zip(items, subs)]
