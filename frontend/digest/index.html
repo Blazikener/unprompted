@@ -46,7 +46,7 @@
 </head>
 <body>
 <main>
-  <div class="brand"><a href="/">Unprompted</a><span>Weekly digest</span></div>
+  <div class="brand"><a href="/brands/">Unprompted</a><span>Weekly digest</span></div>
   <section class="card" id="card"><p class="muted">Loading your digest…</p></section>
   <h2 id="runs-h" hidden>Past digests</h2>
   <ol class="runs" id="runs"></ol>
@@ -76,7 +76,7 @@
   function render(d) {
     const card = $('#card');
     if (d.status === 'unsubscribed') {
-      card.replaceChildren(h('h1', {}, 'Unsubscribed.'), h('p', { class: 'sub' }, `No more ${d.brand} emails to ${d.email}. `, h('a', { href: '/' }, 'Run a new search'), ' any time.'));
+      card.replaceChildren(h('h1', {}, 'Unsubscribed.'), h('p', { class: 'sub' }, `No more ${d.brand} emails to ${d.email}. `, h('a', { href: '/brands/' }, 'Run a new search'), ' any time.'));
       return;
     }
     const act = (label, action, cls = '') => h('button', { class: `btn ${cls}`, type: 'button', onclick: async (e) => {
@@ -104,7 +104,7 @@
     $('#runs-h').hidden = !d.runs.length;
     $('#runs').replaceChildren(...d.runs.map((r) => h('li', {},
       h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),
-      r.searchId ? h('a', { href: `/#search=${r.searchId}` }, 'Dashboard →') : null)));
+      r.searchId ? h('a', { href: `/brands/#search=${r.searchId}` }, 'Dashboard →') : null)));
     $('#preview-h').hidden = !d.latestHtml;
     preview(d.latestHtml);
   }

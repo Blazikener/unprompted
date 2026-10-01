@@ -101,6 +101,7 @@ def test_run_mails_only_unseen_mentions_and_credits_oriane(monkeypatch):
     assert "1 said on camera only, 1 tagged, 1 disclosed partnership" in body
     assert "Search and transcripts by Oriane" in body and "/digest/%s?unsubscribe=1" % d["token"] in body
     assert "#search=%d" % out["results"][0]["searchId"] in body
+    assert "/brands/#search=%d" % out["results"][0]["searchId"] in body
     # the same week again: everything already seen, nothing mailed, not due anyway
     assert digest.run_due() == {"ran": 0, "results": []}
     assert digest.run_due(force=True)["results"][0]["new"] == 0 and len(sent) == 1
@@ -153,3 +154,12 @@ def test_http_routes(base, monkeypatch):
     assert status == 200 and b"Weekly digest" in html
     monkeypatch.delenv("DIGEST_RUN_TOKEN")
     assert call(base, "POST", "/api/digests/run", {}, {"Authorization": "Bearer run-secret"})[0] == 404
+
+
+def test_frontend_routes(base):
+    status, html = call(base, "GET", "/")
+    assert status == 200 and b"Receipts by Unprompted" in html
+    status, html = call(base, "GET", "/brands/")
+    assert status == 200 and b"<title>Unprompted</title>" in html and b"Hear the next ones first" in html
+    status, html = call(base, "GET", "/digest/x")
+    assert status == 200 and b"href: '/brands/'" in html and b"/brands/#search=${r.searchId}" in html
