@@ -237,7 +237,8 @@ def manage(token, action=None):
 
 def run_one(d, force=False):
     """One Oriane search for videos since the last run, diffed against what this subscriber has seen; mail if new."""
-    since = (d["last_run_at"] or d["created_at"]) - timedelta(days=1)
+    # First digest covers the week before the search was saved; later ones overlap the previous run by a day.
+    since = (d["last_run_at"] or d["created_at"] - timedelta(days=EVERY_DAYS)) - timedelta(days=1)
     since = max(since, now() - timedelta(days=30))
     brand, variants, filters, params = parse({"brand": d["brand"], **d["params"], "variants": ", ".join(d["params"]["variants"]), "days": 30})
     filters["publishedAt"] = {"after": since.date().isoformat()}
