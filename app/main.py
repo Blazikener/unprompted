@@ -82,7 +82,9 @@ async def proxy(path: str, request: Request):
     host = request.headers.get("host", "")
     if host and not host.startswith(("127.", "localhost", "0.0.0.0")):
         os.environ.setdefault("APP_URL", "https://" + host)  # public share links need the real origin
-    target = request.url.path + ("?" + request.url.query if request.url.query else "")
+    raw_path = request.scope.get("raw_path") or request.url.path.encode()  # keep %-encoding: the handler unquotes itself
+    query = request.scope.get("query_string") or b""
+    target = raw_path.decode("latin-1") + ("?" + query.decode("latin-1") if query else "")
     lines = ["%s %s HTTP/1.0" % (request.method, target)]
     for k, v in request.headers.items():
         if k.lower() not in ("transfer-encoding", "connection"):
