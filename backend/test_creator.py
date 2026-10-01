@@ -52,6 +52,8 @@ def test_spoken_tagged_sponsored_split():
     assert kinds(video("hello", mentions=["timhortonsgcc"]))["Tim Hortons"] == "tagged"
     assert kinds(video("this is sponsored", caption="#ad", mentions=["noon"]))["Noon"] == "sponsored"
     assert kinds(video("great app", co_authors=["talabat"]))["Talabat"] == "sponsored"
+    assert kinds(video("my new ninja creami", caption="#ninjapartner"))["Ninja Kitchen"] == "sponsored"
+    assert kinds(video("my new ninja creami", caption="#partnerworkout"))["Ninja Kitchen"] == "spoken"
     # In a disclosed video, a brand that's only spoken (not tagged) isn't assumed to be the sponsor.
     k = kinds(video("this is sponsored by noon but I also drink Starbucks", caption="#ad", mentions=["noon"]))
     assert k["Noon"] == "sponsored" and k["Starbucks"] == "spoken"

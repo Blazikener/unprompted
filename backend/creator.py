@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS events (                -- funnel: scan, paywall, che
 
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram"}
 # "so excited to partner with [BFF and] ClassPass": a disclosure verb at most three words before the brand.
+# "#ninjapartner", "#sephoraambassador": the disclosure tag carries the brand's name as a prefix
+BRANDED_DISCLOSURE = re.compile(r".{2,}(partner|partnership|ambassador|sponsored|collab)")
 SPOKEN_DISCLOSURE = re.compile(r"(?:partner(?:ed|ing)? with|partnership with|sponsored by|sponsoring|thanks to|ad for|gifted by|"
                                r"ambassador for|collab(?:oration)? with)\W+(?:[^\W_]+\W+){0,3}$", re.IGNORECASE)
 PRO_PRICE_USD = 29
@@ -122,7 +124,8 @@ def brand_mentions(raw):
     """
     caption = " ".join([raw.get("caption") or "", *(raw.get("hashtags") or [])])
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
-    disclosed = bool(tags & DISCLOSURE_TAGS) or any(p in caption.lower() for p in DISCLOSURE_PHRASES)
+    disclosed = (bool(tags & DISCLOSURE_TAGS) or any(p in caption.lower() for p in DISCLOSURE_PHRASES)
+                 or any(BRANDED_DISCLOSURE.fullmatch(t) for t in tags))
     mentioned = {m["profileHandle"].lower() for m in raw.get("mentions") or []}
     co_authors = {c["profileHandle"].lower() for c in raw.get("coAuthors") or []}
     thumb = raw.get("thumbnailMediaUrl")
