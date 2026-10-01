@@ -3,7 +3,7 @@ name = "unprompted"
 version = "0.1.0"
 description = "Oriane-powered brand-mention search for agencies and Receipts for creators"
 requires-python = ">=3.10"
-dependencies = ["psycopg[binary]>=3.1,<4", "fastapi>=0.110,<1", "uvicorn>=0.27,<1"]
+dependencies = ["psycopg[binary]>=3.1,<4", "fastapi[standard]>=0.110,<1", "uvicorn>=0.27,<1"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -18,7 +18,7 @@ packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-fastapi = ">=0.110,<1"
+fastapi = { version = ">=0.110,<1", extras = ["standard"] }
 uvicorn = ">=0.27,<1"
 psycopg = { version = ">=3.1,<4", extras = ["binary"] }
 

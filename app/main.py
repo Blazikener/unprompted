@@ -9,7 +9,8 @@ import sys
 from http.client import HTTPResponse
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
+from fastapi import Request, Response
 from starlette.concurrency import run_in_threadpool
 
 ROOT = Path(__file__).resolve().parent.parent
