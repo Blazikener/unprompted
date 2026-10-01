@@ -149,7 +149,7 @@ def render(d, sid, new, since):
     body = TEMPLATES["email"].substitute(
         headline="%d new video%s mention%s" % (n, "" if n == 1 else "s", "s" if n == 1 else ""), brand=esc(brand),
         since=since.strftime("%-d %b"), filters=esc(filter_text(d["params"])), parts=esc(", ".join(parts) + "." if parts else ""),
-        items="".join(item_html(v) for v in new[:MAX_ITEMS]), more=more, dash=esc("%s/#search=%d" % (app_url(), sid)),
+        items="".join(item_html(v) for v in new[:MAX_ITEMS]), more=more, dash=esc("%s/brands/#search=%d" % (app_url(), sid)),
         credit=ORIANE_CREDIT, email=esc(d["email"]), manage=esc(manage_url(d["token"])))
     return subject, body
 

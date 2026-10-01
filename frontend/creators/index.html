@@ -379,7 +379,7 @@ function showMiss(e) {
   }
   box.hidden = false; box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
-function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (location.pathname !== '/creators/') history.replaceState({}, '', '/creators/'); }
+function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (!['/', '/creators/'].includes(location.pathname)) history.replaceState({}, '', '/creators/'); }
 
 function showScan(scan) {
   S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {};
@@ -481,6 +481,7 @@ $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#repor
 
 // ---- boot
 (async () => {
+  if (/^#search=\d+$/.test(location.hash)) { location.replace('/brands/' + location.hash); return; }
   const me = await api('/me').catch(() => ({ user: null, billing: { enabled: false, price: 29 } }));
   S.user = me.user; S.billing = me.billing;
   for (const el of document.querySelectorAll('[data-price]')) el.textContent = S.billing.price;

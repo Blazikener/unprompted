@@ -6,7 +6,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 - Postgres 16 (Homebrew), database `unprompted`:
   `/opt/homebrew/opt/postgresql@16/bin/pg_ctl -D /opt/homebrew/var/postgresql@16 -l /opt/homebrew/var/log/postgresql@16.log start`
   (or `brew services start postgresql@16` to start it at login).
-- `python3 backend/server.py` serves the dashboard and API on http://127.0.0.1:8000. Schema is created on start.
+- `python3 backend/server.py` serves Receipts at http://127.0.0.1:8000/ and the brand dashboard at http://127.0.0.1:8000/brands/. Schema is created on start.
 - Self-check: `python3 backend/test_server.py`
 - Env (`.env`, gitignored): `ORIANE_API_KEY`; optional `DATABASE_URL`, `HOST`, `PORT`. On Replit: `HOST=0.0.0.0` plus Replit's `DATABASE_URL`.
 

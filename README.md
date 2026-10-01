@@ -9,7 +9,7 @@ Unprompted searches Oriane's transcript index of Instagram and TikTok videos for
 1. Postgres running locally with a database named `unprompted` (`createdb unprompted`), or set `DATABASE_URL`.
 2. `cp .env.example .env` and add your `ORIANE_API_KEY`.
 3. `python3 -m pip install "psycopg[binary]"`
-4. `python3 backend/server.py`, then open http://127.0.0.1:8000
+4. `python3 backend/server.py`, then open http://127.0.0.1:8000 for Receipts or http://127.0.0.1:8000/brands/ for the brand dashboard.
 
 Self-check: `python3 backend/test_server.py`
 
@@ -23,7 +23,7 @@ its session pooler is fine). Without Stripe keys the "Go Pro" button records a `
 - `frontend/index.html`: single-file vanilla JS dashboard, no build step.
 - Oriane content search API for transcripts, frames and engagement data. No LLMs: classification, brand safety and scoring are rule-based.
 
-## Receipts: the creator side (`/creators/`)
+## Receipts: the creator side (`/`, also `/creators/`)
 
 The same transcript index, pointed the other way. A creator pastes their TikTok or Instagram handle and gets every brand they've said, tagged or featured in their recent videos, split into unpaid mentions and disclosed ads, each with the receipt (quote, timestamp, frame, views, link). Pro ($29/mo) unlocks every brand, a check of which brands are paying creators right now, and a pitch draft that quotes the creator's own video back to the brand.
 
@@ -35,7 +35,7 @@ The same transcript index, pointed the other way. A creator pastes their TikTok 
 - Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend` (needs `createdb unprompted_test`; the suite truncates it). Lint: `ruff check backend`.
 - Why this product: see `docs/MARKET-VALIDATION.md`.
 
-## Weekly digest: the push side (`/`, "Email me weekly")
+## Weekly digest: the push side (`/brands/`, "Email me weekly")
 
 Save a brand search once with just an email and get the new videos where creators mention the brand every week:
 the quote, who said it, and whether it was said on camera, tagged, or a disclosed partnership. Built as an

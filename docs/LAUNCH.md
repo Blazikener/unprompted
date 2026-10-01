@@ -83,7 +83,7 @@ Gate: `checkout_started / scan >= 5%` over the first 100 scans, or change the of
 ## 6. Weekly digest (Oriane Community Tool)
 
 The brand-side push product discussed with Oriane's CTO: save a search, email only, weekly digest of new mentions.
-It lives on the brand dashboard at `/` (card under the mention mix) and does not touch Receipts.
+It lives on the brand dashboard at `/brands/` (card under the mention mix) and does not touch Receipts.
 
 - Runs on Oriane only (no public-page fallback) and credits Oriane in the card, the manage page, and every email.
 - Zero credits until switched on: set `DIGEST_RUN_TOKEN` (manual/cron runs) or `DIGEST_SCHEDULER=1` on Render.

@@ -538,7 +538,11 @@ class Handler(SimpleHTTPRequestHandler):
         elif path.startswith("/api/"):
             self.api(not_found)
         else:
-            if re.fullmatch(r"/creators/r/[^/]+", path):
+            if path == "/":
+                self.path = "/creators/index.html"
+            elif path in ("/brands", "/brands/"):
+                self.path = "/index.html"
+            elif re.fullmatch(r"/creators/r/[^/]+", path):
                 self.path = "/creators/index.html"
             elif re.fullmatch(r"/digest/[^/]+", path):
                 self.path = "/digest/index.html"
