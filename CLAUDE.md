@@ -20,3 +20,10 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 - Per-video `engagementRatePerViews` is a percentage (10.3 means 10.3%), unlike the docs example.
 - Instagram `platformId` is the post shortcode; TikTok's is the numeric video id.
 - Only content search is exposed. Moodboard, Benchmark and Creator Checker are rebuilt locally from search results.
+
+## Receipts (creator product)
+
+`frontend/creators/index.html` + `backend/creator.py` reuse the Oriane fetch, `term_pattern` and `find_quote` from `server.py` to scan one creator's own videos against the brand dictionary in `backend/brands.py`. `backend/demo.py` supplies fixture creators when `ORIANE_API_KEY` is missing or `DEMO_MODE=1`. Auth, plans (free/pro), Stripe and event logging live in `creator.py`; its tables are created by `server.init_db()`.
+
+- Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend`
+- Lint: `ruff check backend` (config in `pyproject.toml`)

@@ -9,6 +9,7 @@ import math
 import os
 import re
 import statistics
+import sys
 import time
 import traceback
 from collections import Counter
@@ -30,7 +31,7 @@ if (ROOT / ".env").exists():
         if sep and not key.startswith("#"):
             os.environ.setdefault(key.strip(), val.strip().strip("\"'"))
 
-ORIANE_URL = "https://connect.oriane.xyz/rest/contents/search"
+ORIANE_URL = "https://connect.oriane.xyz/rest/%s/search"
 DB_URL = os.environ.get("DATABASE_URL", "postgresql:///unprompted")
 
 SCHEMA = """
@@ -113,9 +114,10 @@ HANDLE_RE = re.compile(r"[A-Za-z0-9._]{1,40}")
 
 
 class ApiError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, **extra):
         super().__init__(message)
         self.status = status
+        self.extra = extra
 
 
 def term_pattern(term):
@@ -178,7 +180,6 @@ def classify(raw, brand, variants):
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
     co_authors = " ".join(c["profileHandle"] for c in raw.get("coAuthors") or [])
     mentioned = " ".join(m["profileHandle"] for m in raw.get("mentions") or [])
-    # ponytail: a fan account with the brand in its handle counts as owned; add an allowlist if it bites
     if mention_re([brand]).search(raw.get("profileHandle") or ""):
         kind = "owned"
     elif tags & DISCLOSURE_TAGS or any(p in caption.lower() for p in DISCLOSURE_PHRASES) or rx.search(co_authors):
@@ -252,13 +253,12 @@ def parse(body):
 EMPTY_PAGE = {"data": {"results": [], "aggregations": {"totalViewsCount": 0}}, "metadata": {}}
 
 
-def oriane(filters, limit=100, sort="transcriptRelevance", offset=0):
+def oriane(filters, limit=100, sort="transcriptRelevance", offset=0, index="contents"):
     key = os.environ.get("ORIANE_API_KEY")
     if not key:
         raise ApiError(500, "ORIANE_API_KEY is not set.")
-    # ponytail: searches stop at the top 100 by relevance; page further with offset for full coverage
     req = request.Request(
-        "%s?projection=full&sort=%s&limit=%d&offset=%d" % (ORIANE_URL, sort, limit, offset),
+        "%s?projection=full&sort=%s&limit=%d&offset=%d" % (ORIANE_URL % index, sort, limit, offset),
         data=json.dumps({"operator": "and", "filters": filters}).encode(), method="POST",
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
@@ -271,6 +271,9 @@ def oriane(filters, limit=100, sort="transcriptRelevance", offset=0):
             msg = json.loads(e.read())["error"]["message"]
         except (ValueError, KeyError, TypeError):
             msg = e.reason
+        if e.code in (401, 402, 403):  # key or wallet problem: ours to fix, not the user's
+            print("oriane auth/billing error %s: %s" % (e.code, msg), file=sys.stderr)
+            raise ApiError(503, "Scanning is paused on our side for a moment (data provider). Nothing was taken from your quota; try again shortly.")
         raise ApiError(502, "Oriane returned %s: %s" % (e.code, msg))
     except OSError as e:
         raise ApiError(502, "Can't reach Oriane (%s)." % e)
@@ -413,7 +416,6 @@ def check(recent, brand, variants, known=()):
     mentions = len(recent_ids | set(known))
     affinity = round(min(mentions / 3, 1) * 100)  # 3+ videos mentioning the brand = full marks
 
-    # ponytail: fixed weights, and safety below 60 vetoes; tune with the agency's own vetting rules
     total = round(0.4 * safety + 0.35 * performance + 0.25 * affinity)
     verdict = "Risky" if safety < 60 else "Ready to pitch" if total >= 70 else "Review first"
     top = sorted(recent, key=lambda r: -(r.get("viewsCount") or 0))[:8]
@@ -523,7 +525,11 @@ class Handler(SimpleHTTPRequestHandler):
         path = url.path
         m = re.fullmatch(r"/api/searches/(\d+)", path)
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
-        if path == "/api/searches":
+        if path.startswith("/api/creators/"):
+            self.api(lambda: creator.dispatch(self))
+        elif path.startswith("/api/digests"):
+            self.api(lambda: digest.dispatch(self))
+        elif path == "/api/searches":
             self.api(list_searches)
         elif m:
             self.api(lambda: load(int(m.group(1))))
@@ -532,12 +538,20 @@ class Handler(SimpleHTTPRequestHandler):
         elif path.startswith("/api/"):
             self.api(not_found)
         else:
+            if re.fullmatch(r"/creators/r/[^/]+", path):
+                self.path = "/creators/index.html"
+            elif re.fullmatch(r"/digest/[^/]+", path):
+                self.path = "/digest/index.html"
             super().do_GET()
 
     def do_POST(self):
         routes = {"/api/searches": run_search, "/api/checks": run_check,
                   "/api/searches/stream": lambda body: Stream(search_events(*parse(body)))}
         route = routes.get(urlparse(self.path).path)
+        if self.path.startswith("/api/creators/"):
+            return self.api(lambda: creator.dispatch(self))
+        if self.path.startswith("/api/digests"):
+            return self.api(lambda: digest.dispatch(self))
         if not route:
             return self.api(not_found)
 
@@ -553,7 +567,7 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             status, body = 200, fn()
         except ApiError as e:
-            status, body = e.status, {"error": str(e)}
+            status, body = e.status, {"error": str(e), **e.extra}
         except psycopg.OperationalError:
             traceback.print_exc()
             status, body = 503, {"error": "Database unavailable. Is Postgres running?"}
@@ -562,10 +576,15 @@ class Handler(SimpleHTTPRequestHandler):
             status, body = 500, {"error": "Something broke on our side. Check the server log."}
         if isinstance(body, Stream):
             return self.stream(body.events)
+        headers = []
+        if isinstance(body, creator.Reply):
+            status, body, headers = body.status, body.body, body.headers
         data = dumps(body)
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        for k, v in headers:
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
@@ -589,9 +608,21 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(dumps({"type": "error", "error": "Something broke on our side. Check the server log."}) + b"\n")
 
 
-if __name__ == "__main__":
+sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us back; don't load this file twice
+import creator  # noqa: E402
+import digest  # noqa: E402
+
+
+def init_db():
     with psycopg.connect(DB_URL) as db:
         db.execute(SCHEMA)
+        db.execute(creator.SCHEMA)
+        db.execute(digest.SCHEMA)
+
+
+if __name__ == "__main__":
+    init_db()
     host, port = os.environ.get("HOST", "127.0.0.1"), int(os.environ.get("PORT", "8000"))
     print("Unprompted on http://%s:%d" % (host, port), flush=True)
+    digest.scheduler()
     ThreadingHTTPServer((host, port), Handler).serve_forever()
