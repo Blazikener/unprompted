@@ -106,8 +106,17 @@
       h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),
       r.searchId ? h('a', { href: `/#search=${r.searchId}` }, 'Dashboard →') : null)));
     $('#preview-h').hidden = $('#preview').hidden = !d.latestHtml;
-    if (d.latestHtml) $('#preview').srcdoc = d.latestHtml;
+    preview(d.latestHtml);
   }
+  let latestHtml = null;
+  function preview(html) {
+    latestHtml = html;
+    const frame = $('#preview');
+    frame.removeAttribute('srcdoc');
+    if (html) frame.srcdoc = html;
+  }
+  // Coming back via the back/forward cache leaves a srcdoc iframe blank; paint it again.
+  window.addEventListener('pageshow', (e) => { if (e.persisted && latestHtml) preview(latestHtml); });
   (async () => {
     try {
       let d = await api(`/api/digests/${token}`);
