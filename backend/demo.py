@@ -119,7 +119,7 @@ def creator_videos(platform, handle):
     """Fixture videos for one demo creator, shaped like Oriane results."""
     spec = CREATORS.get(handle.lower())
     if not spec:
-        raise ApiError(404, "Demo mode (no ORIANE_API_KEY): try @maya.eats or @sami.lifts.")
+        raise ApiError(404, "Demo mode only knows the fixture creators: try @maya.eats or @sami.lifts.")
     out = []
     for i, (days, views, er, caption, tags, mentions, sentences) in enumerate(spec["videos"]):
         vid = "demo-%s-%s-%02d" % (platform, handle, i)

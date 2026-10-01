@@ -80,8 +80,9 @@ def startup():
 async def proxy(path: str, request: Request):
     body = await request.body()
     host = request.headers.get("host", "")
-    if host and not host.startswith(("127.", "localhost", "0.0.0.0")):
-        os.environ.setdefault("APP_URL", "https://" + host)  # public share links need the real origin
+    if host and "APP_URL" not in os.environ:  # share links need the real origin; the first request's Host decides
+        scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+        os.environ["APP_URL"] = "%s://%s" % (scheme, host)
     raw_path = request.scope.get("raw_path") or request.url.path.encode()  # keep %-encoding: the handler unquotes itself
     query = request.scope.get("query_string") or b""
     target = raw_path.decode("latin-1") + ("?" + query.decode("latin-1") if query else "")
