@@ -114,6 +114,74 @@ def test_run_mails_only_unseen_mentions_and_credits_oriane(monkeypatch):
     assert len(calls) == n_calls and sent[1] == sent[0]
 
 
+def test_run_due_serializes_concurrent_callers(monkeypatch):
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+    calls = []
+
+    def oriane(*args, **kwargs):
+        calls.append((args, kwargs))
+        threading.Event().wait(0.2)
+        return page()
+
+    monkeypatch.setattr(server, "oriane", oriane)
+    start = threading.Barrier(3)
+    results, errors = [], []
+
+    def run():
+        start.wait()
+        try:
+            results.append(digest.run_due())
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    start.wait()
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert not errors and all(not thread.is_alive() for thread in threads)
+    assert len(calls) == 1
+    assert sum(result["ran"] for result in results) == 1
+
+
+def test_scheduler_checks_first_after_first_s(monkeypatch):
+    monkeypatch.setenv("DIGEST_SCHEDULER", "1")
+    monkeypatch.setattr(digest.demo, "active", lambda: False)
+    waits, checks = [], []
+
+    class StopScheduler(BaseException):
+        pass
+
+    def fake_sleep(seconds):
+        waits.append(seconds)
+
+    def fake_run_due():
+        checks.append(waits[-1])
+        if len(checks) == 2:
+            raise StopScheduler
+
+    class InlineThread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+
+        def start(self):
+            try:
+                self.target()
+            except StopScheduler:
+                pass
+
+    monkeypatch.setattr(digest.time, "sleep", fake_sleep)
+    monkeypatch.setattr(digest, "run_due", fake_run_due)
+    monkeypatch.setattr(digest.threading, "Thread", InlineThread)
+    digest.scheduler(every_s=900, first_s=60)
+
+    assert waits == [60, 900]
+    assert checks == [60, 900]
+
+
 def test_manage_actions():
     d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
     assert digest.manage(d["token"], "pause")["status"] == "paused" and digest.due() == []
