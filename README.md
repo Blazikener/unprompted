@@ -52,10 +52,13 @@ the quote, who said it, and whether it was said on camera, tagged, or a disclose
 [Oriane](https://oriane.xyz) Community Tool: every digest is one Oriane content search (videos published since the
 last run) and the emails and pages credit Oriane.
 
-- `POST /api/digests` `{email, brand, variants, platform, lang, searchId}`: saves the digest. With `RESEND_API_KEY`
-  set it is double opt-in (confirmation email); without it the digest is active at once and emails are logged, not
-  sent. Videos already on the dashboard (`searchId`) count as seen, so the first digest only has new ones.
+- `POST /api/digests` `{email, brand, variants, platform, lang, searchId}`: saves the digest. With either provider
+  configured it is double opt-in (confirmation email); the Apps Script relay takes priority over Resend. Without
+  either provider the digest is active at once and emails are logged, not sent. A pending signup can
+  be submitted again to retry its confirmation email. Videos already on the dashboard (`searchId`) count as seen, so
+  the first digest only has new ones.
 - `/digest/<token>`: manage page (pause, resume, unsubscribe, past runs, latest email preview).
+- `/digest/sample`: read-only public sample email; the stored digest's subscriber details are removed.
 - Each normalized email can subscribe to at most 2 digests. At most `DIGEST_MAX_ACTIVE` confirmed, unpaused digests run
   site-wide (default 25).
 - `POST /api/digests/run` with `Authorization: Bearer $DIGEST_RUN_TOKEN`: runs due digests (`{"force": true}` all,
@@ -63,5 +66,18 @@ last run) and the emails and pages credit Oriane.
   `DIGEST_SCHEDULER=1` does the same in-process, first checking about a minute after startup and then every 15 minutes
   while awake. On Render free it runs whenever the instance is awake; any visit wakes it. Both are off until configured.
 - Cost: 40 Oriane credits per digest per week (one search, `sort=publishedAt`, limit 100). Quiet weeks send nothing.
+
+### Email delivery
+
+Delivery uses the Apps Script relay first when both `MAIL_RELAY_URL` and `MAIL_RELAY_SECRET` are set, then Resend
+(`RESEND_API_KEY` + `DIGEST_FROM`). Without either provider, confirmation is not sent and the digest is saved
+immediately. Render's free tier blocks outbound SMTP, while Resend requires a verified sending domain; the relay
+sends from your Gmail over HTTPS. A consumer Gmail account has a 100-recipient/day Apps Script mail quota.
+
+1. Open [script.google.com](https://script.google.com), create a project, and paste `docs/mail-relay.gs`.
+2. Replace `CHANGE_ME` in `const SECRET` with a private random secret.
+3. Deploy > New deployment > Web app; choose **Execute as Me** and **Anyone** for access.
+4. Put the deployed web app URL in `MAIL_RELAY_URL` and the same secret in `MAIL_RELAY_SECRET`. The relay takes
+   priority over Resend when both providers are configured.
 
 Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend/test_digest.py` (Oriane is mocked).

@@ -4,8 +4,8 @@ The push side of Unprompted, built on Oriane: each run is one Oriane content sea
 the last run, stored like any dashboard search, diffed against what this subscriber has already been shown, and
 mailed as a short email (quotes, who said it, spoken vs tagged vs disclosed) that links back to the dashboard.
 
-Env: RESEND_API_KEY + DIGEST_FROM to send mail (otherwise emails are logged and shown on the manage page),
-DIGEST_RUN_TOKEN to allow `POST /api/digests/run`, APP_URL for links.
+Env: MAIL_RELAY_URL + MAIL_RELAY_SECRET or RESEND_API_KEY + DIGEST_FROM to send mail (otherwise emails are logged
+and shown on the manage page), DIGEST_RUN_TOKEN to allow `POST /api/digests/run`, APP_URL for links.
 """
 import html
 import json
@@ -84,13 +84,35 @@ def now():
 # ---------------------------------------------------------------- mail
 
 def mail_configured():
-    return bool(os.environ.get("RESEND_API_KEY") and os.environ.get("DIGEST_FROM"))
+    relay = os.environ.get("MAIL_RELAY_URL") and os.environ.get("MAIL_RELAY_SECRET")
+    resend = os.environ.get("RESEND_API_KEY") and os.environ.get("DIGEST_FROM")
+    return bool(relay or resend)
 
 
 def send(to, subject, body):
-    """Send through Resend; without a key, log it and report not sent (the manage page still shows the digest)."""
+    """Send through the configured provider; without one, log it and report not sent."""
+    relay_url = os.environ.get("MAIL_RELAY_URL")
+    relay_secret = os.environ.get("MAIL_RELAY_SECRET")
+    if relay_url and relay_secret:
+        req = request.Request(relay_url, method="POST",
+                              data=json.dumps({"secret": relay_secret, "to": to, "subject": subject, "html": body,
+                                               "text": "%s\n\n%s/brands/" % (subject, app_url()), "name": "Unprompted"}).encode(),
+                              headers={"Content-Type": "application/json", "User-Agent": "Unprompted digest (+%s)" % app_url()})
+        try:
+            with request.urlopen(req, timeout=30) as res:
+                response = json.load(res)
+            if isinstance(response, dict) and response.get("ok") is True:
+                return True
+            print("mail relay returned ok=false", file=sys.stderr, flush=True)
+        except error.HTTPError as e:
+            print("mail relay HTTP error (%s)" % e.code, file=sys.stderr, flush=True)
+        except OSError as e:
+            print("mail relay request failed (%s)" % type(e).__name__, file=sys.stderr, flush=True)
+        except (ValueError, TypeError):
+            print("mail relay returned invalid JSON", file=sys.stderr, flush=True)
+        return False
     if not mail_configured():
-        print("digest mail (not sent, RESEND_API_KEY unset) to %s: %s" % (to, subject), file=sys.stderr, flush=True)
+        print("digest mail (not sent, no provider configured) to %s: %s" % (to, subject), file=sys.stderr, flush=True)
         return False
     req = request.Request("https://api.resend.com/emails", method="POST",
                           data=json.dumps({"from": os.environ["DIGEST_FROM"], "to": [to], "subject": subject, "html": body}).encode(),
@@ -223,9 +245,8 @@ def subscribe(body):
         if isinstance(search_id, int):  # what they just saw on the dashboard counts as seen
             db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s"
                        " ON CONFLICT DO NOTHING", (d["id"], search_id))
-    if not d["confirmed_at"]:
-        send(email, *confirm_mail(d))
-    return {**row_view(d), "created": created}
+    mailed = send(email, *confirm_mail(d)) if not d["confirmed_at"] else False
+    return {**row_view(d), "created": created, "mailed": mailed}
 
 
 def load_digest(token):
@@ -235,6 +256,23 @@ def load_digest(token):
             raise ApiError(404, "This digest link isn't valid any more.")
         runs = db.execute("SELECT * FROM digest_runs WHERE digest_id = %s ORDER BY id DESC LIMIT 12", (d["id"],)).fetchall()
     return d, runs
+
+
+def sample():
+    with connect() as db:
+        run = db.execute(
+            "SELECT r.new_count, r.created_at, r.html, d.brand, d.email, d.token"
+            " FROM digest_runs r JOIN digests d ON d.id = r.digest_id"
+            " WHERE r.html IS NOT NULL ORDER BY r.id DESC LIMIT 1").fetchone()
+    if not run:
+        raise ApiError(404, "No sample digest yet.")
+    sample_html = re.sub(
+        r'href="[^"]*/digest/%s(?:\?unsubscribe=1)?"' % re.escape(run["token"]),
+        lambda _: 'href="%s"' % esc("%s/brands/" % app_url()),
+        run["html"])
+    sample_html = sample_html.replace(run["token"], "sample")
+    sample_html = sample_html.replace(esc(run["email"]), "you@brand.com")
+    return {"brand": run["brand"], "newCount": run["new_count"], "createdAt": run["created_at"], "html": sample_html}
 
 
 def manage(token, action=None):
@@ -368,6 +406,8 @@ def dispatch(handler):
     path, method = url.path.removeprefix("/api/digests"), handler.command
     m = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})(?:/(confirm|pause|resume|unsubscribe))?", path)
     if method == "GET":
+        if path == "/sample":
+            return sample()
         if m and not m.group(2):
             return manage(m.group(1))
         raise ApiError(404, "Not found.")

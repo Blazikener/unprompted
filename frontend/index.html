@@ -409,6 +409,14 @@
   .hero-form .field label, .hero-form .seg legend { font-size: 0.8125rem; }
   .landing-error { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--coral-soft); color: var(--coral-ink); font-weight: 500; }
   .landing-after { display: grid; gap: 18px; margin-top: 24px; }
+  .landing-digest { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px 24px; padding: 20px 22px; border: 1px solid oklch(1 0 0 / 0.12); border-radius: 16px; background: var(--forest-2); }
+  .landing-digest h2 { margin: 0 0 5px; font: italic 500 1.375rem/1.2 var(--serif); letter-spacing: -0.01em; }
+  .landing-digest p { max-width: 62ch; margin: 0; color: var(--on-forest-2); font-size: 0.875rem; line-height: 1.5; text-wrap: pretty; }
+  .landing-digest-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .landing-digest-action { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid oklch(1 0 0 / 0.22); border-radius: 9px; background: transparent; color: var(--on-forest); font-size: 0.8125rem; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
+  .landing-digest-action:hover { border-color: var(--lime); color: var(--lime); }
+  .landing-digest-action.primary { border-color: var(--lime); background: var(--lime); color: var(--ink); }
+  .landing-digest-action.primary:hover { background: var(--lime-strong); color: var(--ink); }
   .landing .examples > span, .recent-h { font-size: 0.8125rem; color: var(--on-forest-2); }
   .landing .chip { border-color: oklch(1 0 0 / 0.22); background: transparent; color: var(--on-forest); }
   .landing .chip:hover { background: var(--lime); border-color: var(--lime); color: var(--ink); }
@@ -494,6 +502,8 @@
   @media (max-width: 760px) {
     .landing { padding: 88px 16px 110px; }
     .landing-top { left: 16px; right: 16px; }
+    .landing-digest { grid-template-columns: minmax(0, 1fr); padding: 18px 16px; }
+    .landing-digest-actions { flex-direction: column; align-items: stretch; }
     .hero-form { grid-template-columns: minmax(0, 1fr); padding: 16px; }
     .hero-form > * { grid-area: auto / 1 / auto / -1 !important; }
     .app { grid-template-columns: minmax(0, 1fr); }
@@ -592,6 +602,16 @@
     </form>
         </div>
         <div class="landing-after">
+          <section class="landing-digest" aria-labelledby="landing-digest-h">
+            <div>
+              <h2 id="landing-digest-h">Get new creator mentions of your brand by email, every week.</h2>
+              <p>Search once and save it. Each week, get new videos, the quote, and whether each mention was spoken on camera, tagged, or paid. Search and transcripts by Oriane.</p>
+            </div>
+            <div class="landing-digest-actions">
+              <a class="landing-digest-action" href="/digest/sample">See a sample digest</a>
+              <button class="landing-digest-action primary" id="digest-start-search" type="button">Start with a search</button>
+            </div>
+          </section>
           <div class="examples">
             <span>Try</span>
             <button type="button" class="chip" data-brand="Tim Hortons" data-variants="Timmies">Tim Hortons</button>
@@ -712,6 +732,10 @@
 <script>
   const $ = (s) => document.querySelector(s);
   const form = $('#search'), brandEl = $('#brand'), variantsEl = $('#variants');
+  $('#digest-start-search').addEventListener('click', () => {
+    brandEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    brandEl.focus({ preventScroll: true });
+  });
   const PLATFORM = { instagram: 'Instagram', tiktok: 'TikTok' };
   const LANG = { en: 'English', ar: 'Arabic' };
   const KINDS = {
@@ -1074,7 +1098,9 @@
         email: $('#digest-email').value, brand: s.brand, variants: (s.params.variants || []).join(', '), platform: s.params.platform, lang: s.params.lang, searchId: s.id }) });
       done.replaceChildren(d.status === 'active'
         ? `You're in. New ${s.brand} mentions land in your inbox every ${d.every} days. `
-        : `Almost: confirm the email we just sent to ${d.email}. `, h('a', { href: d.manageUrl }, 'Manage this digest'));
+        : d.mailed ? `Almost: confirm the email we just sent to ${d.email}. `
+          : "Saved, but we couldn't send the confirmation email right now. Try again in a few minutes. ",
+      h('a', { href: d.manageUrl }, 'Manage this digest'));
       done.hidden = false;
       $('#digest-form').hidden = true;
     } catch (err) {
