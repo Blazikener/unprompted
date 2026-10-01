@@ -105,17 +105,19 @@
     $('#runs').replaceChildren(...d.runs.map((r) => h('li', {},
       h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),
       r.searchId ? h('a', { href: `/#search=${r.searchId}` }, 'Dashboard →') : null)));
-    $('#preview-h').hidden = $('#preview').hidden = !d.latestHtml;
+    $('#preview-h').hidden = !d.latestHtml;
     preview(d.latestHtml);
   }
   let latestHtml = null;
+  // A fresh iframe each time: on a back/forward navigation the browser restores the old frame's own history entry
+  // instead of loading srcdoc, which leaves the preview blank.
   function preview(html) {
     latestHtml = html;
-    const frame = $('#preview');
-    frame.removeAttribute('srcdoc');
+    const old = $('#preview');
+    const frame = h('iframe', { id: 'preview', title: 'Latest digest email', sandbox: '', hidden: !html });
     if (html) frame.srcdoc = html;
+    old.replaceWith(frame);
   }
-  // Coming back via the back/forward cache leaves a srcdoc iframe blank; paint it again.
   window.addEventListener('pageshow', (e) => { if (e.persisted && latestHtml) preview(latestHtml); });
   (async () => {
     try {
