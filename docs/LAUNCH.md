@@ -22,6 +22,8 @@ sent by a person from their own account.
    shown) with zero videos to scan; the UI says so and offers same-handle-other-platform or close-handle chips.
    Watch `scan_miss / (scan + scan_miss)` weekly; if it stays above ~40%, prospect only from creators Oriane
    already indexes (`backend/prospect.py` does) and say "works for creators in our index" in the copy.
+   Credits: a live scan is one content search (40), a miss adds one profile lookup (30 → 70 total); misses are
+   remembered per handle for 7 days (`misses` table) so retries and other users trying the same handle cost 0.
 3. Open `/creators/?sample=1` on the deployed URL: this is the link that goes in every message.
 4. Run `python3 backend/prospect.py --app-url https://receipts-thc8.onrender.com/creators/` to regenerate
    `first-users.md` with live links.

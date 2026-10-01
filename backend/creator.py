@@ -67,6 +67,13 @@ CREATE TABLE IF NOT EXISTS brand_activity (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (brand, platform, source)
 );
+CREATE TABLE IF NOT EXISTS misses (                -- live handles Oriane had no videos for; saves provider credits on retries
+  platform   text NOT NULL,
+  handle     text NOT NULL,
+  body       jsonb NOT NULL,                      -- {error, reason, suggestions}
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (platform, handle)
+);
 CREATE TABLE IF NOT EXISTS events (                -- funnel: scan, paywall, checkout_started, subscribed, ...
   id         serial PRIMARY KEY,
   user_id    int,
@@ -276,23 +283,25 @@ def parse_handle(raw, platform=None):
 
 
 def not_indexed(platform, handle):
-    """Why a live scan found nothing: profile known but not crawled, same name elsewhere, or close handles."""
+    """Why a live scan found nothing: profile known but not crawled, same name elsewhere, or close handles.
+
+    One profile lookup (fuzzy, both platforms) answers all three; exact hits are picked out of it.
+    """
     name = PLATFORM_NAMES[platform]
     base = "Oriane has no videos indexed for @%s on %s yet." % (handle, name)
     try:
-        exact = server.oriane({"handle": {"exactMatch": {"values": [handle]}}}, limit=5, sort="followersCount", index="profiles")["data"]
-        same = [r for r in exact if r["platform"] == platform]
-        other = [r for r in exact if r["platform"] != platform]
-        if same:
-            msg = ("Oriane knows @%s on %s (%s followers) but hasn't indexed their videos yet, so there's nothing to scan today. "
-                   "Try again in a few days." % (handle, name, fmt_num(same[0]["followersCount"])))
-            return ApiError(404, msg, reason="profile_only", suggestions=[])
-        fuzzy = server.oriane({"handle": {"includesFuzzy": {"values": [handle]}}, "platform": {"includes": [platform]},
-                               "followersCount": {"min": 1000}}, limit=6, sort="followersCount", index="profiles")["data"]
+        found = server.oriane({"handle": {"includesFuzzy": {"values": [handle]}}, "followersCount": {"min": 1000}},
+                              limit=8, sort="followersCount", index="profiles")["data"]
     except ApiError:
         return ApiError(404, base, reason="unknown", suggestions=[])
-    picks = [{"platform": r["platform"], "handle": r["handle"], "followers": r["followersCount"]} for r in other + fuzzy
-             if r["handle"] != handle or r["platform"] != platform][:4]
+    same = [r for r in found if r["handle"] == handle and r["platform"] == platform]
+    if same:
+        msg = ("Oriane knows @%s on %s (%s followers) but hasn't indexed their videos yet, so there's nothing to scan today. "
+               "Try again in a few days." % (handle, name, fmt_num(same[0]["followersCount"])))
+        return ApiError(404, msg, reason="profile_only", suggestions=[])
+    other = [r for r in found if r["handle"] == handle]
+    close = [r for r in found if r["handle"] != handle and r["platform"] == platform]
+    picks = [{"platform": r["platform"], "handle": r["handle"], "followers": r["followersCount"]} for r in other + close][:4]
     if other:
         base = "Oriane has @%s indexed on %s, not %s." % (handle, PLATFORM_NAMES[other[0]["platform"]], name)
     elif picks:
@@ -300,13 +309,27 @@ def not_indexed(platform, handle):
     return ApiError(404, base, reason="other_platform" if other else "unknown", suggestions=picks)
 
 
+MISS_TTL_DAYS = 7
+
+
 def fetch_videos(platform, handle):
     if demo.active():
         return demo.creator_videos(platform, handle), "demo"
+    with connect() as db:
+        cached = db.execute("SELECT body FROM misses WHERE platform = %s AND handle = %s AND created_at > now() - interval '%s days'"
+                            % ("%s", "%s", MISS_TTL_DAYS), (platform, handle)).fetchone()
+    if cached:
+        body = cached["body"]
+        raise ApiError(404, body["error"], reason=body["reason"], suggestions=body["suggestions"], cached=True)
     filters = {"profileHandle": {"exactMatch": {"values": [handle]}}, "platform": {"includes": [platform]}}
     videos = server.oriane(filters, limit=100, sort="publishedAt")["data"]["results"]
     if not videos:
-        raise not_indexed(platform, handle)
+        miss = not_indexed(platform, handle)
+        with connect() as db:
+            db.execute("INSERT INTO misses (platform, handle, body) VALUES (%s, %s, %s)"
+                       " ON CONFLICT (platform, handle) DO UPDATE SET body = EXCLUDED.body, created_at = now()",
+                       (platform, handle, Jsonb({"error": str(miss), **miss.extra})))
+        raise miss
     return videos, "live"
 
 
@@ -503,7 +526,7 @@ def run_scan(user, body):
     except ApiError as e:
         if e.status == 404:
             track(user["id"], "scan_miss", {"platform": platform, "handle": handle, "reason": e.extra.get("reason", "demo"),
-                                            "suggested": len(e.extra.get("suggestions", []))})
+                                            "suggested": len(e.extra.get("suggestions", [])), "cached": e.extra.get("cached", False)})
         raise
     rows = aggregate(videos)
     prof = profile(platform, handle, videos)

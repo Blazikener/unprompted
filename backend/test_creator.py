@@ -142,26 +142,31 @@ def test_parse_handle_accepts_links_and_decides_platform():
     assert creator.parse_handle("  maya eats ", "tiktok") == ("tiktok", "maya eats")
 
 
-def test_not_indexed_explains_the_gap(monkeypatch):
+def test_not_indexed_explains_the_gap_with_one_lookup(monkeypatch):
     monkeypatch.setenv("ORIANE_API_KEY", "k")
     profiles = [{"platform": "tiktok", "handle": "khaby.lame", "followersCount": 163_000_000},
-                {"platform": "instagram", "handle": "khaby_lame_fans", "followersCount": 91_108}]
+                {"platform": "instagram", "handle": "khaby_lame_fans", "followersCount": 91_108},
+                {"platform": "tiktok", "handle": "quiet.one", "followersCount": 5_000}]
+    calls = []
 
     def fake(filters, limit=100, sort="x", offset=0, index="contents"):
-        assert index == "profiles"
-        if "exactMatch" in filters["handle"]:
-            return {"data": [p for p in profiles if p["handle"] == filters["handle"]["exactMatch"]["values"][0]]}
-        return {"data": [p for p in profiles if p["platform"] in filters["platform"]["includes"]]}
+        calls.append(index)
+        assert index == "profiles" and "platform" not in filters
+        q = filters["handle"]["includesFuzzy"]["values"][0].split(".")[0]
+        return {"data": [p for p in profiles if p["handle"].replace("_", ".").startswith(q)
+                         and p["followersCount"] >= filters["followersCount"]["min"]]}
 
     monkeypatch.setattr(server, "oriane", fake)
     e = creator.not_indexed("instagram", "khaby.lame")
     assert e.status == 404 and "indexed on TikTok, not Instagram" in str(e) and e.extra["reason"] == "other_platform"
     assert [s["handle"] for s in e.extra["suggestions"]] == ["khaby.lame", "khaby_lame_fans"]
-    e = creator.not_indexed("tiktok", "nobody.here")
-    assert e.extra["reason"] == "unknown" and "Did you mean" in str(e) and e.extra["suggestions"][0]["handle"] == "khaby.lame"
-    profiles.append({"platform": "tiktok", "handle": "quiet.one", "followersCount": 500})
+    e = creator.not_indexed("tiktok", "khaby")
+    assert e.extra["reason"] == "unknown" and "Did you mean" in str(e) and [s["handle"] for s in e.extra["suggestions"]] == ["khaby.lame"]
     e = creator.not_indexed("tiktok", "quiet.one")
-    assert e.extra["reason"] == "profile_only" and "500 followers" in str(e) and e.extra["suggestions"] == []
+    assert e.extra["reason"] == "profile_only" and "5K followers" in str(e) and e.extra["suggestions"] == []
+    e = creator.not_indexed("tiktok", "nobody")
+    assert e.extra == {"reason": "unknown", "suggestions": []} and "Did you mean" not in str(e)
+    assert calls == ["profiles"] * 4
 
     def broken(*a, **k):
         raise server.ApiError(502, "down")
@@ -169,6 +174,25 @@ def test_not_indexed_explains_the_gap(monkeypatch):
     monkeypatch.setattr(server, "oriane", broken)
     e = creator.not_indexed("tiktok", "x")
     assert e.status == 404 and e.extra == {"reason": "unknown", "suggestions": []}
+
+
+def test_misses_are_cached_so_retries_cost_no_credits(monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "k")
+    monkeypatch.setattr(demo, "active", lambda: False)
+    calls = []
+
+    def fake(filters, limit=100, sort="x", offset=0, index="contents"):
+        calls.append(index)
+        return {"data": {"results": []} if index == "contents" else []}
+
+    monkeypatch.setattr(server, "oriane", fake)
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("DELETE FROM misses")
+    for _ in range(2):
+        with pytest.raises(server.ApiError) as e:
+            creator.fetch_videos("tiktok", "ghost.handle")
+        assert e.value.status == 404 and e.value.extra["reason"] == "unknown"
+    assert calls == ["contents", "profiles"] and e.value.extra["cached"] is True
 
 
 def test_stripe_signature():
