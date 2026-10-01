@@ -13,6 +13,10 @@ Unprompted searches Oriane's transcript index of Instagram and TikTok videos for
 
 Self-check: `python3 backend/test_server.py`
 
+Hosted: `app/main.py` wraps the same server as an ASGI app (`uvicorn app.main:app`) for platforms that expect FastAPI,
+and reads a `.env` next to `pyproject.toml` if present. Any Postgres works as `DATABASE_URL` (a free Supabase project via
+its session pooler is fine). Without Stripe keys the "Go Pro" button records a `checkout_intent` event instead of opening checkout.
+
 ## Stack
 
 - `backend/server.py`: Python standard-library HTTP server with psycopg 3. Oriane client, mention classifier, score check, Postgres storage.

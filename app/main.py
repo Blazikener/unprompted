@@ -30,7 +30,8 @@ load_dotenv(ROOT / ".env")
 
 import server  # noqa: E402
 
-app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI()
+app.router.routes = [r for r in app.router.routes if getattr(r, "path", "") not in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")]
 
 
 class MemorySocket:

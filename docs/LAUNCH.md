@@ -8,7 +8,8 @@ sent by a person from their own account.
 
 1. Deploy behind a public URL with `ORIANE_API_KEY`, `APP_URL=https://<domain>`, and Stripe test keys first, then live
    keys (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` for a $29/mo price, `STRIPE_WEBHOOK_SECRET` from a webhook on
-   `/api/creators/billing/webhook`). Without Stripe the paywall shows "Checkout not configured", which kills the experiment.
+   `/api/creators/billing/webhook`). Without Stripe the paywall offers "Reserve Pro at $29/mo" and logs a `checkout_intent`
+   event per click, so the gate can be measured before billing is live; real checkout starts replace it once Stripe is on.
 2. Open `/creators/?sample=1` on the deployed URL: this is the link that goes in every message.
 3. Run `python3 backend/prospect.py --app-url https://<domain>/creators/` to regenerate `first-users.md` with live links.
 
