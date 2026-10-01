@@ -48,8 +48,8 @@ last run) and the emails and pages credit Oriane.
 - `/digest/<token>`: manage page (pause, resume, unsubscribe, past runs, latest email preview).
 - `POST /api/digests/run` with `Authorization: Bearer $DIGEST_RUN_TOKEN`: runs due digests (`{"force": true}` all,
   `{"id": n}` one, `{"id": n, "resend": true}` re-mails the newest rendered run without an Oriane call).
-  `DIGEST_SCHEDULER=1` does the same in-process every 15 minutes. Both are off until configured, so
-  a fresh deployment spends no Oriane credits.
+  `DIGEST_SCHEDULER=1` does the same in-process, first checking about a minute after startup and then every 15 minutes
+  while awake. On Render free it runs whenever the instance is awake; any visit wakes it. Both are off until configured.
 - Cost: 40 Oriane credits per digest per week (one search, `sort=publishedAt`, limit 100). Quiet weeks send nothing.
 
 Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend/test_digest.py` (Oriane is mocked).

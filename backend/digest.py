@@ -28,6 +28,8 @@ import demo
 import server
 from server import ApiError, connect, parse, profile_url
 
+RUN_LOCK = threading.Lock()
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS digests (
   id           serial PRIMARY KEY,
@@ -275,14 +277,15 @@ def due(digest_id=None, force=False):
 
 def run_due(digest_id=None, force=False):
     """Run every digest that is due (or one by id). One Oriane search each; nothing when there are none."""
-    out = []
-    for d in due(digest_id, force):
-        try:
-            out.append(run_one(d))
-        except Exception as e:  # one broken digest must not stop the others
-            traceback.print_exc()
-            out.append({"digest": d["id"], "error": str(e)})
-    return {"ran": len(out), "results": out}
+    with RUN_LOCK:
+        out = []
+        for d in due(digest_id, force):
+            try:
+                out.append(run_one(d))
+            except Exception as e:  # one broken digest must not stop the others
+                traceback.print_exc()
+                out.append({"digest": d["id"], "error": str(e)})
+        return {"ran": len(out), "results": out}
 
 
 def run_route(handler, body):
@@ -312,22 +315,24 @@ def resend_last(digest_id):
     return {"digest": digest_id, "run": run["id"], "new": run["new_count"], "sent": sent, "resent": True}
 
 
-def scheduler(every_s=900):
-    """Background loop (DIGEST_SCHEDULER=1): run due digests while the process is up.
+def scheduler(every_s=900, first_s=60):
+    """Background loop (DIGEST_SCHEDULER=1): check after first_s, then every every_s while the process is up.
 
     Off by default so a deployment spends no Oriane credits until the operator opts in; hosts that sleep when idle
-    should hit POST /api/digests/run from an external cron instead.
+    only run checks while awake; use an external cron for reliable wall-clock execution.
     """
     if os.environ.get("DIGEST_SCHEDULER") != "1" or demo.active():
         return
 
     def loop():
+        wait_s = first_s
         while True:
-            time.sleep(every_s)
+            time.sleep(wait_s)
             try:
                 run_due()
             except Exception:
                 traceback.print_exc()
+            wait_s = every_s
     threading.Thread(target=loop, name="digest-scheduler", daemon=True).start()
 
 

@@ -86,9 +86,10 @@ The brand-side push product discussed with Oriane's CTO: save a search, email on
 It lives on the brand dashboard at `/brands/` (card under the mention mix) and does not touch Receipts.
 
 - Runs on Oriane only (no public-page fallback) and credits Oriane in the card, the manage page, and every email.
-- Zero credits until switched on: set `DIGEST_RUN_TOKEN` (manual/cron runs) or `DIGEST_SCHEDULER=1` on Render.
-  Render free instances sleep, so a cron (e.g. cron-job.org, weekly) calling
-  `POST /api/digests/run` with `{"force": false}` is the reliable trigger.
+- Zero credits until switched on: set `DIGEST_RUN_TOKEN` (manual/cron runs) or `DIGEST_SCHEDULER=1` on Render; the scheduler
+  checks about a minute after boot, then every 15 minutes while awake. Render free instances sleep after 15 idle minutes,
+  so it runs whenever awake (any visit wakes it); use an external cron calling `POST /api/digests/run` with `{"force": false}`
+  for a reliable wall-clock trigger.
 - Email delivery needs `RESEND_API_KEY` + `DIGEST_FROM` (Resend free tier, verified domain). Without them the flow
   still works end to end: subscribers are active immediately and see the latest digest on `/digest/<token>`.
 - Review checklist before sending Oriane the link: a real brand search → subscribe → `POST /api/digests/run {"id": n}`
