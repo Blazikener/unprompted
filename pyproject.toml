@@ -12,6 +12,19 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["app"]
 
+[tool.poetry]
+name = "unprompted"
+version = "0.1.0"
+description = "Oriane-powered brand-mention search for agencies and Receipts for creators"
+authors = ["Blazikener"]
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = ">=0.110,<1"
+uvicorn = ">=0.27,<1"
+psycopg = { version = ">=3.1,<4", extras = ["binary"] }
+
 [tool.ruff]
 line-length = 150
 target-version = "py310"
