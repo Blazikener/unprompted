@@ -1,0 +1,17 @@
+# fly launch --copy-config --no-deploy, then: fly secrets set DATABASE_URL=... ORIANE_API_KEY=... APP_URL=https://<app>.fly.dev
+app = "receipts-unprompted"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

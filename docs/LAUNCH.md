@@ -10,6 +10,9 @@ sent by a person from their own account.
    keys (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO` for a $29/mo price, `STRIPE_WEBHOOK_SECRET` from a webhook on
    `/api/creators/billing/webhook`). Without Stripe the paywall offers "Reserve Pro at $29/mo" and logs a `checkout_intent`
    event per click, so the gate can be measured before billing is live; real checkout starts replace it once Stripe is on.
+   One-command path (Fly.io, free tier, any Postgres such as a Supabase project via its session pooler):
+   `fly launch --copy-config --no-deploy && fly secrets set DATABASE_URL='postgresql://…' ORIANE_API_KEY='…' APP_URL=https://<app>.fly.dev && fly deploy`.
+   The `Dockerfile` runs `uvicorn app.main:app`; Render/Railway pick the same Dockerfile up automatically.
 2. Open `/creators/?sample=1` on the deployed URL: this is the link that goes in every message.
 3. Run `python3 backend/prospect.py --app-url https://<domain>/creators/` to regenerate `first-users.md` with live links.
 
