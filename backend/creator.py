@@ -233,8 +233,10 @@ def draft_pitch(prof, row, activity, rate):
     posts = "%s unpaid %s" % (unpaid, ("mention" if spoken else "post") + ("" if unpaid == 1 else "s"))
     subject = "Already %s %s: %s, %s views" % ("talking about" if spoken else "featuring", row["brand"], posts, views)
     if spoken:
-        proof = "I've talked about %s on camera %s %s without being paid, and those videos have %s views so far." % (
-            row["brand"], unpaid, "time" if unpaid == 1 else "times", views)
+        n, extra = row["spoken"], row["tagged"]
+        also = " and tagged you in %s more %s" % (extra, "post" if extra == 1 else "posts") if extra else ""
+        proof = "I've talked about %s on camera %s %s%s without being paid, and those videos have %s views so far." % (
+            row["brand"], n, "time" if n == 1 else "times", also, views)
         one = "Here's one%s: \"%s\" (%s)" % (when, said, best["url"])
         why = "My audience already hears me recommend you, so a paid post would read like more of the same, not an ad."
     else:

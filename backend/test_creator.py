@@ -107,6 +107,8 @@ def test_rate_card_and_pitch():
     p = creator.draft_pitch(prof, rows[0], {"sponsored": 6, "windowDays": 90}, rate)
     assert "Tim Hortons" in p["subject"] and "5 unpaid mentions" in p["subject"]
     assert "6 disclosed creator posts" in p["body"] and "$1050-$2600" in p["body"] and "tiktok.com/@maya.eats" in p["body"]
+    assert "on camera %d times and tagged you in %d more post" % (rows[0]["spoken"], rows[0]["tagged"]) in p["body"]
+    assert rows[0]["spoken"] == 4 and rows[0]["tagged"] == 1
 
 
 def test_gate_hides_names_beyond_free_limit():
