@@ -8,6 +8,7 @@ Oriane credits. Cover and caption URLs are signed and expire after a few days.
 import json
 import re
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from urllib import error, request
@@ -157,6 +158,9 @@ def as_oriane(handle, item, user, chunks, lang):
 def fetch(handle, limit=MAX_VIDEOS):
     """Latest public videos for a TikTok handle in Oriane shape, or [] when nothing is reachable."""
     user, ids = creator_page(handle)
+    if not ids:
+        time.sleep(1)  # one retry: TikTok occasionally serves the embed without its video list
+        user, ids = creator_page(handle)
     if not ids:
         return []
     with ThreadPoolExecutor(WORKERS) as pool:
