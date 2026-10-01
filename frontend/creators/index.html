@@ -353,7 +353,7 @@ function startScan(platform, handle) {
   runScan(platform, handle);
 }
 async function runScan(platform, handle) {
-  const btn = $('#scan-btn'), inp = $('#handle'); btn.disabled = inp.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
+  const btn = $('#scan-btn'), inp = $('#handle'); $('#miss').hidden = true; btn.disabled = inp.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
   try { const scan = await api('/scans', { platform, handle }); showScan(scan); loadHistory(); }
   catch (e) { if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!(await paywalled(e))) toast(e.message); }
   btn.disabled = inp.disabled = false; btn.textContent = 'Find my brands';
