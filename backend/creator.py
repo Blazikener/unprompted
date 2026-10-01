@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS events (                -- funnel: scan, paywall, che
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram"}
 # "so excited to partner with [BFF and] ClassPass": a disclosure verb at most three words before the brand.
 # "#ninjapartner", "#sephoraambassador": the disclosure tag carries the brand's name as a prefix
-BRANDED_DISCLOSURE = re.compile(r".{2,}(partner|partnership|ambassador|sponsored|collab)")
+BRANDED_DISCLOSURE = re.compile(r"(.{2,}?)(partner|partnership|ambassador|sponsored|collab)")
 SPOKEN_DISCLOSURE = re.compile(r"(?:partner(?:ed|ing)? with|partnership with|sponsored by|sponsoring|thanks to|ad for|gifted by|"
                                r"ambassador for|collab(?:oration)? with)\W+(?:[^\W_]+\W+){0,3}$", re.IGNORECASE)
 PRO_PRICE_USD = 29
@@ -124,8 +124,8 @@ def brand_mentions(raw):
     """
     caption = " ".join([raw.get("caption") or "", *(raw.get("hashtags") or [])])
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
-    disclosed = (bool(tags & DISCLOSURE_TAGS) or any(p in caption.lower() for p in DISCLOSURE_PHRASES)
-                 or any(BRANDED_DISCLOSURE.fullmatch(t) for t in tags))
+    branded = [m.group(1) for m in map(BRANDED_DISCLOSURE.fullmatch, tags) if m]
+    disclosed = bool(tags & DISCLOSURE_TAGS or branded) or any(p in caption.lower() for p in DISCLOSURE_PHRASES)
     mentioned = {m["profileHandle"].lower() for m in raw.get("mentions") or []}
     co_authors = {c["profileHandle"].lower() for c in raw.get("coAuthors") or []}
     thumb = raw.get("thumbnailMediaUrl")
@@ -140,7 +140,8 @@ def brand_mentions(raw):
             hay = ((q["text"] if q else "") + " " + (caption if in_caption else "")).lower()
             if not any(w in hay for w in b["context"]):
                 continue
-        if handles & co_authors or (disclosed and (in_caption or in_handles)):
+        own_tag = any(b["rx"].search(t) or t.startswith(b["name"].split()[0].lower()) for t in branded)
+        if handles & co_authors or own_tag or (disclosed and (in_caption or in_handles)):
             kind = "sponsored"
         elif q and SPOKEN_DISCLOSURE.search(q["text"][max(0, q["hit"][0] - 80):q["hit"][0]]):
             kind = "sponsored"
