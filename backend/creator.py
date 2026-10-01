@@ -26,6 +26,7 @@ from psycopg.types.json import Jsonb
 
 import demo
 import server
+import tiktok_public
 from brands import catalog
 from server import (
     DISCLOSURE_PHRASES, DISCLOSURE_TAGS, HANDLE_RE, VIDEO_UPSERT, ApiError, connect, find_quote, post_url,
@@ -289,6 +290,8 @@ def not_indexed(platform, handle):
     """
     name = PLATFORM_NAMES[platform]
     base = "Oriane has no videos indexed for @%s on %s yet." % (handle, name)
+    if platform == "instagram":
+        base += " Instagram only works for creators in our index so far; if they're on TikTok too, scan that handle."
     try:
         found = server.oriane({"handle": {"includesFuzzy": {"values": [handle]}}, "followersCount": {"min": 1000}},
                               limit=8, sort="followersCount", index="profiles")["data"]
@@ -312,6 +315,11 @@ def not_indexed(platform, handle):
 MISS_TTL_DAYS = 7
 
 
+def public_videos(platform, handle):
+    """Read the creator straight from the platform when Oriane has nothing; TikTok only so far."""
+    return tiktok_public.fetch(handle) if platform == "tiktok" else []
+
+
 def fetch_videos(platform, handle):
     if demo.active():
         return demo.creator_videos(platform, handle), "demo"
@@ -319,18 +327,24 @@ def fetch_videos(platform, handle):
         cached = db.execute("SELECT body FROM misses WHERE platform = %s AND handle = %s AND created_at > now() - interval '%s days'"
                             % ("%s", "%s", MISS_TTL_DAYS), (platform, handle)).fetchone()
     if cached:
+        videos = public_videos(platform, handle)
+        if videos:
+            return videos, "public"
         body = cached["body"]
         raise ApiError(404, body["error"], reason=body["reason"], suggestions=body["suggestions"], cached=True)
     filters = {"profileHandle": {"exactMatch": {"values": [handle]}}, "platform": {"includes": [platform]}}
     videos = server.oriane(filters, limit=100, sort="publishedAt")["data"]["results"]
-    if not videos:
-        miss = not_indexed(platform, handle)
-        with connect() as db:
-            db.execute("INSERT INTO misses (platform, handle, body) VALUES (%s, %s, %s)"
-                       " ON CONFLICT (platform, handle) DO UPDATE SET body = EXCLUDED.body, created_at = now()",
-                       (platform, handle, Jsonb({"error": str(miss), **miss.extra})))
-        raise miss
-    return videos, "live"
+    if videos:
+        return videos, "live"
+    videos = public_videos(platform, handle)
+    if videos:
+        return videos, "public"
+    miss = not_indexed(platform, handle)
+    with connect() as db:
+        db.execute("INSERT INTO misses (platform, handle, body) VALUES (%s, %s, %s)"
+                   " ON CONFLICT (platform, handle) DO UPDATE SET body = EXCLUDED.body, created_at = now()",
+                   (platform, handle, Jsonb({"error": str(miss), **miss.extra})))
+    raise miss
 
 
 def brand_entry(name):

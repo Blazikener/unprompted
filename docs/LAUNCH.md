@@ -18,8 +18,11 @@ sent by a person from their own account.
    15 minutes idle, so the first request after a pause takes 30–50 s; upgrade the plan before any paid campaign.
    Fallback hosts: `fly.toml` is ready for `fly launch --copy-config --no-deploy && fly secrets set … && fly deploy`;
    Railway picks the same `Dockerfile` up automatically.
-2. Expect misses. Oriane's profile index is far broader than its video index, so a creator can be known (followers
-   shown) with zero videos to scan; the UI says so and offers same-handle-other-platform or close-handle chips.
+2. Expect misses on Instagram only. Oriane's profile index is far broader than its video index, so a creator can be
+   known (followers shown) with zero videos to scan. For TikTok, `backend/tiktok_public.py` then reads the creator
+   straight from TikTok's public embed page (latest ~10 videos, captions, tags, TikTok's own auto-captions) at zero
+   Oriane cost and the scan is labelled "Public data". Instagram has no logged-out public surface, so misses there
+   explain themselves and offer same-handle-other-platform or close-handle chips.
    Watch `scan_miss / (scan + scan_miss)` weekly; if it stays above ~40%, prospect only from creators Oriane
    already indexes (`backend/prospect.py` does) and say "works for creators in our index" in the copy.
    Credits: a live scan is one content search (40), a miss adds one profile lookup (30 → 70 total); misses are

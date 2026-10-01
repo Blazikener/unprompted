@@ -93,6 +93,7 @@
   .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
   .tag.demo { background: var(--coral-soft); color: var(--coral-ink); }
   .tag.live { background: var(--moss-soft); color: var(--moss); }
+  .tag.public { background: var(--moss-soft); color: var(--moss); }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
   .stat { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--panel); }
   .stat b { display: block; font: italic 500 1.75rem/1.1 var(--serif); }
@@ -394,7 +395,7 @@ function render() {
       : ro ? `<div class="banner"><div><b>@${esc(p.handle)}'s brand receipts</b> <span>verified from ${p.videos} ${PLATFORM[p.platform]} videos with Receipts by Unprompted.</span></div><button class="btn btn-primary btn-sm" id="cta">Get yours, free</button></div>` : ''}
     <div class="profile">
       <img class="pfp" src="${esc(p.pfp || '')}" alt="">
-      <div><h2>${esc(p.name || '@' + p.handle)} <span class="tag ${s.source}">${s.source === 'demo' ? 'Demo data' : 'Live'}</span></h2>
+      <div><h2>${esc(p.name || '@' + p.handle)} <span class="tag ${s.source}">${s.source === 'demo' ? 'Demo data' : s.source === 'public' ? 'Public data' : 'Live'}</span></h2>
       <div class="meta"><a href="${esc(p.url)}" target="_blank" rel="noopener">@${esc(p.handle)} on ${PLATFORM[p.platform]}</a><span>${num(p.followers)} followers</span><span>${p.videos} videos read</span><span>${p.window ? date(p.window[0]) + ' – ' + date(p.window[1]) : ''}</span></div></div>
     </div>
     <div class="stats">
@@ -404,7 +405,8 @@ function render() {
       <div class="stat"><b>${p.medianEr ?? '–'}%</b><span>median engagement</span></div>
     </div>
     ${s.sample ? `<p class="locked-note">Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.</p>`
-      : s.source === 'demo' ? `<p class="locked-note">Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn't.</p>` : ''}
+      : s.source === 'demo' ? `<p class="locked-note">Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn't.</p>`
+      : s.source === 'public' ? `<p class="locked-note">Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. Our transcript index doesn't cover this creator yet, so older videos aren't included.</p>` : ''}
     <div class="section-h"><h3>${ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'}</h3><small>unpaid mentions rank above past sponsors</small></div>
     ${s.brands.length ? s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')
       : `<div class="empty"><b>No catalog brand in these ${p.videos} videos</b>We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don't track yet, tell us in the sidebar and we'll add it.</div>`}

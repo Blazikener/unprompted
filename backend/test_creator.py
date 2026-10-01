@@ -15,6 +15,7 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 
 import psycopg
+from psycopg.types.json import Jsonb
 import pytest
 
 os.environ.setdefault("DATABASE_URL", "postgresql:///unprompted_test")
@@ -25,6 +26,7 @@ os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
 import creator  # noqa: E402
 import demo  # noqa: E402
 import server  # noqa: E402
+import tiktok_public  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -174,6 +176,73 @@ def test_not_indexed_explains_the_gap_with_one_lookup(monkeypatch):
     monkeypatch.setattr(server, "oriane", broken)
     e = creator.not_indexed("tiktok", "x")
     assert e.status == 404 and e.extra == {"reason": "unknown", "suggestions": []}
+
+
+VTT = """WEBVTT
+
+00:00:00.000 --> 00:00:02.740
+Day 2 of what if Disney princesses were Pakistani baddies?
+
+00:00:02.741 --> 00:00:04.741
+<c>And today</c> we have Jasmine from Aladdin.
+
+00:11.020 --> 00:12.20
+I'm wearing Ninja creami merch.
+"""
+
+
+def test_vtt_chunks_and_subtitle_preference():
+    chunks = tiktok_public.vtt_chunks(VTT)
+    assert [c["text"] for c in chunks] == ["Day 2 of what if Disney princesses were Pakistani baddies?",
+                                           "And today we have Jasmine from Aladdin.", "I'm wearing Ninja creami merch."]
+    assert chunks[0]["startSeconds"] == 0 and chunks[1]["endSeconds"] == 4.741 and chunks[2]["startSeconds"] == 11.02
+    infos = [{"Url": "u1", "Format": "webvtt", "Source": "MT", "LanguageCodeName": "eng-US"},
+             {"Url": "u2", "Format": "webvtt", "Source": "ASR", "LanguageCodeName": "urd-PK"},
+             {"Url": "u3", "Format": "webvtt", "Source": "ASR", "LanguageCodeName": "eng-GB"},
+             {"Url": "u4", "Format": "srt", "Source": "ASR", "LanguageCodeName": "eng-US"}]
+    assert tiktok_public.pick_subtitle(infos)["Url"] == "u3"
+    assert tiktok_public.pick_subtitle(infos[:2])["Url"] == "u2"
+    assert tiktok_public.pick_subtitle([]) is None
+
+
+def test_public_video_matches_oriane_shape_and_classifies():
+    item = {"id": "7647902360420748562", "desc": "Jasmine as Pakistani Baddie #disney #grwm @ninjakitchen", "createTime": 1780666035,
+            "stats": {"playCount": 66700, "diggCount": 5000, "commentCount": 100, "shareCount": 50},
+            "author": {"nickname": "Tahaiyya", "avatarMedium": "https://a/pfp.jpg", "verified": False},
+            "authorStats": {"followerCount": 261700},
+            "textExtra": [{"hashtagName": "disney"}, {"hashtagName": "grwm"}, {"userUniqueId": "ninjakitchen"}],
+            "video": {"duration": 53, "cover": "https://a/cover.jpg"}}
+    v = tiktok_public.as_oriane("nikki.bae_", item, {}, tiktok_public.vtt_chunks(VTT), "eng")
+    assert v["platformId"] == "7647902360420748562" and v["publishedAt"] == "2026-06-05T13:27:15Z" and v["viewsCount"] == 66700
+    assert v["hashtags"] == ["disney", "grwm"] and v["mentions"] == [{"profileHandle": "ninjakitchen"}]
+    assert v["engagementRatePerViews"] == 7.72 and v["thumbnailMediaUrl"] == "https://a/cover.jpg"
+    assert server.post_url(v) == "https://www.tiktok.com/@nikki.bae_/video/7647902360420748562"
+    kinds = {b["name"]: (kind, q) for b, kind, q in creator.brand_mentions(v)}
+    assert kinds["Ninja Kitchen"][0] == "tagged" and kinds["Ninja Kitchen"][1]["start"] == 11.02
+    assert creator.profile("tiktok", "nikki.bae_", [v])["followers"] == 261700
+
+
+def test_public_tiktok_fallback_runs_after_oriane_and_on_cached_misses(monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "k")
+    monkeypatch.setattr(demo, "active", lambda: False)
+    calls = []
+    monkeypatch.setattr(server, "oriane", lambda *a, index="contents", **k: calls.append(index)
+                        or {"data": {"results": []} if index == "contents" else []})
+    public = {"tiktok": [{"id": "tiktok-public-1", "platform": "tiktok", "platformId": "1", "profileHandle": "fresh.face", "caption": ""}]}
+    monkeypatch.setattr(tiktok_public, "fetch", lambda h, limit=12: calls.append("public") or public.get(h, []))
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("DELETE FROM misses")
+    with pytest.raises(server.ApiError) as e:
+        creator.fetch_videos("instagram", "fresh.face")
+    assert "scan that handle" in str(e.value) and calls == ["contents", "profiles"]
+    calls.clear()
+    monkeypatch.setitem(public, "fresh.face", public.pop("tiktok"))
+    assert creator.fetch_videos("tiktok", "fresh.face") == (public["fresh.face"], "public") and calls == ["contents", "public"]
+    calls.clear()
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("INSERT INTO misses (platform, handle, body) VALUES ('tiktok', 'fresh.face', %s)",
+                   (Jsonb({"error": "x", "reason": "unknown", "suggestions": []}),))
+    assert creator.fetch_videos("tiktok", "fresh.face")[1] == "public" and calls == ["public"]
 
 
 def test_misses_are_cached_so_retries_cost_no_credits(monkeypatch):
