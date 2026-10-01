@@ -91,7 +91,8 @@ def send(to, subject, body):
         return False
     req = request.Request("https://api.resend.com/emails", method="POST",
                           data=json.dumps({"from": os.environ["DIGEST_FROM"], "to": [to], "subject": subject, "html": body}).encode(),
-                          headers={"Content-Type": "application/json", "Authorization": "Bearer " + os.environ["RESEND_API_KEY"]})
+                          headers={"Content-Type": "application/json", "Authorization": "Bearer " + os.environ["RESEND_API_KEY"],
+                                   "User-Agent": "Unprompted digest (+%s)" % app_url()})
     try:
         with request.urlopen(req, timeout=20):
             return True
@@ -292,7 +293,23 @@ def run_route(handler, body):
     if not secrets.compare_digest((handler.headers.get("Authorization") or "").removeprefix("Bearer ").strip(), token):
         raise ApiError(401, "Bad run token.")
     digest_id = body.get("id")
+    if body.get("resend") and isinstance(digest_id, int):
+        return resend_last(digest_id)
     return run_due(digest_id if isinstance(digest_id, int) else None, bool(body.get("force")))
+
+
+def resend_last(digest_id):
+    """Mail the newest stored run of one digest again (no Oriane call) and record whether it went out."""
+    with connect() as db:
+        d = db.execute("SELECT * FROM digests WHERE id = %s", (digest_id,)).fetchone()
+        run = db.execute("SELECT * FROM digest_runs WHERE digest_id = %s AND html IS NOT NULL ORDER BY id DESC LIMIT 1",
+                         (digest_id,)).fetchone()
+    if not d or not run:
+        raise ApiError(404, "No digest with a rendered run.")
+    sent = send(d["email"], run["subject"], run["html"])
+    with connect() as db:
+        db.execute("UPDATE digest_runs SET sent = sent OR %s WHERE id = %s", (sent, run["id"]))
+    return {"digest": digest_id, "run": run["id"], "new": run["new_count"], "sent": sent, "resent": True}
 
 
 def scheduler(every_s=900):

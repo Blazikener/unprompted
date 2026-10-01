@@ -47,7 +47,8 @@ last run) and the emails and pages credit Oriane.
   sent. Videos already on the dashboard (`searchId`) count as seen, so the first digest only has new ones.
 - `/digest/<token>`: manage page (pause, resume, unsubscribe, past runs, latest email preview).
 - `POST /api/digests/run` with `Authorization: Bearer $DIGEST_RUN_TOKEN`: runs due digests (`{"force": true}` all,
-  `{"id": n}` one). `DIGEST_SCHEDULER=1` does the same in-process every 15 minutes. Both are off until configured, so
+  `{"id": n}` one, `{"id": n, "resend": true}` re-mails the newest rendered run without an Oriane call).
+  `DIGEST_SCHEDULER=1` does the same in-process every 15 minutes. Both are off until configured, so
   a fresh deployment spends no Oriane credits.
 - Cost: 40 Oriane credits per digest per week (one search, `sort=publishedAt`, limit 100). Quiet weeks send nothing.
 

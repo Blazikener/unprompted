@@ -106,6 +106,10 @@ def test_run_mails_only_unseen_mentions_and_credits_oriane(monkeypatch):
     assert digest.run_due(force=True)["results"][0]["new"] == 0 and len(sent) == 1
     view = digest.manage(d["token"])
     assert view["lastRunAt"] and len(view["runs"]) == 2 and view["runs"][1]["newCount"] == 3 and view["latestHtml"] == body
+    # mail failed on the real run: the operator can re-send the newest rendered run without touching Oriane
+    again = digest.resend_last(d["id"])
+    assert again == {"digest": d["id"], "run": view["runs"][1]["id"], "new": 3, "sent": True, "resent": True}
+    assert len(calls) == 1 and sent[1] == sent[0]
 
 
 def test_manage_actions():
