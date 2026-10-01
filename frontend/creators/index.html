@@ -66,6 +66,8 @@
   .scan-form input { height: 54px; border: 0; border-radius: 10px; padding: 0 16px; font-size: 1.0625rem; background: var(--forest); color: var(--on-forest); }
   .scan-form input::placeholder { color: var(--on-forest-2); opacity: 0.7; }
   .scan-form .btn-primary { height: 54px; font-size: 1.0625rem; padding: 0 26px; }
+  .hero .miss { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: oklch(1 0 0 / 0.08); border: 1px solid oklch(1 0 0 / 0.14); font-size: 0.875rem; color: var(--on-forest); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .hero .miss .chip small { font-weight: 500; opacity: 0.75; margin-left: 6px; }
   .hero .fine { margin-top: 14px; font-size: 0.8125rem; color: var(--on-forest-2); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
   .chip { height: 32px; padding: 0 14px; border: 1px solid oklch(1 0 0 / 0.22); border-radius: 999px; background: transparent; color: var(--on-forest); font-weight: 600; cursor: pointer; }
   .chip:hover { background: var(--lime); border-color: var(--lime); color: var(--ink); }
@@ -213,6 +215,7 @@
       <input id="handle" placeholder="@yourhandle" autocomplete="off" spellcheck="false" required>
       <button class="btn btn-primary" type="submit" id="scan-btn">Find my brands</button>
     </form>
+    <div class="miss" id="miss" hidden></div>
     <div class="fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="btn-link" type="button" id="sample">See a sample report</button></div>
   </div></section>
   <section class="recent" id="recent" hidden><div class="section-h"><h3>Your scans</h3><small>pick up where you left off</small></div><div class="cards" id="recent-list"></div></section>
@@ -274,7 +277,7 @@ async function api(path, body, method) {
   const res = await fetch('/api/creators' + path, body === undefined ? { method: method || 'GET' }
     : { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({ error: 'Bad response' }));
-  if (!res.ok) { const e = new Error(data.error || res.statusText); e.status = res.status; throw e; }
+  if (!res.ok) { const e = new Error(data.error || res.statusText); e.status = res.status; e.data = data; throw e; }
   return data;
 }
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), Math.min(8000, 2200 + msg.length * 35)); }
@@ -341,7 +344,8 @@ $('#upgrade-go').onclick = async () => {
 async function paywalled(err, why) { if (err.status === 402) { openUpgrade(why || err.message); return true; } if (err.status === 401) { openAuth('login'); return true; } return false; }
 
 // ---- scanning
-for (const b of document.querySelectorAll('.seg button')) b.onclick = () => { S.platform = b.dataset.platform; for (const x of b.parentNode.children) x.setAttribute('aria-pressed', x === b); };
+function setPlatform(p) { S.platform = p; for (const x of document.querySelectorAll('.seg button')) x.setAttribute('aria-pressed', x.dataset.platform === p); }
+for (const b of document.querySelectorAll('.seg button')) b.onclick = () => setPlatform(b.dataset.platform);
 $('#scan-form').onsubmit = (e) => { e.preventDefault(); const h = $('#handle').value.trim().replace(/^@/, ''); if (h) startScan(S.platform, h); };
 $('#new-scan').onclick = showLanding;
 function startScan(platform, handle) {
@@ -351,7 +355,7 @@ function startScan(platform, handle) {
 async function runScan(platform, handle) {
   const btn = $('#scan-btn'), inp = $('#handle'); btn.disabled = inp.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
   try { const scan = await api('/scans', { platform, handle }); showScan(scan); loadHistory(); }
-  catch (e) { if (!(await paywalled(e))) toast(e.message); }
+  catch (e) { if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!(await paywalled(e))) toast(e.message); }
   btn.disabled = inp.disabled = false; btn.textContent = 'Find my brands';
 }
 async function openScan(id) { try { showScan(await api('/scans/' + id)); } catch (e) { toast(e.message); } }
@@ -362,11 +366,23 @@ async function loadHistory() {
   $('#recent-list').innerHTML = rows.slice(0, 6).map((r) => `<button class="card" data-id="${r.id}"><img src="${esc(r.pfp || '')}" alt=""><span><b>@${esc(r.handle)}</b><small>${PLATFORM[r.platform]} · ${r.brands} brands · ${date(r.createdAt)}</small></span></button>`).join('');
   for (const b of document.querySelectorAll('#history button, #recent-list button')) b.onclick = () => openScan(+b.dataset.id);
 }
+const PLATFORM_LABEL = { tiktok: 'TikTok', instagram: 'Instagram' };
+function showMiss(e) {
+  const box = $('#miss'); box.replaceChildren();
+  const msg = document.createElement('span'); msg.textContent = e.message; box.append(msg);
+  for (const s of e.data.suggestions) {
+    const c = document.createElement('button'); c.className = 'chip'; c.type = 'button';
+    c.innerHTML = `@${s.handle}<small>${num(s.followers)} · ${PLATFORM_LABEL[s.platform]}</small>`;
+    c.onclick = () => { setPlatform(s.platform); $('#handle').value = '@' + s.handle; startScan(s.platform, s.handle); };
+    box.append(c);
+  }
+  box.hidden = false; box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
 function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (location.pathname !== '/creators/') history.replaceState({}, '', '/creators/'); }
 
 function showScan(scan) {
   S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {};
-  $('#landing').hidden = true; $('#app').hidden = false;
+  $('#landing').hidden = true; $('#app').hidden = false; $('#miss').hidden = true;
   render(); window.scrollTo({ top: 0 });
 }
 function render() {

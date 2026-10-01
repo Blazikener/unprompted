@@ -258,13 +258,51 @@ def draft_pitch(prof, row, activity, rate):
 
 # ---------------------------------------------------------------- data
 
+HANDLE_URL_RE = re.compile(r"(?:https?://)?(?:www\.|m\.|vm\.)?(tiktok|instagram)\.com/@?([A-Za-z0-9._]+)", re.I)
+
+
+def parse_handle(raw, platform=None):
+    """Accept "@Name", "name", or a pasted profile/video URL; a URL also decides the platform."""
+    raw = str(raw or "").strip()
+    m = HANDLE_URL_RE.search(raw)
+    if m:
+        platform, raw = m.group(1).lower(), m.group(2)
+    handle = raw.split("?")[0].strip().strip("/").lstrip("@").lower()
+    return platform, handle
+
+
+def not_indexed(platform, handle):
+    """Why a live scan found nothing: profile known but not crawled, same name elsewhere, or close handles."""
+    name = PLATFORM_NAMES[platform]
+    base = "Oriane has no videos indexed for @%s on %s yet." % (handle, name)
+    try:
+        exact = server.oriane({"handle": {"exactMatch": {"values": [handle]}}}, limit=5, sort="followersCount", index="profiles")["data"]
+        same = [r for r in exact if r["platform"] == platform]
+        other = [r for r in exact if r["platform"] != platform]
+        if same:
+            msg = ("Oriane knows @%s on %s (%s followers) but hasn't indexed their videos yet, so there's nothing to scan today. "
+                   "Try again in a few days." % (handle, name, fmt_num(same[0]["followersCount"])))
+            return ApiError(404, msg, reason="profile_only", suggestions=[])
+        fuzzy = server.oriane({"handle": {"includesFuzzy": {"values": [handle]}}, "platform": {"includes": [platform]},
+                               "followersCount": {"min": 1000}}, limit=6, sort="followersCount", index="profiles")["data"]
+    except ApiError:
+        return ApiError(404, base, reason="unknown", suggestions=[])
+    picks = [{"platform": r["platform"], "handle": r["handle"], "followers": r["followersCount"]} for r in other + fuzzy
+             if r["handle"] != handle or r["platform"] != platform][:4]
+    if other:
+        base = "Oriane has @%s indexed on %s, not %s." % (handle, PLATFORM_NAMES[other[0]["platform"]], name)
+    elif picks:
+        base += " Did you mean one of these?"
+    return ApiError(404, base, reason="other_platform" if other else "unknown", suggestions=picks)
+
+
 def fetch_videos(platform, handle):
     if demo.active():
         return demo.creator_videos(platform, handle), "demo"
     filters = {"profileHandle": {"exactMatch": {"values": [handle]}}, "platform": {"includes": [platform]}}
     videos = server.oriane(filters, limit=100, sort="publishedAt")["data"]["results"]
     if not videos:
-        raise ApiError(404, "Oriane has no videos indexed for @%s on %s yet." % (handle, platform))
+        raise not_indexed(platform, handle)
     return videos, "live"
 
 
@@ -440,9 +478,10 @@ def scan_view(row, plan):
 
 
 def run_scan(user, body):
-    platform, handle = body.get("platform"), str(body.get("handle", "")).strip().lstrip("@").lower()
+    platform, handle = parse_handle(body.get("handle"), body.get("platform"))
     if platform not in ("instagram", "tiktok") or not HANDLE_RE.fullmatch(handle):
-        raise ApiError(400, "Enter a TikTok or Instagram handle.")
+        raise ApiError(400, "Enter a TikTok or Instagram handle (letters, numbers, dots, underscores; no spaces)."
+                       if " " in handle else "Enter a TikTok or Instagram handle, or paste your profile link.")
     with connect() as db:
         recent = db.execute("SELECT * FROM scans WHERE user_id = %s AND platform = %s AND handle = %s AND created_at > now() - interval '1 day'"
                             " ORDER BY id DESC LIMIT 1", (user["id"], platform, handle)).fetchone()
@@ -455,7 +494,13 @@ def run_scan(user, body):
         track(user["id"], "paywall", {"reason": "scan_quota", "plan": user["plan"]})
         raise ApiError(402, "You've used your %d free scan this week. Pro gets %d." % (limit, PLANS["pro"]["scansPerWeek"]) if user["plan"] == "free"
                        else "Scan limit reached (%d per week)." % limit)
-    videos, source = fetch_videos(platform, handle)
+    try:
+        videos, source = fetch_videos(platform, handle)
+    except ApiError as e:
+        if e.status == 404:
+            track(user["id"], "scan_miss", {"platform": platform, "handle": handle, "reason": e.extra.get("reason", "demo"),
+                                            "suggested": len(e.extra.get("suggestions", []))})
+        raise
     rows = aggregate(videos)
     prof = profile(platform, handle, videos)
     with connect() as db:

@@ -133,6 +133,42 @@ def test_oriane_wallet_error_is_ours_not_the_users(monkeypatch):
     assert e.value.status == 503 and "quota" in str(e.value) and "402" not in str(e.value)
 
 
+def test_parse_handle_accepts_links_and_decides_platform():
+    assert creator.parse_handle("@Maya.Eats", "tiktok") == ("tiktok", "maya.eats")
+    assert creator.parse_handle("https://www.tiktok.com/@Maya.Eats/video/7301?lang=en", "instagram") == ("tiktok", "maya.eats")
+    assert creator.parse_handle("instagram.com/sami.lifts/", "tiktok") == ("instagram", "sami.lifts")
+    assert creator.parse_handle("  maya eats ", "tiktok") == ("tiktok", "maya eats")
+
+
+def test_not_indexed_explains_the_gap(monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "k")
+    profiles = [{"platform": "tiktok", "handle": "khaby.lame", "followersCount": 163_000_000},
+                {"platform": "instagram", "handle": "khaby_lame_fans", "followersCount": 91_108}]
+
+    def fake(filters, limit=100, sort="x", offset=0, index="contents"):
+        assert index == "profiles"
+        if "exactMatch" in filters["handle"]:
+            return {"data": [p for p in profiles if p["handle"] == filters["handle"]["exactMatch"]["values"][0]]}
+        return {"data": [p for p in profiles if p["platform"] in filters["platform"]["includes"]]}
+
+    monkeypatch.setattr(server, "oriane", fake)
+    e = creator.not_indexed("instagram", "khaby.lame")
+    assert e.status == 404 and "indexed on TikTok, not Instagram" in str(e) and e.extra["reason"] == "other_platform"
+    assert [s["handle"] for s in e.extra["suggestions"]] == ["khaby.lame", "khaby_lame_fans"]
+    e = creator.not_indexed("tiktok", "nobody.here")
+    assert e.extra["reason"] == "unknown" and "Did you mean" in str(e) and e.extra["suggestions"][0]["handle"] == "khaby.lame"
+    profiles.append({"platform": "tiktok", "handle": "quiet.one", "followersCount": 500})
+    e = creator.not_indexed("tiktok", "quiet.one")
+    assert e.extra["reason"] == "profile_only" and "500 followers" in str(e) and e.extra["suggestions"] == []
+
+    def broken(*a, **k):
+        raise server.ApiError(502, "down")
+
+    monkeypatch.setattr(server, "oriane", broken)
+    e = creator.not_indexed("tiktok", "x")
+    assert e.status == 404 and e.extra == {"reason": "unknown", "suggestions": []}
+
+
 def test_stripe_signature():
     payload, secret = b'{"type":"x"}', "whsec_test"
     ts = int(time.time())
@@ -186,6 +222,14 @@ def test_http_flow(base):
     status, out = c.call("POST", "/api/creators/signup", {"email": "Maya@Example.com", "password": "longenough"})
     assert status == 201 and out["user"]["email"] == "maya@example.com" and out["user"]["plan"] == "free"
     assert c.call("POST", "/api/creators/signup", {"email": "maya@example.com", "password": "longenough"})[0] == 409
+
+    # a pasted link works, spaces get a specific hint, and a miss is tracked with its reason in the error body
+    assert c.call("POST", "/api/creators/scans", {"platform": "tiktok", "handle": "maya eats"})[1]["error"].startswith("Enter a TikTok")
+    status, err = c.call("POST", "/api/creators/scans", {"platform": "tiktok", "handle": "https://www.tiktok.com/@nobody.here"})
+    assert status == 404 and "fixture creators" in err["error"]
+    with psycopg.connect(server.DB_URL) as db:
+        miss = db.execute("SELECT data FROM events WHERE name = 'scan_miss'").fetchall()
+    assert len(miss) == 1 and miss[0][0]["handle"] == "nobody.here" and miss[0][0]["platform"] == "tiktok"
 
     # form posts are rejected (CSRF), JSON is required
     status, _ = c.call("POST", "/api/creators/scans", raw=b"platform=tiktok", headers={"Content-Type": "application/x-www-form-urlencoded"})

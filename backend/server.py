@@ -31,7 +31,7 @@ if (ROOT / ".env").exists():
         if sep and not key.startswith("#"):
             os.environ.setdefault(key.strip(), val.strip().strip("\"'"))
 
-ORIANE_URL = "https://connect.oriane.xyz/rest/contents/search"
+ORIANE_URL = "https://connect.oriane.xyz/rest/%s/search"
 DB_URL = os.environ.get("DATABASE_URL", "postgresql:///unprompted")
 
 SCHEMA = """
@@ -114,9 +114,10 @@ HANDLE_RE = re.compile(r"[A-Za-z0-9._]{1,40}")
 
 
 class ApiError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, **extra):
         super().__init__(message)
         self.status = status
+        self.extra = extra
 
 
 def term_pattern(term):
@@ -179,7 +180,6 @@ def classify(raw, brand, variants):
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
     co_authors = " ".join(c["profileHandle"] for c in raw.get("coAuthors") or [])
     mentioned = " ".join(m["profileHandle"] for m in raw.get("mentions") or [])
-    # ponytail: a fan account with the brand in its handle counts as owned; add an allowlist if it bites
     if mention_re([brand]).search(raw.get("profileHandle") or ""):
         kind = "owned"
     elif tags & DISCLOSURE_TAGS or any(p in caption.lower() for p in DISCLOSURE_PHRASES) or rx.search(co_authors):
@@ -253,13 +253,12 @@ def parse(body):
 EMPTY_PAGE = {"data": {"results": [], "aggregations": {"totalViewsCount": 0}}, "metadata": {}}
 
 
-def oriane(filters, limit=100, sort="transcriptRelevance", offset=0):
+def oriane(filters, limit=100, sort="transcriptRelevance", offset=0, index="contents"):
     key = os.environ.get("ORIANE_API_KEY")
     if not key:
         raise ApiError(500, "ORIANE_API_KEY is not set.")
-    # ponytail: searches stop at the top 100 by relevance; page further with offset for full coverage
     req = request.Request(
-        "%s?projection=full&sort=%s&limit=%d&offset=%d" % (ORIANE_URL, sort, limit, offset),
+        "%s?projection=full&sort=%s&limit=%d&offset=%d" % (ORIANE_URL % index, sort, limit, offset),
         data=json.dumps({"operator": "and", "filters": filters}).encode(), method="POST",
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
     try:
@@ -417,7 +416,6 @@ def check(recent, brand, variants, known=()):
     mentions = len(recent_ids | set(known))
     affinity = round(min(mentions / 3, 1) * 100)  # 3+ videos mentioning the brand = full marks
 
-    # ponytail: fixed weights, and safety below 60 vetoes; tune with the agency's own vetting rules
     total = round(0.4 * safety + 0.35 * performance + 0.25 * affinity)
     verdict = "Risky" if safety < 60 else "Ready to pitch" if total >= 70 else "Review first"
     top = sorted(recent, key=lambda r: -(r.get("viewsCount") or 0))[:8]
@@ -563,7 +561,7 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             status, body = 200, fn()
         except ApiError as e:
-            status, body = e.status, {"error": str(e)}
+            status, body = e.status, {"error": str(e), **e.extra}
         except psycopg.OperationalError:
             traceback.print_exc()
             status, body = 503, {"error": "Database unavailable. Is Postgres running?"}

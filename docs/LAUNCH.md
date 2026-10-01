@@ -18,8 +18,12 @@ sent by a person from their own account.
    15 minutes idle, so the first request after a pause takes 30–50 s; upgrade the plan before any paid campaign.
    Fallback hosts: `fly.toml` is ready for `fly launch --copy-config --no-deploy && fly secrets set … && fly deploy`;
    Railway picks the same `Dockerfile` up automatically.
-2. Open `/creators/?sample=1` on the deployed URL: this is the link that goes in every message.
-3. Run `python3 backend/prospect.py --app-url https://receipts-thc8.onrender.com/creators/` to regenerate
+2. Expect misses. Oriane's profile index is far broader than its video index, so a creator can be known (followers
+   shown) with zero videos to scan; the UI says so and offers same-handle-other-platform or close-handle chips.
+   Watch `scan_miss / (scan + scan_miss)` weekly; if it stays above ~40%, prospect only from creators Oriane
+   already indexes (`backend/prospect.py` does) and say "works for creators in our index" in the copy.
+3. Open `/creators/?sample=1` on the deployed URL: this is the link that goes in every message.
+4. Run `python3 backend/prospect.py --app-url https://receipts-thc8.onrender.com/creators/` to regenerate
    `first-users.md` with live links.
 
 ## 1. Direct DMs (highest yield, ~30 a day)
@@ -59,6 +63,7 @@ flattering and brands read them because it is evidence. Track shares in the `eve
 | `subscribed` | webhook confirmed a paid subscription |
 | `share` | receipt page published |
 | `report` | "brand missing" feedback (`data.text`) |
+| `scan_miss` | live scan found no videos (`data.reason` = profile_only / other_platform / unknown, `data.suggested`) |
 
 `SELECT name, count(*) FROM events WHERE created_at > now() - interval '7 days' GROUP BY 1;` is the weekly funnel.
 Gate: `checkout_started / scan >= 5%` over the first 100 scans, or change the offer before spending more on acquisition.
