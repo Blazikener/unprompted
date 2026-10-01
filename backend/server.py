@@ -13,7 +13,6 @@ import sys
 import time
 import traceback
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,6 +31,7 @@ if (ROOT / ".env").exists():
             os.environ.setdefault(key.strip(), val.strip().strip("\"'"))
 
 ORIANE_URL = "https://connect.oriane.xyz/rest/%s/search"
+ORIANE_COST = {"contents": 40, "profiles": 30}
 DB_URL = os.environ.get("DATABASE_URL", "postgresql:///unprompted")
 
 SCHEMA = """
@@ -70,6 +70,13 @@ CREATE TABLE IF NOT EXISTS checks (
 );
 CREATE INDEX IF NOT EXISTS checks_creator ON checks (platform, handle, created_at DESC);
 ALTER TABLE searches ADD COLUMN IF NOT EXISTS fetch_ms int;  -- Oriane fetch + ranking time
+CREATE TABLE IF NOT EXISTS oriane_calls (
+  id         serial PRIMARY KEY,
+  endpoint   text NOT NULL,
+  credits    int NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS oriane_calls_created ON oriane_calls (created_at);
 """
 
 VIDEO_UPSERT = """
@@ -253,6 +260,21 @@ def parse(body):
 EMPTY_PAGE = {"data": {"results": [], "aggregations": {"totalViewsCount": 0}}, "metadata": {}}
 
 
+def record_oriane_call(index):
+    cost = ORIANE_COST[index]
+    budget = int(os.environ.get("ORIANE_DAILY_BUDGET", "600"))
+    with connect() as db:
+        db.execute("SELECT pg_advisory_xact_lock(471478343)")
+        used = db.execute(
+            "SELECT coalesce(sum(credits), 0) AS n FROM oriane_calls"
+            " WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')"
+        ).fetchone()["n"]
+        if used + cost > budget:
+            raise ApiError(503, "Live search is paused for today to protect our data credits. "
+                           "Nothing was taken from your quota; try again tomorrow.")
+        db.execute("INSERT INTO oriane_calls (endpoint, credits) VALUES (%s, %s)", (index, cost))
+
+
 def oriane(filters, limit=100, sort="transcriptRelevance", offset=0, index="contents"):
     key = os.environ.get("ORIANE_API_KEY")
     if not key:
@@ -261,6 +283,7 @@ def oriane(filters, limit=100, sort="transcriptRelevance", offset=0, index="cont
         "%s?projection=full&sort=%s&limit=%d&offset=%d" % (ORIANE_URL % index, sort, limit, offset),
         data=json.dumps({"operator": "and", "filters": filters}).encode(), method="POST",
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+    record_oriane_call(index)
     try:
         with request.urlopen(req, timeout=45) as res:
             return json.load(res)
@@ -287,12 +310,12 @@ def video_row(r):
     return r["id"], r["platform"], r["profileHandle"], r.get("publishedAt"), r.get("viewsCount") or 0, Jsonb(r)
 
 
-def new_search(brand, params, data):
+def new_search(brand, params, data, user_id=None):
     total = (data["metadata"].get("pagination") or {}).get("totalCount", len(data["data"]["results"]))
     with connect() as db:
         return db.execute(
-            "INSERT INTO searches (brand, params, total_count, total_views) VALUES (%s, %s, %s, %s) RETURNING id",
-            (brand, Jsonb(params), total, data["data"]["aggregations"]["totalViewsCount"])).fetchone()["id"]
+            "INSERT INTO searches (brand, params, total_count, total_views, user_id) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (brand, Jsonb(params), total, data["data"]["aggregations"]["totalViewsCount"], user_id)).fetchone()["id"]
 
 
 def store_results(sid, results, brand, variants):
@@ -310,47 +333,49 @@ def store_results(sid, results, brand, variants):
     return len(results)
 
 
-def recent_search(brand, params):
+def recent_search(brand, params, user_id=None):
     """The same brand and filters searched in the last 15 minutes: reuse it instead of paying Oriane again."""
     with connect() as db:
         row = db.execute(
             "SELECT id FROM searches WHERE lower(brand) = lower(%s) AND params = %s"
-            " AND created_at > now() - interval '15 minutes' ORDER BY id DESC LIMIT 1", (brand, Jsonb(params))).fetchone()
+            " AND user_id IS NOT DISTINCT FROM %s AND created_at > now() - interval '15 minutes'"
+            " ORDER BY id DESC LIMIT 1", (brand, Jsonb(params), user_id)).fetchone()
     return row["id"] if row else None
 
 
-def search_events(brand, variants, filters, params, progress=True, page=25):
-    """Yield the dashboard as Oriane's top 100 lands in four parallel pages (about 2x faster than one call).
+def search_events(brand, variants, filters, params, user=None, progress=True):
+    """Yield the dashboard as Oriane's top 100 lands in one call.
 
     A repeat of a search from the last 15 minutes is served straight from Postgres.
     """
     t0 = time.perf_counter()
-    sid = recent_search(brand, params)
+    user_id = user["id"] if user else None
+    sid = recent_search(brand, params, user_id)
     source = "cache" if sid else "oriane"
     if not sid:
-        heard = 0
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            pages = [pool.submit(oriane, filters, page, "transcriptRelevance", offset) for offset in range(0, 100, page)]
-            for done in as_completed(pages):
-                data = done.result()
-                if not data["data"]["results"]:
-                    continue
-                if sid is None:
-                    sid = new_search(brand, params, data)
-                heard += store_results(sid, data["data"]["results"], brand, variants)
-                if progress:
-                    yield {"type": "progress", "heard": heard, "data": load(sid)}
-        if sid is None:  # nothing matched on any page
-            sid = new_search(brand, params, EMPTY_PAGE)
+        if user:
+            usage = creator.brand_usage(user)["searches"]
+            if usage["used"] >= usage["limit"]:
+                if user["plan"] == "free":
+                    raise ApiError(402, "You've used your %d free brand searches this week. Pro gets %d." %
+                                   (usage["limit"], creator.PLANS["pro"]["brandSearchesPerWeek"]))
+                raise ApiError(402, "Search limit reached (%d per week)." % usage["limit"])
+        data = oriane(filters, 100, "transcriptRelevance", 0)
+        results = data["data"]["results"]
+        sid = new_search(brand, params, data if results else EMPTY_PAGE, user_id=user_id)
+        if results:
+            heard = store_results(sid, results, brand, variants)
+            if progress:
+                yield {"type": "progress", "heard": heard, "data": load(sid)}
         with connect() as db:
             db.execute("UPDATE searches SET fetch_ms = %s WHERE id = %s", (round((time.perf_counter() - t0) * 1000), sid))
     timing = {"source": source, "ms": round((time.perf_counter() - t0) * 1000)}
     yield {"type": "done", "data": {**load(sid), "timing": timing}}
 
 
-def run_search(body):
+def run_search(body, user):
     """One-shot search: run search_events to the end and return the final dashboard."""
-    for event in search_events(*parse(body), progress=False):
+    for event in search_events(*parse(body), user=user, progress=False):
         pass
     return event["data"]
 
@@ -435,8 +460,8 @@ def check(recent, brand, variants, known=()):
     }
 
 
-def run_check(body):
-    """Score-check one creator for a brand. Reuses a check from the last 24h unless body.fresh is set."""
+def run_check(body, user):
+    """Score-check a creator, using the global 24h cache unless a Pro user requests a fresh result."""
     platform, handle = body.get("platform"), str(body.get("handle", ""))
     if platform not in ("instagram", "tiktok") or not HANDLE_RE.fullmatch(handle):
         raise ApiError(400, "Invalid creator.")
@@ -450,8 +475,15 @@ def run_check(body):
             "SELECT DISTINCT m.video_id FROM mentions m JOIN videos v ON v.id = m.video_id JOIN searches s ON s.id = m.search_id"
             " WHERE v.platform = %s AND v.handle = %s AND lower(s.brand) = lower(%s) AND m.kind IN ('spoken', 'tagged')",
             (platform, handle, brand)).fetchall()]
-    if cached and not body.get("fresh"):
+    fresh = bool(body.get("fresh")) and user["plan"] == "pro"
+    if cached and not fresh:
         return {**cached["result"], "createdAt": cached["createdAt"]}
+    usage = creator.brand_usage(user)["checks"]
+    if usage["used"] >= usage["limit"]:
+        if user["plan"] == "free":
+            raise ApiError(402, "You've used your %d free creator checks this week. Pro gets %d." %
+                           (usage["limit"], creator.PLANS["pro"]["checksPerWeek"]))
+        raise ApiError(402, "Check limit reached (%d per week)." % usage["limit"])
     filters = {"profileHandle": {"exactMatch": {"values": [handle]}}, "platform": {"includes": [platform]}}
     recent = oriane(filters, limit=30, sort="publishedAt")["data"]["results"]
     if not recent:
@@ -460,8 +492,9 @@ def run_check(body):
     with connect() as db:
         with db.cursor() as cur:
             cur.executemany(VIDEO_UPSERT, [video_row(r) for r in recent])
-        created = db.execute("INSERT INTO checks (platform, handle, brand, result) VALUES (%s, %s, %s, %s) RETURNING created_at",
-                             (platform, handle, brand, Jsonb(result))).fetchone()["created_at"]
+        created = db.execute("INSERT INTO checks (platform, handle, brand, result, user_id) VALUES (%s, %s, %s, %s, %s)"
+                             " RETURNING created_at",
+                             (platform, handle, brand, Jsonb(result), user["id"])).fetchone()["created_at"]
     return {**result, "createdAt": created}
 
 
@@ -494,12 +527,21 @@ def load(sid):
             "checks": {"%s:%s" % (c["platform"], c["handle"]): {**c["result"], "createdAt": c["createdAt"]} for c in checks}}
 
 
-def list_searches():
+def list_searches(user=None):
+    if not user:
+        return []
     with connect() as db:
         return db.execute(
             'SELECT s.id, s.brand, s.params, s.total_count AS "totalCount", s.created_at AS "createdAt", s.fetch_ms AS "fetchMs",'
             " count(m.video_id) AS analyzed FROM searches s LEFT JOIN mentions m ON m.search_id = s.id"
-            " GROUP BY s.id ORDER BY s.id DESC LIMIT 20").fetchall()
+            " WHERE s.user_id = %s GROUP BY s.id ORDER BY s.id DESC LIMIT 20", (user["id"],)).fetchall()
+
+
+def require_brand_user(headers):
+    user = creator.current_user(headers)
+    if not user:
+        raise ApiError(401, "Sign in to search.")
+    return user
 
 
 def not_found():
@@ -530,7 +572,7 @@ class Handler(SimpleHTTPRequestHandler):
         elif path.startswith("/api/digests"):
             self.api(lambda: digest.dispatch(self))
         elif path == "/api/searches":
-            self.api(list_searches)
+            self.api(lambda: list_searches(creator.current_user(self.headers)))
         elif m:
             self.api(lambda: load(int(m.group(1))))
         elif video:
@@ -550,7 +592,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         routes = {"/api/searches": run_search, "/api/checks": run_check,
-                  "/api/searches/stream": lambda body: Stream(search_events(*parse(body)))}
+                  "/api/searches/stream": lambda body, user: Stream(search_events(*parse(body), user=user))}
         route = routes.get(urlparse(self.path).path)
         if self.path.startswith("/api/creators/"):
             return self.api(lambda: creator.dispatch(self))
@@ -564,7 +606,7 @@ class Handler(SimpleHTTPRequestHandler):
                 body = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 10000)) or b"{}")
             except ValueError:
                 raise ApiError(400, "Invalid JSON.")
-            return route(body)
+            return route(body, require_brand_user(self.headers))
         self.api(handle)
 
     def api(self, fn):
@@ -621,6 +663,10 @@ def init_db():
     with psycopg.connect(DB_URL) as db:
         db.execute(SCHEMA)
         db.execute(creator.SCHEMA)
+        db.execute("ALTER TABLE searches ADD COLUMN IF NOT EXISTS user_id int REFERENCES users ON DELETE SET NULL")
+        db.execute("ALTER TABLE checks ADD COLUMN IF NOT EXISTS user_id int REFERENCES users ON DELETE SET NULL")
+        db.execute("CREATE INDEX IF NOT EXISTS searches_user ON searches (user_id, created_at DESC)")
+        db.execute("CREATE INDEX IF NOT EXISTS checks_user ON checks (user_id, created_at DESC)")
         db.execute(digest.SCHEMA)
 
 

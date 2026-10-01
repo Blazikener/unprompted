@@ -85,6 +85,14 @@ Gate: `checkout_started / scan >= 5%` over the first 100 scans, or change the of
 The brand-side push product discussed with Oriane's CTO: save a search, email only, weekly digest of new mentions.
 It lives on the brand dashboard at `/brands/` (card under the mention mix) and does not touch Receipts.
 
+- Searching and creator checks on `/brands/` require an email-and-password account. Free users get 2 brand searches and
+  3 checks per rolling 7 days; Pro users get 30 searches and 50 checks. Each new brand search uses one Oriane `contents`
+  call (40 credits, up to 100 results); the same search is reused for 15 minutes, and check results are globally cached
+  for 24 hours.
+- `ORIANE_DAILY_BUDGET` defaults to 600 credits per UTC day and is shared by Receipts, brand searches and checks,
+  digests, and prospecting. Once reached, live calls pause until the next UTC day without consuming a user's quota.
+- Each normalized email can have at most 2 digest subscriptions. `DIGEST_MAX_ACTIVE` limits confirmed, unpaused digests
+  site-wide and defaults to 25.
 - Runs on Oriane only (no public-page fallback) and credits Oriane in the card, the manage page, and every email.
 - Zero credits until switched on: set `DIGEST_RUN_TOKEN` (manual/cron runs) or `DIGEST_SCHEDULER=1` on Render; the scheduler
   checks about a minute after boot, then every 15 minutes while awake. Render free instances sleep after 15 idle minutes,

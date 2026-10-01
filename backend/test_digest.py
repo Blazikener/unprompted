@@ -191,6 +191,33 @@ def test_manage_actions():
         digest.manage(d["token"])
 
 
+def test_digest_email_limit_is_case_insensitive(monkeypatch):
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    digest.subscribe({"email": "Brand@Example.com", "brand": "Tim Hortons"})
+    digest.subscribe({"email": "brand@example.com", "brand": "Noon"})
+    with pytest.raises(server.ApiError) as err:
+        digest.subscribe({"email": "BRAND@example.com", "brand": "Talabat"})
+    assert err.value.status == 429
+    assert str(err.value) == "You already get 2 weekly digests; unsubscribe from one first."
+
+
+def test_digest_active_limit_on_subscribe_and_resume(monkeypatch):
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    monkeypatch.setenv("DIGEST_MAX_ACTIVE", "1")
+    digest.subscribe({"email": "one@example.com", "brand": "Tim Hortons"})
+    with pytest.raises(server.ApiError) as err:
+        digest.subscribe({"email": "two@example.com", "brand": "Noon"})
+    assert err.value.status == 503 and str(err.value) == "Weekly digests are full right now."
+
+    monkeypatch.setenv("DIGEST_MAX_ACTIVE", "2")
+    paused = digest.subscribe({"email": "two@example.com", "brand": "Noon"})
+    assert digest.manage(paused["token"], "pause")["status"] == "paused"
+    monkeypatch.setenv("DIGEST_MAX_ACTIVE", "1")
+    with pytest.raises(server.ApiError) as err:
+        digest.manage(paused["token"], "resume")
+    assert err.value.status == 503 and str(err.value) == "Weekly digests are full right now."
+
+
 @pytest.fixture(scope="module")
 def base():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)

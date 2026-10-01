@@ -33,7 +33,8 @@ import tiktok_public  # noqa: E402
 def db():
     server.init_db()
     with psycopg.connect(server.DB_URL) as c:
-        c.execute("TRUNCATE users, sessions, scans, brand_activity, events, mentions, searches, videos, checks RESTART IDENTITY CASCADE")
+        c.execute("TRUNCATE users, sessions, scans, brand_activity, events, mentions, searches, videos, checks, oriane_calls "
+                  "RESTART IDENTITY CASCADE")
 
 
 def video(transcript="", caption="", hashtags=(), mentions=(), co_authors=(), views=1000):
