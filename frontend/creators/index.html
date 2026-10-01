@@ -268,7 +268,7 @@ const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram' };
 const STATUS = { unpaid: 'Unpaid mentions', 'past-sponsor': 'Past sponsor, still mentioning', 'sponsored-only': 'Sponsored only' };
 const VERDICT = { active: 'Actively paying creators', some: 'Some paid posts', quiet: 'Quiet lately' };
 
-const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {} };
+const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {}, reserved: false };
 
 async function api(path, body, method) {
   const res = await fetch('/api/creators' + path, body === undefined ? { method: method || 'GET' }
@@ -288,7 +288,7 @@ function renderAccount() {
     ${pro ? (S.user.billing && S.billing.enabled ? `<button class="btn btn-quiet btn-sm" id="portal">Billing</button>` : '') : `<button class="btn btn-primary btn-sm" id="up">Go Pro</button>`}
     <button class="btn btn-quiet btn-sm" id="signout">Sign out</button>`;
   el.style.display = 'flex'; el.style.gap = '10px'; el.style.alignItems = 'center';
-  $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; showLanding(); renderAccount(); loadHistory(); };
+  $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory(); };
   if ($('#up')) $('#up').onclick = () => openUpgrade();
   if ($('#portal')) $('#portal').onclick = async () => { try { location.href = (await api('/billing/portal', {})).url; } catch (e) { toast(e.message); } };
 }
@@ -319,11 +319,14 @@ function openUpgrade(why) {
   $('#upgrade-err').textContent = '';
   const go = $('#upgrade-go');
   if (!S.user) { openAuth('signup'); return; }
+  go.disabled = false;
   if (S.billing.enabled) go.textContent = 'Continue to checkout';
   else if (S.billing.devSwitch) go.textContent = 'Switch to Pro (dev)';
+  else if (S.reserved) { go.disabled = true; go.textContent = 'Reserved'; $('#upgrade-err').textContent = reservedCopy(); }
   else go.textContent = `Reserve Pro at $${S.billing.price}/mo`;
   $('#upgrade').showModal();
 }
+const reservedCopy = () => `Checkout opens in a few days. You're first in line at $${S.billing.price}/mo and we'll email ${S.user.email}.`;
 $('#upgrade-close').onclick = () => $('#upgrade').close();
 $('#upgrade-go').onclick = async () => {
   const go = $('#upgrade-go');
@@ -331,8 +334,8 @@ $('#upgrade-go').onclick = async () => {
     if (S.billing.enabled) { location.href = (await api('/billing/checkout', {})).url; return; }
     if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: 'pro' })).user; $('#upgrade').close(); renderAccount(); toast("You're on Pro"); if (S.scan) await openScan(S.scan.id); return; }
     await api('/billing/interest', { scan: S.scan ? S.scan.id : null });
-    go.disabled = true; go.textContent = 'Reserved';
-    $('#upgrade-err').textContent = `Checkout opens in a few days. You're first in line at $${S.billing.price}/mo and we'll email ${S.user.email}.`;
+    S.reserved = true; go.disabled = true; go.textContent = 'Reserved';
+    $('#upgrade-err').textContent = reservedCopy();
   } catch (e) { $('#upgrade-err').textContent = e.message; }
 };
 async function paywalled(err, why) { if (err.status === 402) { openUpgrade(why || err.message); return true; } if (err.status === 401) { openAuth('login'); return true; } return false; }
