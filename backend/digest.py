@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS digest_seen (         -- videos already shown to this
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 EVERY_DAYS = 7
 MAX_ITEMS = 8
+MAX_PER_EMAIL = 2
 KIND_LABEL = {"spoken": "said on camera only", "tagged": "tagged", "sponsored": "disclosed partnership"}
 KIND_COLOR = {"spoken": "#2f6b4f", "tagged": "#2d6f86", "sponsored": "#9a5a1c"}
 ORIANE_CREDIT = "Search and transcripts by Oriane"
@@ -186,6 +187,13 @@ def row_view(d, runs=None):
             "latestHtml": latest["html"] if latest else None}
 
 
+def ensure_active_capacity(db):
+    limit = int(os.environ.get("DIGEST_MAX_ACTIVE", "25"))
+    active = db.execute("SELECT count(*) AS n FROM digests WHERE confirmed_at IS NOT NULL AND paused_at IS NULL").fetchone()["n"]
+    if active >= limit:
+        raise ApiError(503, "Weekly digests are full right now.")
+
+
 def subscribe(body):
     """Save a search for a weekly email. Double opt-in when mail is configured; otherwise active immediately."""
     email = str(body.get("email", "")).strip().lower()
@@ -196,12 +204,21 @@ def subscribe(body):
     params = {"variants": variants, "platform": p["platform"], "lang": p["lang"]}
     search_id = body.get("searchId")
     with connect() as db:
-        d = db.execute("SELECT * FROM digests WHERE email = %s AND brand = %s AND params = %s", (email, brand, Jsonb(params))).fetchone()
+        db.execute("SELECT pg_advisory_xact_lock(471478344)")
+        d = db.execute("SELECT * FROM digests WHERE lower(email) = lower(%s) AND brand = %s AND params = %s",
+                       (email, brand, Jsonb(params))).fetchone()
         created = d is None
         if created:
+            count = db.execute("SELECT count(*) AS n FROM digests WHERE lower(email) = lower(%s)", (email,)).fetchone()["n"]
+            if count >= MAX_PER_EMAIL:
+                raise ApiError(429, "You already get 2 weekly digests; unsubscribe from one first.")
+            if not mail_configured():
+                ensure_active_capacity(db)
             d = db.execute("INSERT INTO digests (email, brand, params, token, confirmed_at) VALUES (%s, %s, %s, %s, %s) RETURNING *",
                            (email, brand, Jsonb(params), secrets.token_urlsafe(16), None if mail_configured() else now())).fetchone()
         elif d["paused_at"]:
+            if d["confirmed_at"]:
+                ensure_active_capacity(db)
             d = db.execute("UPDATE digests SET paused_at = NULL WHERE id = %s RETURNING *", (d["id"],)).fetchone()
         if isinstance(search_id, int):  # what they just saw on the dashboard counts as seen
             db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s"
@@ -230,6 +247,13 @@ def manage(token, action=None):
         if not sql:
             raise ApiError(404, "Not found.")
         with connect() as db:
+            if action in ("confirm", "resume"):
+                db.execute("SELECT pg_advisory_xact_lock(471478344)")
+                current = db.execute("SELECT confirmed_at, paused_at FROM digests WHERE id = %s", (d["id"],)).fetchone()
+                was_active = current["confirmed_at"] is not None and current["paused_at"] is None
+                becomes_active = action == "confirm" or current["confirmed_at"] is not None
+                if becomes_active and not was_active:
+                    ensure_active_capacity(db)
             d = db.execute(sql, (d["id"],)).fetchone()
         if action == "unsubscribe":
             return row_view({**d, "gone": True})

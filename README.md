@@ -35,6 +35,16 @@ The same transcript index, pointed the other way. A creator pastes their TikTok 
 - Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend` (needs `createdb unprompted_test`; the suite truncates it). Lint: `ruff check backend`.
 - Why this product: see `docs/MARKET-VALIDATION.md`.
 
+## Brand dashboard (`/brands/`)
+
+Searches and creator checks require an email-and-password account. Free accounts get 2 brand searches and 3 checks per
+rolling 7 days; Pro gets 30 searches and 50 checks per week. A new brand search makes one Oriane `contents` call
+(40 credits, up to 100 results); repeating the same search within 15 minutes reuses the saved result. Check results
+are cached globally for 24 hours, including for free users.
+
+`ORIANE_DAILY_BUDGET` defaults to 600 credits per UTC day and is shared across the brand dashboard, Receipts, digests,
+and prospecting. Once reached, live provider calls pause until the next UTC day; cached results remain available.
+
 ## Weekly digest: the push side (`/brands/`, "Email me weekly")
 
 Save a brand search once with just an email and get the new videos where creators mention the brand every week:
@@ -46,6 +56,8 @@ last run) and the emails and pages credit Oriane.
   set it is double opt-in (confirmation email); without it the digest is active at once and emails are logged, not
   sent. Videos already on the dashboard (`searchId`) count as seen, so the first digest only has new ones.
 - `/digest/<token>`: manage page (pause, resume, unsubscribe, past runs, latest email preview).
+- Each normalized email can subscribe to at most 2 digests. At most `DIGEST_MAX_ACTIVE` confirmed, unpaused digests run
+  site-wide (default 25).
 - `POST /api/digests/run` with `Authorization: Bearer $DIGEST_RUN_TOKEN`: runs due digests (`{"force": true}` all,
   `{"id": n}` one, `{"id": n, "resend": true}` re-mails the newest rendered run without an Oriane call).
   `DIGEST_SCHEDULER=1` does the same in-process, first checking about a minute after startup and then every 15 minutes

@@ -92,8 +92,10 @@ SPOKEN_DISCLOSURE = re.compile(r"(?:partner(?:ed|ing)? with|partnership with|spo
                                r"ambassador for|collab(?:oration)? with)\W+(?:[^\W_]+\W+){0,3}$", re.IGNORECASE)
 PRO_PRICE_USD = 29
 PLANS = {
-    "free": {"scansPerWeek": 1, "brands": 3, "activity": False, "pitch": False},
-    "pro": {"scansPerWeek": 50, "brands": None, "activity": True, "pitch": True},
+    "free": {"scansPerWeek": 1, "brands": 3, "activity": False, "pitch": False,
+             "brandSearchesPerWeek": 2, "checksPerWeek": 3},
+    "pro": {"scansPerWeek": 50, "brands": None, "activity": True, "pitch": True,
+            "brandSearchesPerWeek": 30, "checksPerWeek": 50},
 }
 SESSION_DAYS = 30
 COOKIE = "receipts_session"
@@ -464,6 +466,19 @@ def require_user(headers):
     return u
 
 
+def brand_usage(user):
+    limits = PLANS[user["plan"]]
+    with connect() as db:
+        searches = db.execute("SELECT count(*) AS n FROM searches WHERE user_id = %s AND created_at > now() - interval '7 days'",
+                              (user["id"],)).fetchone()["n"]
+        checks = db.execute("SELECT count(*) AS n FROM checks WHERE user_id = %s AND created_at > now() - interval '7 days'",
+                            (user["id"],)).fetchone()["n"]
+    return {
+        "searches": {"used": searches, "limit": limits["brandSearchesPerWeek"]},
+        "checks": {"used": checks, "limit": limits["checksPerWeek"]},
+    }
+
+
 def credentials(body):
     email, pw = str(body.get("email", "")).strip().lower(), str(body.get("password", ""))
     if not EMAIL_RE.fullmatch(email) or len(email) > 254:
@@ -760,7 +775,8 @@ def dispatch(handler):
     if method == "GET":
         if path == "/me":
             u = current_user(headers)
-            return {"user": public_user(u) if u else None, "billing": billing_config()}
+            return {"user": public_user(u) if u else None, "billing": billing_config(),
+                    "brandUsage": brand_usage(u) if u else None}
         if path == "/billing/config":
             return billing_config()
         if path == "/brands":
