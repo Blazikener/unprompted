@@ -204,6 +204,7 @@ def test_http_flow(base):
     assert c.call("POST", "/api/creators/scans/%d/brands/Tim%%20Hortons/activity" % sid, {})[0] == 402
     assert c.call("POST", "/api/creators/scans/%d/brands/Tim%%20Hortons/pitch" % sid, {})[0] == 402
     assert c.call("POST", "/api/creators/billing/checkout", {})[0] == 503
+    assert c.call("POST", "/api/creators/billing/interest", {"scan": sid})[0] == 200
 
     status, out = c.call("POST", "/api/creators/billing/dev", {"plan": "pro"})
     assert status == 200 and out["user"]["plan"] == "pro"
@@ -257,4 +258,4 @@ def test_http_flow(base):
 
     with psycopg.connect(server.DB_URL) as db:
         names = [r[0] for r in db.execute("SELECT DISTINCT name FROM events").fetchall()]
-    assert {"signup", "scan", "paywall", "activity", "pitch"} <= set(names)
+    assert {"signup", "scan", "paywall", "activity", "pitch", "checkout_intent"} <= set(names)

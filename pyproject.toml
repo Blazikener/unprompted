@@ -1,3 +1,17 @@
+[project]
+name = "unprompted"
+version = "0.1.0"
+description = "Oriane-powered brand-mention search for agencies and Receipts for creators"
+requires-python = ">=3.10"
+dependencies = ["psycopg[binary]>=3.1,<4", "fastapi>=0.110,<1", "uvicorn>=0.27,<1"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
 [tool.ruff]
 line-length = 150
 target-version = "py310"

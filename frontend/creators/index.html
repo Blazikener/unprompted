@@ -321,15 +321,18 @@ function openUpgrade(why) {
   if (!S.user) { openAuth('signup'); return; }
   if (S.billing.enabled) go.textContent = 'Continue to checkout';
   else if (S.billing.devSwitch) go.textContent = 'Switch to Pro (dev)';
-  else go.textContent = 'Checkout not configured';
+  else go.textContent = `Reserve Pro at $${S.billing.price}/mo`;
   $('#upgrade').showModal();
 }
 $('#upgrade-close').onclick = () => $('#upgrade').close();
 $('#upgrade-go').onclick = async () => {
+  const go = $('#upgrade-go');
   try {
     if (S.billing.enabled) { location.href = (await api('/billing/checkout', {})).url; return; }
     if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: 'pro' })).user; $('#upgrade').close(); renderAccount(); toast("You're on Pro"); if (S.scan) await openScan(S.scan.id); return; }
-    $('#upgrade-err').textContent = 'Set STRIPE_SECRET_KEY and STRIPE_PRICE_PRO on the server to enable checkout.';
+    await api('/billing/interest', { scan: S.scan ? S.scan.id : null });
+    go.disabled = true; go.textContent = 'Reserved';
+    $('#upgrade-err').textContent = `Checkout opens in a few days. You're first in line at $${S.billing.price}/mo and we'll email ${S.user.email}.`;
   } catch (e) { $('#upgrade-err').textContent = e.message; }
 };
 async function paywalled(err, why) { if (err.status === 402) { openUpgrade(why || err.message); return true; } if (err.status === 401) { openAuth('login'); return true; } return false; }

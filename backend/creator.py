@@ -710,6 +710,9 @@ def dispatch(handler):
         return portal(u)
     if path == "/billing/dev":
         return dev_switch(u, body)
+    if path == "/billing/interest":  # checkout not live yet: the click is the signal the validation gate counts
+        track(u["id"], "checkout_intent", {"plan": "pro", "price": PRO_PRICE_USD, "scan": body.get("scan")})
+        return {"ok": True}
     if path == "/report":
         track(u["id"], "report", {"text": str(body.get("text", ""))[:500], "scan": body.get("scan")})
         return {"ok": True}
