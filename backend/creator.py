@@ -320,14 +320,23 @@ def public_videos(platform, handle):
     return tiktok_public.fetch(handle) if platform == "tiktok" else []
 
 
-def fetch_videos(platform, handle):
+def fetch_videos(platform, handle, plan="free"):
+    """Free TikTok scans read the public page first (no Oriane credits); Pro and Instagram go to Oriane first.
+
+    Whichever source is second is the fallback, so a creator missing from one is still served by the other.
+    """
     if demo.active():
         return demo.creator_videos(platform, handle), "demo"
+    public_first = platform == "tiktok" and plan != "pro"
+    if public_first:
+        videos = public_videos(platform, handle)
+        if videos:
+            return videos, "public"
     with connect() as db:
         cached = db.execute("SELECT body FROM misses WHERE platform = %s AND handle = %s AND created_at > now() - interval '%s days'"
                             % ("%s", "%s", MISS_TTL_DAYS), (platform, handle)).fetchone()
     if cached:
-        videos = public_videos(platform, handle)
+        videos = [] if public_first else public_videos(platform, handle)
         if videos:
             return videos, "public"
         body = cached["body"]
@@ -336,7 +345,7 @@ def fetch_videos(platform, handle):
     videos = server.oriane(filters, limit=100, sort="publishedAt")["data"]["results"]
     if videos:
         return videos, "live"
-    videos = public_videos(platform, handle)
+    videos = [] if public_first else public_videos(platform, handle)
     if videos:
         return videos, "public"
     miss = not_indexed(platform, handle)
@@ -536,7 +545,7 @@ def run_scan(user, body):
         raise ApiError(402, "You've used your %d free scan this week. Pro gets %d." % (limit, PLANS["pro"]["scansPerWeek"]) if user["plan"] == "free"
                        else "Scan limit reached (%d per week)." % limit)
     try:
-        videos, source = fetch_videos(platform, handle)
+        videos, source = fetch_videos(platform, handle, user["plan"])
     except ApiError as e:
         if e.status == 404:
             track(user["id"], "scan_miss", {"platform": platform, "handle": handle, "reason": e.extra.get("reason", "demo"),

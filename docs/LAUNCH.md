@@ -19,13 +19,14 @@ sent by a person from their own account.
    Fallback hosts: `fly.toml` is ready for `fly launch --copy-config --no-deploy && fly secrets set … && fly deploy`;
    Railway picks the same `Dockerfile` up automatically.
 2. Expect misses on Instagram only. Oriane's profile index is far broader than its video index, so a creator can be
-   known (followers shown) with zero videos to scan. For TikTok, `backend/tiktok_public.py` then reads the creator
+   known (followers shown) with zero videos to scan. For TikTok, `backend/tiktok_public.py` reads the creator
    straight from TikTok's public embed page (latest ~10 videos, captions, tags, TikTok's own auto-captions) at zero
-   Oriane cost and the scan is labelled "Public data". Instagram has no logged-out public surface, so misses there
+   Oriane cost; Free TikTok scans use it first (Oriane only if the public page is empty), Pro scans go Oriane-first
+   with the public read as fallback. Public scans are labelled "Public data". Instagram has no logged-out public surface, so misses there
    explain themselves and offer same-handle-other-platform or close-handle chips.
    Watch `scan_miss / (scan + scan_miss)` weekly; if it stays above ~40%, prospect only from creators Oriane
    already indexes (`backend/prospect.py` does) and say "works for creators in our index" in the copy.
-   Credits: a live scan is one content search (40), a miss adds one profile lookup (30 → 70 total); misses are
+   Credits: a Free TikTok scan is normally 0; a Pro or Instagram scan is one content search (40), a miss adds one profile lookup (30 → 70 total); misses are
    remembered per handle for 7 days (`misses` table) so retries and other users trying the same handle cost 0.
 3. Open `/creators/?sample=1` on the deployed URL: this is the link that goes in every message.
 4. Run `python3 backend/prospect.py --app-url https://receipts-thc8.onrender.com/creators/` to regenerate

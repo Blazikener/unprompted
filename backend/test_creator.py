@@ -222,13 +222,13 @@ def test_public_video_matches_oriane_shape_and_classifies():
     assert creator.profile("tiktok", "nikki.bae_", [v])["followers"] == 261700
 
 
-def test_public_tiktok_fallback_runs_after_oriane_and_on_cached_misses(monkeypatch):
+def test_free_tiktok_reads_public_first_pro_goes_oriane_first(monkeypatch):
     monkeypatch.setenv("ORIANE_API_KEY", "k")
     monkeypatch.setattr(demo, "active", lambda: False)
     calls = []
     monkeypatch.setattr(server, "oriane", lambda *a, index="contents", **k: calls.append(index)
                         or {"data": {"results": []} if index == "contents" else []})
-    public = {"tiktok": [{"id": "tiktok-public-1", "platform": "tiktok", "platformId": "1", "profileHandle": "fresh.face", "caption": ""}]}
+    public = {"fresh.face": [{"id": "tiktok-public-1", "platform": "tiktok", "platformId": "1", "profileHandle": "fresh.face", "caption": ""}]}
     monkeypatch.setattr(tiktok_public, "fetch", lambda h, limit=12: calls.append("public") or public.get(h, []))
     with psycopg.connect(server.DB_URL) as db:
         db.execute("DELETE FROM misses")
@@ -236,13 +236,22 @@ def test_public_tiktok_fallback_runs_after_oriane_and_on_cached_misses(monkeypat
         creator.fetch_videos("instagram", "fresh.face")
     assert "scan that handle" in str(e.value) and calls == ["contents", "profiles"]
     calls.clear()
-    monkeypatch.setitem(public, "fresh.face", public.pop("tiktok"))
-    assert creator.fetch_videos("tiktok", "fresh.face") == (public["fresh.face"], "public") and calls == ["contents", "public"]
+    assert creator.fetch_videos("tiktok", "fresh.face") == (public["fresh.face"], "public") and calls == ["public"]
+    calls.clear()
+    assert creator.fetch_videos("tiktok", "fresh.face", "pro") == (public["fresh.face"], "public") and calls == ["contents", "public"]
+    calls.clear()
+    with pytest.raises(server.ApiError):
+        creator.fetch_videos("tiktok", "ghost")
+    assert calls == ["public", "contents", "profiles"]
+    calls.clear()
+    with pytest.raises(server.ApiError) as e:
+        creator.fetch_videos("tiktok", "ghost")
+    assert e.value.extra["cached"] is True and calls == ["public"]
     calls.clear()
     with psycopg.connect(server.DB_URL) as db:
         db.execute("INSERT INTO misses (platform, handle, body) VALUES ('tiktok', 'fresh.face', %s)",
                    (Jsonb({"error": "x", "reason": "unknown", "suggestions": []}),))
-    assert creator.fetch_videos("tiktok", "fresh.face")[1] == "public" and calls == ["public"]
+    assert creator.fetch_videos("tiktok", "fresh.face", "pro")[1] == "public" and calls == ["public"]
 
 
 def test_misses_are_cached_so_retries_cost_no_credits(monkeypatch):

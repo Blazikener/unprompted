@@ -406,7 +406,7 @@ function render() {
     </div>
     ${s.sample ? `<p class="locked-note">Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.</p>`
       : s.source === 'demo' ? `<p class="locked-note">Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn't.</p>`
-      : s.source === 'public' ? `<p class="locked-note">Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. Our transcript index doesn't cover this creator yet, so older videos aren't included.</p>` : ''}
+      : s.source === 'public' ? `<p class="locked-note">Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. ${free ? 'Pro scans use our full transcript index: up to 100 videos, every spoken mention, frame-level receipts.' : 'Our transcript index doesn\'t cover this creator yet, so older videos aren\'t included.'}</p>` : ''}
     <div class="section-h"><h3>${ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'}</h3><small>unpaid mentions rank above past sponsors</small></div>
     ${s.brands.length ? s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')
       : `<div class="empty"><b>No catalog brand in these ${p.videos} videos</b>We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don't track yet, tell us in the sidebar and we'll add it.</div>`}
