@@ -195,6 +195,19 @@
   .stat.money dd { color: var(--moss); }
   .cpm { width: 58px; height: 22px; padding: 0 4px; margin: 0 2px; border: 1px solid var(--line-2); border-radius: 5px; font-size: 0.75rem; }
   .mix { margin-bottom: 30px; }
+  .digest { display: grid; grid-template-columns: 1fr auto; gap: 14px 28px; align-items: center; margin: 0 0 30px; padding: 22px 24px; border-radius: 14px; background: var(--forest); color: var(--on-forest); }
+  .digest h2 { margin: 0 0 4px; font: italic 500 1.375rem/1.2 var(--serif); letter-spacing: -0.01em; }
+  .digest p { margin: 0; font-size: 0.875rem; line-height: 1.5; color: var(--on-forest-2); max-width: 58ch; text-wrap: pretty; }
+  .digest p b { color: var(--on-forest); font-weight: 600; }
+  .digest-form { display: flex; gap: 8px; }
+  .digest-form input { height: 40px; min-width: 240px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--forest-line); background: var(--forest-2); color: var(--on-forest); font: inherit; }
+  .digest-form input::placeholder { color: var(--on-forest-2); }
+  .digest-form input:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
+  .digest-done { grid-column: 1 / -1; margin: 0; font-size: 0.875rem; color: var(--lime); }
+  .digest-done a { color: inherit; }
+  .digest-oriane { grid-column: 1 / -1; margin: 0; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--on-forest-2); }
+  .digest-oriane a { color: inherit; }
+  @media (max-width: 760px) { .digest { grid-template-columns: 1fr; } .digest-form { flex-wrap: wrap; } .digest-form input { flex: 1; min-width: 0; } }
   .mixbar { display: flex; gap: 3px; height: 14px; border-radius: 999px; overflow: hidden; background: var(--line); animation: reveal 0.8s var(--ease-expo) both; }
   .mixbar span { min-width: 0; flex-basis: 0; }
   [data-fx="live"] .mixbar span, [data-fx="fluid"] .mixbar span { transition: flex-grow 0.7s var(--ease-expo); }
@@ -618,6 +631,18 @@
           <div id="mixbar" class="mixbar" role="img"></div>
           <ul id="legend" class="legend"></ul>
         </div>
+        <section id="digest" class="digest" aria-labelledby="digest-h">
+          <div>
+            <h2 id="digest-h">Hear the next ones first.</h2>
+            <p>Save this search and every week you get an email with the new videos where creators mention <b id="digest-brand"></b>: the quote, who said it, and whether it was said on camera, tagged or a disclosed partnership. No account; one click to stop.</p>
+          </div>
+          <form id="digest-form" class="digest-form" autocomplete="off">
+            <input id="digest-email" type="email" required maxlength="254" placeholder="you@brand.com" aria-label="Your email">
+            <button class="btn btn-primary" type="submit">Email me weekly</button>
+          </form>
+          <p id="digest-done" class="digest-done" role="status" hidden></p>
+          <p class="digest-oriane">Search and transcripts by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a></p>
+        </section>
         <div class="results-grid">
           <section aria-labelledby="board-h">
             <div class="board-head">
@@ -868,11 +893,32 @@
     history.replaceState(null, '', `#search=${s.id}`);
     document.title = `${s.brand} · Unprompted`;
     $('#results').classList.toggle('is-empty', !data.videos.length);
+    $('#digest-brand').textContent = s.brand;
+    $('#digest-done').hidden = true;
+    $('#digest-form').hidden = false;
     view('results');
     renderSummary();
     if (data.videos.length) { renderStats(); renderMix(); renderBoard(); renderDetail(); }
     markSaved(s.id);
   }
+
+  $('#digest-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const s = state.data.search, btn = e.target.querySelector('button'), done = $('#digest-done');
+    btn.disabled = true;
+    try {
+      const d = await api('/api/digests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        email: $('#digest-email').value, brand: s.brand, variants: (s.params.variants || []).join(', '), platform: s.params.platform, lang: s.params.lang, searchId: s.id }) });
+      done.replaceChildren(d.status === 'active'
+        ? `You're in. New ${s.brand} mentions land in your inbox every ${d.every} days. `
+        : `Almost: confirm the email we just sent to ${d.email}. `, h('a', { href: d.manageUrl }, 'Manage this digest'));
+      done.hidden = false;
+      $('#digest-form').hidden = true;
+    } catch (err) {
+      done.textContent = err.message;
+      done.hidden = false;
+    } finally { btn.disabled = false; }
+  });
 
   function renderSummary(live) {
     const { search: s, videos } = state.data;

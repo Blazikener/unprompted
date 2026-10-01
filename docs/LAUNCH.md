@@ -79,3 +79,17 @@ Gate: `checkout_started / scan >= 5%` over the first 100 scans, or change the of
 - "Reads your public videos' transcripts" (true); not "AI analyses your account" (we never log in).
 - Rate ranges are a CPM rule of thumb, labelled as such in the UI; never call them market data.
 - The sample report is fixture data and says so; never present it as a real creator.
+
+## 6. Weekly digest (Oriane Community Tool)
+
+The brand-side push product discussed with Oriane's CTO: save a search, email only, weekly digest of new mentions.
+It lives on the brand dashboard at `/` (card under the mention mix) and does not touch Receipts.
+
+- Runs on Oriane only (no public-page fallback) and credits Oriane in the card, the manage page, and every email.
+- Zero credits until switched on: set `DIGEST_RUN_TOKEN` (manual/cron runs) or `DIGEST_SCHEDULER=1` on Render.
+  Render free instances sleep, so a cron (e.g. cron-job.org, weekly) calling
+  `POST /api/digests/run` with `{"force": false}` is the reliable trigger.
+- Email delivery needs `RESEND_API_KEY` + `DIGEST_FROM` (Resend free tier, verified domain). Without them the flow
+  still works end to end: subscribers are active immediately and see the latest digest on `/digest/<token>`.
+- Review checklist before sending Oriane the link: a real brand search → subscribe → `POST /api/digests/run {"id": n}`
+  (40 credits) → email received → dashboard link opens the digest's search.

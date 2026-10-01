@@ -75,6 +75,7 @@ def serve(raw, client):
 @app.on_event("startup")
 def startup():
     server.init_db()
+    server.digest.scheduler()
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "HEAD"])

@@ -527,6 +527,8 @@ class Handler(SimpleHTTPRequestHandler):
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
         if path.startswith("/api/creators/"):
             self.api(lambda: creator.dispatch(self))
+        elif path.startswith("/api/digests"):
+            self.api(lambda: digest.dispatch(self))
         elif path == "/api/searches":
             self.api(list_searches)
         elif m:
@@ -538,6 +540,8 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             if re.fullmatch(r"/creators/r/[^/]+", path):
                 self.path = "/creators/index.html"
+            elif re.fullmatch(r"/digest/[^/]+", path):
+                self.path = "/digest/index.html"
             super().do_GET()
 
     def do_POST(self):
@@ -546,6 +550,8 @@ class Handler(SimpleHTTPRequestHandler):
         route = routes.get(urlparse(self.path).path)
         if self.path.startswith("/api/creators/"):
             return self.api(lambda: creator.dispatch(self))
+        if self.path.startswith("/api/digests"):
+            return self.api(lambda: digest.dispatch(self))
         if not route:
             return self.api(not_found)
 
@@ -604,16 +610,19 @@ class Handler(SimpleHTTPRequestHandler):
 
 sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us back; don't load this file twice
 import creator  # noqa: E402
+import digest  # noqa: E402
 
 
 def init_db():
     with psycopg.connect(DB_URL) as db:
         db.execute(SCHEMA)
         db.execute(creator.SCHEMA)
+        db.execute(digest.SCHEMA)
 
 
 if __name__ == "__main__":
     init_db()
     host, port = os.environ.get("HOST", "127.0.0.1"), int(os.environ.get("PORT", "8000"))
     print("Unprompted on http://%s:%d" % (host, port), flush=True)
+    digest.scheduler()
     ThreadingHTTPServer((host, port), Handler).serve_forever()

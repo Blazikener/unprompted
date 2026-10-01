@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your weekly digest · Unprompted</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: oklch(0.26 0.055 160); --forest-2: oklch(0.315 0.06 160); --on-forest: oklch(0.97 0.01 160); --on-forest-2: oklch(0.81 0.035 160);
+    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
+    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 20px 60px; }
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
+  .brand a { color: var(--ink); text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
+  .brand span { font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px 28px; }
+  h1 { margin: 0 0 6px; font: italic 500 1.75rem/1.2 var(--serif); letter-spacing: -0.01em; text-wrap: pretty; }
+  .sub { margin: 0 0 18px; color: var(--ink-2); }
+  .pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; background: var(--moss-soft); color: var(--moss); vertical-align: 2px; }
+  .pill.paused, .pill.pending { background: var(--coral-soft); color: var(--coral); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 20px; font-size: 0.875rem; }
+  dt { color: var(--ink-2); } dd { margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.875rem var(--sans); cursor: pointer; }
+  .btn-primary { background: var(--lime); border-color: transparent; }
+  .btn-danger { color: var(--coral); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  h2 { margin: 30px 0 10px; font-size: 1rem; }
+  .runs { list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
+  .runs li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .runs a { color: var(--moss); }
+  iframe { width: 100%; height: 720px; border: 1px solid var(--line); border-radius: 12px; background: #f3f6f4; }
+  .muted { color: var(--ink-2); font-size: 0.875rem; }
+  .err { color: var(--coral); }
+  footer { margin-top: 28px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><a href="/">Unprompted</a><span>Weekly digest</span></div>
+  <section class="card" id="card"><p class="muted">Loading your digest…</p></section>
+  <h2 id="runs-h" hidden>Past digests</h2>
+  <ol class="runs" id="runs"></ol>
+  <h2 id="preview-h" hidden>Latest email</h2>
+  <iframe id="preview" title="Latest digest email" hidden sandbox></iframe>
+  <footer>Search and transcripts by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a> · Unprompted is a community tool built on Oriane's API</footer>
+</main>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const token = location.pathname.split('/').pop();
+  const q = new URLSearchParams(location.search);
+  const PLATFORM = { all: 'Instagram and TikTok', instagram: 'Instagram', tiktok: 'TikTok' };
+  const LANG = { any: 'any language', en: 'English', ar: 'Arabic' };
+  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k === 'hidden') el.hidden = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v); }
+    el.append(...kids.filter((k) => k != null));
+    return el;
+  }
+  async function api(path, method = 'GET') {
+    const res = await fetch(path, method === 'GET' ? {} : { method, headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Something went wrong.');
+    return body;
+  }
+  function render(d) {
+    const card = $('#card');
+    if (d.status === 'unsubscribed') {
+      card.replaceChildren(h('h1', {}, 'Unsubscribed.'), h('p', { class: 'sub' }, `No more ${d.brand} emails to ${d.email}. `, h('a', { href: '/' }, 'Run a new search'), ' any time.'));
+      return;
+    }
+    const act = (label, action, cls = '') => h('button', { class: `btn ${cls}`, type: 'button', onclick: async (e) => {
+      e.target.disabled = true;
+      try { render(await api(`/api/digests/${token}/${action}`, 'POST')); } catch (err) { card.append(h('p', { class: 'err' }, err.message)); e.target.disabled = false; }
+    } }, label);
+    const unsubscribe = h('button', { class: 'btn btn-danger', type: 'button', onclick: (e) => {
+      e.target.replaceWith(h('span', { class: 'muted' }, 'Stop all ', d.brand, ' emails? ', act('Yes, unsubscribe', 'unsubscribe', 'btn-danger')));
+    } }, 'Unsubscribe');
+    const status = { active: 'Active', paused: 'Paused', pending: 'Confirm your email' }[d.status];
+    card.replaceChildren(
+      h('h1', {}, 'New mentions of ', d.brand, ', weekly. ', h('span', { class: `pill ${d.status}` }, status)),
+      h('p', { class: 'sub' }, d.status === 'pending'
+        ? (d.mail ? `We emailed ${d.email} a confirmation link. Nothing is sent until you click it.` : 'Mail isn\'t configured on this server yet, so confirm here:')
+        : d.status === 'paused' ? 'Paused. Resume whenever you want the next one.'
+        : `Every ${d.every} days we search Oriane for new videos mentioning ${d.brand} and email ${d.email} the ones you haven't seen. Quiet weeks send nothing.`),
+      h('dl', {},
+        h('dt', {}, 'Listening for'), h('dd', {}, [d.brand, ...(d.params.variants || [])].join(', ')),
+        h('dt', {}, 'Where'), h('dd', {}, `${PLATFORM[d.params.platform]}, ${LANG[d.params.lang]}`),
+        h('dt', {}, 'Saved'), h('dd', {}, when(d.createdAt)),
+        h('dt', {}, 'Last checked'), h('dd', {}, when(d.lastRunAt))),
+      h('div', { class: 'actions' },
+        d.status === 'pending' ? act('Confirm digest', 'confirm', 'btn-primary') : d.status === 'paused' ? act('Resume', 'resume', 'btn-primary') : act('Pause', 'pause'),
+        unsubscribe));
+    $('#runs-h').hidden = !d.runs.length;
+    $('#runs').replaceChildren(...d.runs.map((r) => h('li', {},
+      h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),
+      r.searchId ? h('a', { href: `/#search=${r.searchId}` }, 'Dashboard →') : null)));
+    $('#preview-h').hidden = $('#preview').hidden = !d.latestHtml;
+    if (d.latestHtml) $('#preview').srcdoc = d.latestHtml;
+  }
+  (async () => {
+    try {
+      let d = await api(`/api/digests/${token}`);
+      if (q.get('confirm') === '1' && d.status === 'pending') d = await api(`/api/digests/${token}/confirm`, 'POST');
+      render(d);
+      if (q.get('unsubscribe') === '1') document.querySelector('.btn-danger')?.click();
+    } catch (err) {
+      $('#card').replaceChildren(h('h1', {}, 'This link isn\'t valid any more.'), h('p', { class: 'sub' }, err.message, ' ', h('a', { href: '/' }, 'Start a new search'), '.'));
+    }
+  })();
+</script>
+</body>
+</html>
