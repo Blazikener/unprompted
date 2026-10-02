@@ -147,3 +147,36 @@ Creators now answer in the product instead of by DM. Your job shifts from relayi
 3. Count reposts or ads that use the creator's footage without a disclosed partnership or credit.
 4. Build the "a brand reused your video" alert only if it would fire at least monthly for an active creator. Record the
    count and examples in the sheet either way.
+
+---
+
+## Phase 3: money moves without you (payments, payouts, renewals)
+
+Off until you switch it on; until then everything above stays manual. Expiry, renewal reminders and creator rates
+work either way.
+
+**Switching it on (Stripe test mode first):**
+1. In Render, set `LICENSE_PAYMENTS=1`, with `STRIPE_SECRET_KEY` (start with `sk_test_…`) and `STRIPE_WEBHOOK_SECRET`.
+   Set `STRIPE_PLATFORM_COUNTRY` to your Stripe account's country (e.g. `AE`): creators banking elsewhere are onboarded
+   as payout-only recipients.
+2. In Stripe, turn on Connect (Express accounts) and check which payout countries it allows for your account; the inbox
+   offers `payments.CONNECT_COUNTRIES`.
+3. On the existing webhook (`/api/creators/billing/webhook`), enable the events `checkout.session.completed` and
+   `account.updated`.
+4. Run one test licence end to end with Stripe's test card (4242 4242 4242 4242): brand pays → creator sends a code →
+   it goes live → a test transfer appears in Stripe. Only then switch to live keys.
+
+**What happens on its own now:**
+- The creator accepts (or their rule does) → the brand's licence page shows **Pay $X** (Stripe Checkout).
+- Paid + code received → the licence goes **live** by itself: the window starts, the brand gets the code by email and
+  on its page, and the creator's 85% is transferred to their Stripe account (once they've set up payouts in their
+  inbox; anything owed goes out the moment they finish).
+- A counter-offer shows on the brand's page with **Accept / Decline**; accepting moves straight to payment.
+- The creator declines after the brand paid → full refund, automatically.
+- A week before the end, the brand gets a **Renew** email (one click: same window and price; the creator confirms and
+  sends a new code). At the end the licence is marked `ended`.
+- A creator's own 30-day rate (set in their inbox) replaces the rule-of-thumb price for their videos everywhere.
+
+**What still needs you:** brands that paid by your Payment Link (tick **Brand paid**; the rest follows), creators
+without Stripe payouts (pay by hand, tick **Creator paid**), transfers that fail (you're emailed), and refunds for a
+video deleted mid-licence (pro-rata, by hand in Stripe).

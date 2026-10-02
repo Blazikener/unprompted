@@ -743,6 +743,8 @@ def webhook(payload, headers):
         elif kind in ("customer.subscription.updated", "customer.subscription.deleted"):
             active = kind.endswith("updated") and obj.get("status") in ("active", "trialing", "past_due")
             set_plan(db, "stripe_customer = %s", (obj.get("customer"),), "pro" if active else "free", None, obj.get("id"))
+    import payments  # licence payments and creator payout accounts share this endpoint
+    payments.on_event(event)
     return {"received": True}
 
 

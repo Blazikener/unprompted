@@ -38,6 +38,7 @@ def clean(monkeypatch):
         db.execute("DELETE FROM mentions WHERE search_id IN (SELECT id FROM searches WHERE brand = 'Tim Hortons')")
         db.execute("DELETE FROM searches WHERE brand = 'Tim Hortons'")
         db.execute("DELETE FROM users WHERE email = ANY(%s)", (list(EMAILS),))
+        db.execute("DELETE FROM creator_handles WHERE handle = 'ali'")   # verified in the other licence tests
     monkeypatch.setenv("LICENSE_NOTIFY_EMAIL", "ops@u.test")
 
 

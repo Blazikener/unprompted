@@ -119,6 +119,11 @@
       show(head, status('declined', 'Declined', o.declineReason || 'You said no to this one. Nothing else happens.'), video, claim);
       return;
     }
+    if (o.status === 'ended') {
+      show(head, status('', `Ended on ${when(o.expiresAt)}`, o.creatorPaidAt ? `$${o.shareUsd} was paid on ${when(o.creatorPaidAt)}.`
+        : `$${o.shareUsd} is on its way.`), video, claim);
+      return;
+    }
     if (o.status === 'live') {
       show(head, status('', `Live until ${when(o.expiresAt)}`,
         o.creatorPaidAt ? `$${o.shareUsd} paid on ${when(o.creatorPaidAt)}.` : `$${o.shareUsd} is on its way: within 3 days of ${when(o.startsAt)}.`), video, claim);
@@ -138,7 +143,8 @@
         : h('div', { class: 'panel' }, h('b', {}, 'Last step: approve the partnership ad'),
             h('p', { class: 'sub', style: 'margin:6px 0 12px' }, `${o.brand} will send a partnership ad request in Instagram for this video. Approve it there, then press the button.`),
             act('I’ve approved it', 'primary', { action: 'code', code: 'approved partnership ad request' }, err), err);
-      show(head, status('', 'You accepted', `You get $${o.shareUsd} for ${o.days} days.`), step, video, terms, claim);
+      show(head, status('', o.brandPaid ? `${o.brand} has paid` : 'You accepted', o.brandPaid
+        ? `Send the code and the ad goes live; your $${o.shareUsd} follows.` : `You get $${o.shareUsd} for ${o.days} days.`), step, video, terms, claim);
       return;
     }
     // requested / contacted: accept, counter or decline

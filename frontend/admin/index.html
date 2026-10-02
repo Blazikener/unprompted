@@ -67,7 +67,7 @@
 </main>
 <script>
   const $ = (s) => document.querySelector(s);
-  const STATUSES = ['requested', 'contacted', 'accepted', 'declined', 'live'];
+  const STATUSES = ['requested', 'contacted', 'accepted', 'declined', 'live', 'ended'];
   let token = '', list = [];
   try { token = sessionStorage.getItem('opToken') || ''; } catch {}
   function h(tag, attrs, ...kids) {
@@ -152,7 +152,7 @@
     const copyRenewal = renewalDue(r) ? h('button', { class: 'copy', type: 'button', onclick: (e) => copy(renewalMessage(r), e.currentTarget) }, 'Copy renewal note to brand') : null;
     const tr = h('tr', { class: late ? 'late' : renewalDue(r) ? 'renew' : null },
       h('td', {}, age(r.ageHours), late ? h('div', { class: 'err' }, 'over 24h') : null),
-      h('td', {}, h('b', {}, r.brand), h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
+      h('td', {}, h('b', {}, r.brand), r.renewalOf ? h('div', { class: 'saved' }, `Renewal of #${r.renewalOf}`) : null, h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
       h('td', {}, h('a', { href: r.profileUrl, target: '_blank', rel: 'noopener' }, `@${r.handle}`), ` · ${r.platform} · ${r.views.toLocaleString()} views`,
         r.claimed ? h('div', { class: 'saved' }, 'Handle claimed: they get offers by email') : null,
         h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null,
@@ -162,7 +162,10 @@
       h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), r.respondedVia ? h('div', { class: 'muted' }, `via ${r.respondedVia}`) : null,
         r.declineReason ? h('div', { class: 'muted' }, r.declineReason) : null, h('div', { style: 'margin-top:6px' }, status)),
       h('td', {}, creatorPrice, ' ', finalPrice),
-      h('td', {}, flags, r.adCode ? h('div', { style: 'margin-top:6px' }, 'Code: ', h('code', {}, r.adCode)) : null),
+      h('td', {}, flags, r.adCode ? h('div', { style: 'margin-top:6px' }, 'Code: ', h('code', {}, r.adCode)) : null,
+        r.paidOnline ? h('div', { class: 'saved' }, 'Paid through Stripe') : null,
+        r.transfer && r.transfer !== 'pending' ? h('div', { class: 'saved' }, `Creator paid by Stripe (${r.transfer})`) : null,
+        r.refundedAt ? h('div', { class: 'err' }, `Refunded ${day(r.refundedAt)}`) : null),
       h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
     return tr;
   }

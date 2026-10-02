@@ -62,9 +62,8 @@ CREATE TABLE IF NOT EXISTS license_requests (    -- a brand asking to run a crea
   days       int  NOT NULL,
   price_usd  int  NOT NULL,                     -- the indicative price shown when they asked
   note       text,
-  status     text NOT NULL DEFAULT 'requested',  -- requested | contacted | accepted | declined | live
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (digest_id, video_id)
+  status     text NOT NULL DEFAULT 'requested',  -- requested | contacted | accepted | declined | live | ended
+  created_at timestamptz NOT NULL DEFAULT now()  -- one first request per video: payments.SCHEMA's partial unique index
 );
 ALTER TABLE license_requests                     -- brokering by hand: what the operator records as it happens
   ADD COLUMN IF NOT EXISTS contacted_at      timestamptz,
@@ -92,7 +91,7 @@ KIND_LABEL = {"spoken": "said on camera only", "tagged": "tagged", "sponsored": 
 KIND_COLOR = {"spoken": "#2f6b4f", "tagged": "#2d6f86", "sponsored": "#9a5a1c"}
 ORIANE_CREDIT = "Search and transcripts by Oriane"
 LICENSE_DAYS = (30, 60, 90)
-LICENSE_STATUS = ("requested", "contacted", "accepted", "declined", "live")
+LICENSE_STATUS = ("requested", "contacted", "accepted", "declined", "live", "ended")
 LICENSABLE = ("spoken", "tagged")                   # a disclosed partnership already has a deal behind it
 LICENSE_BASIS = ("Indicative: paid usage is usually quoted at about 25% of a creator's fee per month; "
                  "the fee here is a $10-25 per 1,000 views rule of thumb on this video.")
@@ -108,6 +107,12 @@ def manage_url(token):
 
 def license_url(token, video_id):
     return "%s/license/%s/%s" % (app_url(), token, video_id)
+
+
+def quote(video, days):
+    """The price a brand is shown: the creator's own rate when their verified handle has one, else license_price."""
+    import licenses
+    return licenses.brand_quote(video["platform"], video["handle"], video["views"], days)
 
 
 def license_price(views, days=30):
@@ -198,7 +203,7 @@ def item_html(v, token):
     # Organic mentions get a license button; it opens a confirm page, so a mail scanner opening links requests nothing.
     lic = ('<a href="%s" style="display:inline-block;margin-left:10px;padding:4px 11px;border-radius:999px;background:#d0f854;'
            'color:#1b2a23;font:600 12px %s;text-decoration:none;">License for ads &middot; ~$%d / 30 days &rarr;</a>'
-           % (esc(license_url(token, v["id"])), FONT, license_price(v["views"]))) if kind in LICENSABLE else ""
+           % (esc(license_url(token, v["id"])), FONT, quote(v, 30))) if kind in LICENSABLE else ""
     return TEMPLATES["item"].substitute(
         license=lic, profile=esc(profile_url(v["platform"], v["handle"])), handle=esc(v["handle"]),
         platform="TikTok" if v["platform"] == "tiktok" else "Instagram", views=fmt(v["views"]),
@@ -242,7 +247,8 @@ def confirm_mail(d):
 # ---------------------------------------------------------------- subscriptions
 
 def request_view(r):
-    return {"days": r["days"], "priceUsd": r["final_price_usd"] or r["price_usd"], "status": r["status"], "note": r["note"],
+    import licenses
+    return {"days": r["days"], "priceUsd": licenses.brand_price(r), "status": r["status"], "note": r["note"],
             "createdAt": r["created_at"], "expiresAt": r["expires_at"]}
 
 
@@ -331,31 +337,35 @@ def license_video(d, vid):
 
 
 def license_view(token, vid, body=None):
-    """GET (body None): the video, its indicative prices and any request already made. POST: record the request once
-    and tell the operator, who brokers it with the creator by hand. Nothing is charged here."""
+    """GET (body None): the video, its prices and the latest request for it. POST: record the first request (and tell
+    the operator), or with {"action": ...} pay, answer a counter-offer or renew (payments.brand_action)."""
+    import payments
     d, _, _ = load_digest(token)
     video = license_video(d, vid)
-    if body is not None:
+    if body is not None and body.get("action"):
+        out = payments.brand_action(d, vid, body)
+        if out:
+            return out
+    elif body is not None:
         days = body.get("days", 30)
         if days not in LICENSE_DAYS:
             raise ApiError(400, "Choose 30, 60 or 90 days.")
         note = str(body.get("note") or "").strip()[:500] or None
         with connect() as db:
             req = db.execute("INSERT INTO license_requests (digest_id, video_id, days, price_usd, note) VALUES (%s, %s, %s, %s, %s)"
-                             " ON CONFLICT (digest_id, video_id) DO NOTHING RETURNING *",
-                             (d["id"], vid, days, license_price(video["views"], days), note)).fetchone()
+                             " ON CONFLICT (digest_id, video_id) WHERE renewal_of IS NULL DO NOTHING RETURNING *",
+                             (d["id"], vid, days, quote(video, days), note)).fetchone()
         if req:
             import licenses  # the creator side; imported here because it imports this module
             after = licenses.on_request(req["id"])     # the handle owner's rules may answer it straight away
             creator.track(d["user_id"], "license_request", {"digest": d["id"], "video": vid, "days": days, "price": req["price_usd"]})
             notify_license(d, video, req, after)
     else:  # the page load; the email button is the only way here, so this is also the click-through
-        creator.track(d["user_id"], "license_view", {"digest": d["id"], "video": vid, "price": license_price(video["views"])})
-    with connect() as db:
-        req = db.execute("SELECT * FROM license_requests WHERE digest_id = %s AND video_id = %s", (d["id"], vid)).fetchone()
+        creator.track(d["user_id"], "license_view", {"digest": d["id"], "video": vid, "price": quote(video, 30)})
+    req = payments.latest(d["id"], vid)
     return {"brand": d["brand"], "email": d["email"], "manageUrl": manage_url(d["token"]), "video": video,
-            "prices": [{"days": n, "usd": license_price(video["views"], n)} for n in LICENSE_DAYS], "basis": LICENSE_BASIS,
-            "request": request_view(req) if req else None}
+            "prices": [{"days": n, "usd": quote(video, n)} for n in LICENSE_DAYS], "basis": LICENSE_BASIS,
+            "request": payments.brand_view(req) if req else None}
 
 
 def notify_license(d, video, req, after):
@@ -493,9 +503,11 @@ def run_route(handler, body):
     if body.get("resend") and isinstance(digest_id, int):
         return resend_last(digest_id)
     out = run_due(digest_id if isinstance(digest_id, int) else None, bool(body.get("force")))
-    if not isinstance(digest_id, int):             # the same cron also sends creators their weekly license summary
+    if not isinstance(digest_id, int):             # the same cron sends creators' weekly summary and licence reminders
         import licenses
+        import payments
         out["summaries"] = licenses.run_summaries(bool(body.get("forceSummaries")))
+        out["licenses"] = payments.run_reminders()
     return out
 
 
@@ -531,7 +543,8 @@ def admin_row(r):
             "days": r["days"], "priceUsd": r["price_usd"], "creatorPriceUsd": r["creator_price_usd"],
             "finalPriceUsd": r["final_price_usd"], "note": r["note"], "opsNote": r["ops_note"], "ageHours": int(r["age_hours"]),
             "offerUrl": "%s/offer/%s" % (app_url(), r["creator_token"]), "claimed": r["claimed"], "respondedVia": r["responded_via"],
-            "adCode": r["ad_code"], "declineReason": r["decline_reason"],
+            "adCode": r["ad_code"], "declineReason": r["decline_reason"], "renewalOf": r["renewal_of"],
+            "paidOnline": bool(r["stripe_charge"]), "transfer": r["stripe_transfer"], "refundedAt": r["refunded_at"],
             **{k: r[c] for k, c in (("createdAt", "created_at"), ("contactedAt", "contacted_at"), ("respondedAt", "responded_at"),
                                     ("codeReceivedAt", "code_received_at"), ("brandPaidAt", "brand_paid_at"),
                                     ("creatorPaidAt", "creator_paid_at"), ("startsAt", "starts_at"), ("expiresAt", "expires_at"))}}
@@ -576,6 +589,11 @@ def admin_update(rid, body):
     with connect() as db:
         if not db.execute(sql, (*(p for _, ps in sets.values() for p in ps), rid)).fetchone():
             raise ApiError(404, "No such request.")
+    import payments                             # paid + code now means live; a decline after a Stripe payment is refunded
+    payments.maybe_go_live(rid)
+    payments.pay_creator(rid)
+    payments.refund_if_paid(rid)
+    with connect() as db:
         return admin_row(db.execute(ADMIN_SQL + " WHERE r.id = %s", (rid,)).fetchone())
 
 
@@ -607,7 +625,9 @@ def scheduler(every_s=900, first_s=60):
             try:
                 run_due()
                 import licenses
+                import payments
                 licenses.run_summaries()
+                payments.run_reminders()
             except Exception:
                 traceback.print_exc()
             wait_s = every_s

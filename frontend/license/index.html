@@ -43,10 +43,14 @@
   .btn { height: 42px; padding: 0 18px; border-radius: 9px; border: 0; background: var(--lime); color: var(--ink); font: 600 0.9375rem var(--sans); cursor: pointer; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .basis { margin: 14px 0 0; font-size: 0.75rem; color: var(--ink-2); }
+  .btn.quiet { background: #fff; border: 1px solid var(--line); }
   .status { margin: 0 0 6px; padding: 14px 16px; border-radius: 12px; background: var(--moss-soft); }
   .status b { display: block; margin-bottom: 2px; }
   .status.declined { background: var(--coral-soft); }
   .err { color: var(--coral); }
+  .code { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; }
+  .code code { font: 600 1rem var(--mono); padding: 6px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--line); word-break: break-all; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .back { display: inline-block; margin-top: 18px; color: var(--moss); font-size: 0.875rem; }
   footer { margin-top: 28px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
   footer a { color: inherit; }
@@ -67,10 +71,13 @@
   const STATUS = {
     requested: ['Requested', 'We’re contacting the creator to confirm their terms. Nothing is charged until they agree and you approve the final price.'],
     contacted: ['Creator contacted', 'We’ve reached the creator and are waiting on their answer.'],
-    accepted: ['Creator accepted', 'The creator agreed. We’ll send you the final terms and the ad code.'],
+    accepted: ['Creator accepted', 'The creator agreed. We’ll email you a payment link; the ad code follows once it’s paid.'],
     declined: ['Creator declined', 'The creator said no to this one. Nothing was charged.'],
     live: ['Live', 'The license is active.'],
+    ended: ['Ended', 'The license window is over, so the ad should stop.'],
   };
+  const returning = new URLSearchParams(location.search).get('paid') === '1';
+  let polls = 0;
   const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
   const fmt = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K` : String(n);
   function h(tag, attrs, ...kids) {
@@ -102,11 +109,48 @@
     const back = h('a', { class: 'back', href: d.manageUrl }, `← Your weekly ${d.brand} watch`);
     if (d.request) {
       const r = d.request, [title, status] = STATUS[r.status] || [r.status, ''];
-      const text = r.status === 'live' && r.expiresAt ? `The license runs until ${when(r.expiresAt)}.` : status;
-      $('#card').replaceChildren(
+      const err = h('p', { class: 'err', role: 'alert' });
+      // One button that posts an action; a Stripe checkout URL in the answer sends the brand there.
+      const act = (label, body, primary) => {
+        const b = h('button', { class: primary ? 'btn' : 'btn quiet', type: 'button', onclick: async () => {
+          b.disabled = true; err.textContent = '';
+          try {
+            const out = await call(body);
+            if (out.checkoutUrl) { location.href = out.checkoutUrl; return; }
+            render(await call());
+          } catch (ex) { err.textContent = ex.message; b.disabled = false; }
+        } }, label);
+        return b;
+      };
+      let text = status, extra = null;
+      if (r.status === 'accepted' && r.paid) text = 'Paid. Waiting for the creator’s ad code; the ad goes live as soon as it arrives.';
+      else if (r.status === 'accepted' && returning && polls < 6) {   // back from Stripe before its webhook landed
+        text = 'Thanks: confirming your payment with Stripe…';
+        polls += 1;
+        setTimeout(() => call().then(render), 2500);
+      }
+      else if (r.status === 'accepted' && r.payOnline) {
+        text = `The creator agreed. Pay $${r.priceUsd} to start; the ad code is released as soon as it’s paid.`;
+        extra = h('div', { class: 'row' }, act(`Pay $${r.priceUsd}`, { action: 'pay' }, true));
+      } else if (r.status === 'contacted' && r.counterUsd) {
+        text = `The creator asked for $${r.counterUsd} instead, which makes it $${r.priceUsd} for you. Accept and it moves straight to payment.`;
+        extra = h('div', { class: 'row' }, act(`Accept $${r.priceUsd}`, { action: 'accept_counter' }, true), act('Decline', { action: 'decline_counter' }));
+      } else if (r.status === 'live') text = `The license runs until ${when(r.expiresAt)}.`;
+      else if (r.status === 'ended') text = `It ended on ${when(r.expiresAt)}, so the ad should stop.`;
+      else if (r.status === 'declined' && r.refunded) text = 'The creator said no, and your payment was refunded in full.';
+      if (r.renewal && ['requested', 'contacted'].includes(r.status)) text = `Renewal requested. ${text}`;
+      const tiktok = v.platform === 'tiktok';
+      const code = r.adCode && ['live', 'accepted'].includes(r.status) ? h('div', {},
+        h('div', { class: 'code' }, h('span', {}, tiktok ? 'Spark Ad code:' : 'Partnership ad:'), h('code', {}, r.adCode),
+          h('button', { class: 'btn quiet', type: 'button', onclick: (e) => navigator.clipboard?.writeText(r.adCode).then(() => { e.target.textContent = 'Copied'; }) }, 'Copy')),
+        h('p', { class: 'basis' }, tiktok ? 'In TikTok Ads Manager, create an ad, choose Spark Ads and paste this code.'
+          : 'In Meta Ads Manager, create the ad with partnership ad (branded content) and pick the creator’s approved post.')) : null;
+      const renew = r.renewable ? h('div', { class: 'row' }, act(`Renew for ${r.days} days at $${r.priceUsd}`, { action: 'renew' }, true)) : null;
+      $('#card').replaceChildren(...[
         h('h1', {}, `@${v.handle}’s video for ${d.brand}`),
-        h('div', { class: `status ${r.status}` }, h('b', {}, `${title}: ${r.days} days at ~$${r.priceUsd}`), text),
-        h('p', { class: 'sub' }, `Requested ${when(r.createdAt)}. Updates go to ${d.email}.`), video, back);
+        h('div', { class: `status ${r.status}` }, h('b', {}, `${title}: ${r.days} days at ${r.paid ? '' : '~'}$${r.priceUsd}`), text, extra, code, renew, err),
+        h('p', { class: 'sub' }, `${r.renewal ? 'Renewal requested' : 'Requested'} ${when(r.createdAt)}. Updates go to ${d.email}.`), video, back,
+      ].filter(Boolean));
       return;
     }
     const opts = h('div', { class: 'opts' }, ...d.prices.map((p, i) => h('label', {},

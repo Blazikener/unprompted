@@ -13,6 +13,9 @@ import sys
 import time
 import traceback
 from collections import Counter
+
+if __name__ == "__main__":  # `python3 backend/server.py`: the other modules' `import server` must get this module, not a
+    sys.modules["server"] = sys.modules[__name__]  # second copy whose ApiError the handler here wouldn't catch
 from datetime import date, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -683,6 +686,7 @@ sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us ba
 import creator  # noqa: E402
 import digest  # noqa: E402
 import licenses  # noqa: E402
+import payments  # noqa: E402
 
 
 def init_db():
@@ -695,6 +699,7 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS checks_user ON checks (user_id, created_at DESC)")
         db.execute(digest.SCHEMA)
         db.execute(licenses.SCHEMA)
+        db.execute(payments.SCHEMA)
 
 
 if __name__ == "__main__":
