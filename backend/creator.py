@@ -96,7 +96,11 @@ PLANS = {
              "brandSearchesPerWeek": 2, "checksPerWeek": 3},
     "pro": {"scansPerWeek": 50, "brands": None, "activity": True, "pitch": True,
             "brandSearchesPerWeek": 30, "checksPerWeek": 50},
+    # Talent managers (rosters.py): Pro, plus a Monday report on up to 25 creators.
+    "roster": {"scansPerWeek": 50, "brands": None, "activity": True, "pitch": True,
+               "brandSearchesPerWeek": 30, "checksPerWeek": 50, "rosterCreators": 25},
 }
+PLAN_PRICE_ENV = {"pro": "STRIPE_PRICE_PRO", "roster": "STRIPE_PRICE_ROSTER"}
 SESSION_DAYS = 30
 COOKIE = "receipts_session"
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -686,14 +690,16 @@ def billing_config():
             "plans": PLANS, "demo": demo.active()}
 
 
-def checkout(user):
-    if not billing_enabled():
+def checkout(user, plan="pro"):
+    price = os.environ.get(PLAN_PRICE_ENV[plan])
+    if not (stripe_config()["STRIPE_SECRET_KEY"] and price):
         raise ApiError(503, "Billing isn't configured on this server yet.")
-    if user["plan"] == "pro":
-        raise ApiError(400, "You're already on Pro.")
-    params = {"mode": "subscription", "line_items[0][price]": stripe_config()["STRIPE_PRICE_PRO"], "line_items[0][quantity]": 1,
-              "success_url": app_url() + "/creators/?upgraded=1", "cancel_url": app_url() + "/creators/?upgraded=0",
-              "client_reference_id": user["id"], "metadata[user_id]": user["id"], "allow_promotion_codes": "true"}
+    if user["plan"] == plan:
+        raise ApiError(400, "You're already on %s." % ("Pro" if plan == "pro" else "the roster plan"))
+    back = app_url() + ("/creators/roster?subscribed=" if plan == "roster" else "/creators/?upgraded=")
+    params = {"mode": "subscription", "line_items[0][price]": price, "line_items[0][quantity]": 1,
+              "success_url": back + "1", "cancel_url": back + "0", "client_reference_id": user["id"], "metadata[user_id]": user["id"],
+              "metadata[plan]": plan, "allow_promotion_codes": "true"}
     if user["stripe_customer"]:
         params["customer"] = user["stripe_customer"]
     else:
@@ -738,11 +744,16 @@ def webhook(payload, headers):
         if kind == "checkout.session.completed" and obj.get("mode") == "subscription":
             uid = (obj.get("metadata") or {}).get("user_id") or obj.get("client_reference_id")
             if uid:
-                set_plan(db, "id = %s", (int(uid),), "pro", obj.get("customer"), obj.get("subscription"))
+                plan = (obj.get("metadata") or {}).get("plan")
+                set_plan(db, "id = %s", (int(uid),), plan if plan in PLANS and plan != "free" else "pro",
+                         obj.get("customer"), obj.get("subscription"))
                 track(int(uid), "subscribed", {"subscription": obj.get("subscription")})
         elif kind in ("customer.subscription.updated", "customer.subscription.deleted"):
             active = kind.endswith("updated") and obj.get("status") in ("active", "trialing", "past_due")
-            set_plan(db, "stripe_customer = %s", (obj.get("customer"),), "pro" if active else "free", None, obj.get("id"))
+            # Still active keeps whichever paid plan they bought (Pro or roster); ended drops to free.
+            db.execute("UPDATE users SET plan = CASE WHEN %s THEN (CASE WHEN plan = 'free' THEN 'pro' ELSE plan END) ELSE 'free' END,"
+                       " stripe_subscription = coalesce(%s, stripe_subscription) WHERE stripe_customer = %s",
+                       (active, obj.get("id"), obj.get("customer")))
     import payments  # licence payments and creator payout accounts share this endpoint
     payments.on_event(event)
     return {"received": True}

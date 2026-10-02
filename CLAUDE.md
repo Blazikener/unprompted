@@ -16,6 +16,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 - `frontend/hero3d.js`: the landing hero's 3D "listening drum" (three.js pinned on jsDelivr, imported lazily on screens ≥760px wide and wider than tall; the CSS wave is the fallback). Quotes in it are illustrative templates around the typed brand.
 - `backend/licenses.py`: the creator side of "License for ads": `/offer/<token>` answers one request without an account; `/creators/licenses` (Receipts login) claims handles, lists offers, sets rules and the weekly summary. `docs/CONCIERGE.md` is the operator playbook; `/admin/` is the console.
 - `backend/payments.py`: licence money and renewals: Stripe Checkout for brands, Connect transfers to creators, refunds, expiry and renewal reminders, creator rates; Stripe parts only with `LICENSE_PAYMENTS=1`.
+- `backend/rosters.py`: the talent-manager roster seat: `/creators/roster` (Receipts login), a Monday report per roster (unpaid brands per creator, paying signal, pitch drafts), deals and the `roster` plan; pilots are granted in `/admin/`.
 - `PRODUCT.md`: design context (users, personality, principles).
 
 ## Oriane API notes

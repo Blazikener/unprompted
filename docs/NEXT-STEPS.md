@@ -8,13 +8,28 @@ in a gate; if a gate fails, the plan says what to do instead.
 
 Tags: **[Ops]** is founder work (outreach, brokering, reviews). **[Code]** is a change to this repo.
 
-## Where we are
+## Where we are (updated 2026-10-03)
 
-- Brand side: weekly watch on `/brands/`, "Watching · weekly" tags, 7-day schedule, and a "License for ads" button on
-  each organic mention in the email. Requests land in `license_requests` and are emailed to `LICENSE_NOTIFY_EMAIL`.
-  Nothing is charged yet.
-- Creator side: Receipts scan at `/`, free and Pro ($29/month) plans, Stripe Checkout and webhook in `backend/creator.py`.
-- Not live yet: branch `weekly-watch-license-hero3d` is pushed to GitHub but not merged into `main`.
+| Phase | Code | Live? | The part only you can do |
+|---|---|---|---|
+| 0 | Funnel events, `/admin/` console | Yes | Render: `LICENSE_NOTIFY_EMAIL`, reliable weekly runs; the production smoke test |
+| 1 | `prospect_brands.py`, console helpers, `docs/CONCIERGE.md` | Yes | Shortlist, outreach, brokering (Gate 1) |
+| 2 | `licenses.py`: offer links, handle claims, inbox, rules, weekly creator summary | Yes | Instagram verifications, the reuse sample (Gate 2) |
+| 3 | `payments.py`: Stripe Checkout, Connect payouts, refunds, renewals, creator rates | Branch `phase-3-payments` | Merge; Stripe Connect setup and one test-mode licence |
+| 4 | Roster seat for talent managers (`rosters.py`) | Branch `phase-4-rosters` | Manager interviews (4.1), the 6-week pilot (4.3) |
+
+`backend/test_workflow.py` runs the whole licence workflow over HTTP in the order `docs/CONCIERGE.md` describes, and runs
+the Monday funnel SQL from `docs/LAUNCH.md` as written.
+
+Where the build differs from the plan below:
+- 2.1/2.2 live in `backend/licenses.py`, `/creators/licenses` and `/offer/<token>` (the creator answers from the link
+  without an account, instead of a claim page).
+- 2.3's weekly summary covers waiting offers, licences ending soon and money; it doesn't re-scan for new mentions.
+- 3.2 uses separate charges and transfers: Unprompted keeps 15% of what the brand pays rather than a Stripe
+  application fee.
+- 3.3 sends its own reminder email a week before the end (with Renew on the brand's page) rather than a block in the
+  weekly report, which only goes out when there are new mentions.
+- 3.4's brand subscription isn't built: it waits for the pilot to show repeat use.
 
 ## The plan at a glance
 

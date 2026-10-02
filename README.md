@@ -65,9 +65,15 @@ last run) and the emails and pages credit Oriane.
 - License for ads (manual test): each organic mention in the email (said on camera or tagged, not disclosed ads) links to
   `/license/<token>/<video_id>`, which shows an indicative 30/60/90-day price (`license_price`: 25% of the rate card's
   high end per month, $50 floor). Confirming saves one `license_requests` row per video and emails
-  `LICENSE_NOTIFY_EMAIL` (logged when unset). Nothing is charged: broker it with the creator by hand, then update
-  `license_requests.status` (`requested` → `contacted` → `accepted`/`declined` → `live`); the brand sees it on its page
-  and its manage page.
+  `LICENSE_NOTIFY_EMAIL` (logged when unset). Broker it in `/admin/` (`requested` → `contacted` → `accepted`/`declined`
+  → `live` → `ended`); the brand sees it on its page and its manage page. Paid + ad code makes it live by itself.
+- Payments and renewals (`backend/payments.py`): with `LICENSE_PAYMENTS=1` brands pay accepted licences through Stripe
+  Checkout and creators are paid through Stripe Connect; without it payment stays manual. Renewal reminders, `ended`
+  and creator rates work either way; the digest cron runs them (`POST /api/digests/run` returns `summaries` and
+  `licenses` counts). The whole flow is exercised end to end by `backend/test_workflow.py`.
+- Roster seat for talent managers (`backend/rosters.py`, `/creators/roster`): up to 25 creators per manager, a Monday
+  report of the brands each mentioned unpaid in new videos (receipt, paying signal, pitch draft), deals marked from
+  reports, pilots granted in `/admin/`, and a `roster` plan (`STRIPE_PRICE_ROSTER`). The digest cron runs it on Mondays.
 - Creator side (`backend/licenses.py`): each request has an offer link (`/offer/<token>`) where the creator accepts,
   counters or declines and sends the ad code; `/creators/licenses` lets a Receipts user claim handles (TikTok: code in
   bio; Instagram: verified in `/admin/`), see offers, set rules and get a weekly summary from the digest cron.

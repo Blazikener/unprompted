@@ -508,6 +508,8 @@ def run_route(handler, body):
         import payments
         out["summaries"] = licenses.run_summaries(bool(body.get("forceSummaries")))
         out["licenses"] = payments.run_reminders()
+        import rosters                            # Monday roster reports for talent managers
+        out["rosters"] = rosters.run_rosters()
     return out
 
 
@@ -537,7 +539,9 @@ FROM license_requests r JOIN digests d ON d.id = r.digest_id JOIN videos v ON v.
 
 
 def admin_row(r):
-    return {"id": r["id"], "status": r["status"], "brand": r["brand"], "requestedBy": r["email"], "handle": r["handle"],
+    import licenses
+    return {"brandPriceUsd": licenses.brand_price(r), "creatorShareUsd": licenses.creator_share(r),
+            "id": r["id"], "status": r["status"], "brand": r["brand"], "requestedBy": r["email"], "handle": r["handle"],
             "platform": r["platform"], "views": r["views"], "videoUrl": server.post_url(r["raw"]),
             "profileUrl": profile_url(r["platform"], r["handle"]), "page": license_url(r["token"], r["video_id"]),
             "days": r["days"], "priceUsd": r["price_usd"], "creatorPriceUsd": r["creator_price_usd"],
@@ -628,6 +632,8 @@ def scheduler(every_s=900, first_s=60):
                 import payments
                 licenses.run_summaries()
                 payments.run_reminders()
+                import rosters
+                rosters.run_rosters()
             except Exception:
                 traceback.print_exc()
             wait_s = every_s

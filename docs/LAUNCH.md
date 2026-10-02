@@ -119,7 +119,8 @@ It lives on the brand dashboard at `/brands/` (card under the mention mix) and d
 - Broker requests at `/admin/` with the operator token (`DIGEST_RUN_TOKEN`): contact the creator within 24 hours,
   then record contacted, accepted or declined, creator and final price, code received, brand paid and creator paid.
   Setting a request live starts its window and sets the expiry from the requested days; the brand's licence page
-  shows each change. Nothing is charged by the app: take payment and pay the creator by hand during the pilot.
+  shows each change. Until `LICENSE_PAYMENTS=1` (see `docs/CONCIERGE.md`, Phase 3) nothing is charged by the app: take
+  payment and pay the creator by hand. Statuses: requested, contacted, accepted, declined, live, ended.
 - Weekly funnel (`events`), run every Monday:
 
   ```sql
