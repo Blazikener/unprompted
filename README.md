@@ -68,6 +68,9 @@ last run) and the emails and pages credit Oriane.
   `LICENSE_NOTIFY_EMAIL` (logged when unset). Nothing is charged: broker it with the creator by hand, then update
   `license_requests.status` (`requested` → `contacted` → `accepted`/`declined` → `live`); the brand sees it on its page
   and its manage page.
+- Creator side (`backend/licenses.py`): each request has an offer link (`/offer/<token>`) where the creator accepts,
+  counters or declines and sends the ad code; `/creators/licenses` lets a Receipts user claim handles (TikTok: code in
+  bio; Instagram: verified in `/admin/`), see offers, set rules and get a weekly summary from the digest cron.
 - Each normalized email can subscribe to at most 2 digests. At most `DIGEST_MAX_ACTIVE` confirmed, unpaused digests run
   site-wide (default 25).
 - `POST /api/digests/run` with `Authorization: Bearer $DIGEST_RUN_TOKEN`: runs due digests (`{"force": true}` all,

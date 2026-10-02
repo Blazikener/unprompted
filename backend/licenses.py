@@ -10,6 +10,7 @@ import math
 import os
 import re
 import secrets
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import psycopg
@@ -42,6 +43,11 @@ CREATE TABLE IF NOT EXISTS creator_prefs (
   min_price_usd  int,                               -- the creator's own share; below it, requests are declined for them
   approve_brands text[] NOT NULL DEFAULT '{}',      -- requests from these brands are accepted for them
   block_brands   text[] NOT NULL DEFAULT '{}'       -- and from these, declined
+);
+ALTER TABLE creator_prefs ADD COLUMN IF NOT EXISTS weekly_summary boolean NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS creator_summaries (     -- when each creator last got the weekly summary email
+  user_id int PRIMARY KEY REFERENCES users ON DELETE CASCADE,
+  sent_at timestamptz NOT NULL
 );
 """
 
@@ -264,10 +270,12 @@ def set_prefs(user, body):
     if m is not None and (not isinstance(m, int) or isinstance(m, bool) or not 0 <= m <= 1_000_000):
         raise ApiError(400, "Minimum is whole dollars.")
     with connect() as db:
-        db.execute("INSERT INTO creator_prefs (user_id, min_price_usd, approve_brands, block_brands) VALUES (%s, %s, %s, %s)"
-                   " ON CONFLICT (user_id) DO UPDATE SET min_price_usd = excluded.min_price_usd,"
-                   " approve_brands = excluded.approve_brands, block_brands = excluded.block_brands",
-                   (user["id"], m or None, brand_list(body.get("approveBrands")), brand_list(body.get("blockBrands"))))
+        db.execute("INSERT INTO creator_prefs (user_id, min_price_usd, approve_brands, block_brands, weekly_summary)"
+                   " VALUES (%s, %s, %s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET min_price_usd = excluded.min_price_usd,"
+                   " approve_brands = excluded.approve_brands, block_brands = excluded.block_brands,"
+                   " weekly_summary = excluded.weekly_summary",
+                   (user["id"], m or None, brand_list(body.get("approveBrands")), brand_list(body.get("blockBrands")),
+                    body.get("weeklySummary") is not False))
     return mine(user)
 
 
@@ -282,8 +290,85 @@ def mine(user):
     owed = sum(creator_share(r) for r in rows if r["brand_paid_at"] and not r["creator_paid_at"])
     return {"handles": [handle_view(h) for h in handles], "offers": offers,
             "prefs": {"minPriceUsd": prefs["min_price_usd"] if prefs else None,
-                      "approveBrands": prefs["approve_brands"] if prefs else [], "blockBrands": prefs["block_brands"] if prefs else []},
+                      "approveBrands": prefs["approve_brands"] if prefs else [], "blockBrands": prefs["block_brands"] if prefs else [],
+                      "weeklySummary": prefs["weekly_summary"] if prefs else True},
             "money": {"paidUsd": paid, "owedUsd": owed, "live": sum(r["status"] == "live" for r in rows)}}
+
+
+# ---------------------------------------------------------------- weekly summary email
+
+SUMMARY_EVERY = timedelta(days=7) - timedelta(hours=1)   # weekly, with an hour of slack for a daily cron
+
+
+def summary(user):
+    """(subject, html) of this week's summary, or None when there is nothing worth an email."""
+    inbox = mine(user)
+    now = datetime.now(timezone.utc)
+    waiting = [o for o in inbox["offers"] if o["status"] in ("requested", "contacted") and not (o["counterUsd"] and o["respondedVia"])]
+    ending = [o for o in inbox["offers"] if o["status"] == "live" and o["expiresAt"] and o["expiresAt"] - now <= timedelta(days=7)]
+    paid_month = sum(o["shareUsd"] for o in inbox["offers"] if o["creatorPaidAt"] and o["creatorPaidAt"].strftime("%Y-%m") == now.strftime("%Y-%m"))
+    owed = inbox["money"]["owedUsd"]
+    if not (waiting or ending or owed or paid_month):
+        return None
+    bits = ["%d offer%s waiting" % (len(waiting), "" if len(waiting) == 1 else "s")] if waiting else []
+    bits += ["%d ad%s ending soon" % (len(ending), "" if len(ending) == 1 else "s")] if ending else []
+    bits += ["$%d on its way" % owed] if owed else []
+    subject = "Your license offers this week: " + (", ".join(bits) or "$%d paid this month" % paid_month)
+    e, font = digest.esc, digest.FONT
+
+    def row(o, note, cta):
+        return ('<tr><td style="padding:10px 0;border-top:1px solid #e6ebe8;font:14px %s;color:#1b2a23;"><b>%s</b> &middot; @%s &middot; %s'
+                ' <a href="%s" style="margin-left:8px;color:#2f6b4f;font-weight:600;">%s &rarr;</a></td></tr>'
+                % (font, e(o["brand"]), e(o["video"]["handle"]), e(note), e(o["url"]), cta))
+    sections = []
+    if waiting:
+        sections.append(("Waiting for your answer",
+                         "".join(row(o, "$%d to you for %d days" % (o["shareUsd"], o["days"]), "Answer") for o in waiting)))
+    if ending:
+        sections.append(("Ending in the next 7 days", "".join(
+            row(o, "live until %d %s" % (o["expiresAt"].day, o["expiresAt"].strftime("%b")), "Open") for o in ending)))
+    money = "$%d paid to you this month &middot; $%d on its way" % (paid_month, owed)
+    body = ('<!doctype html><html><body style="margin:0;padding:24px 12px;background:#f3f6f4;">'
+            '<table role="presentation" width="100%%" style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:24px 26px;">'
+            '<tr><td style="font:500 12px %s;letter-spacing:.08em;text-transform:uppercase;color:#6b7a73;">Receipts &middot; weekly</td></tr>'
+            '<tr><td style="padding:8px 0 4px;font:600 22px/1.25 %s;color:#1b2a23;">%s</td></tr>'
+            '<tr><td style="padding-bottom:10px;font:14px %s;color:#48564f;">%s</td></tr>%s'
+            '<tr><td style="padding-top:18px;font:12px/1.6 %s;color:#6b7a73;">All offers and your rules: <a href="%s" style="color:#2f6b4f;">%s</a>.'
+            ' Turn this email off there.</td></tr></table></body></html>' % (
+                font, font, e(subject.split(": ", 1)[1]), font, money,
+                "".join('<tr><td style="padding-top:14px;font:600 13px %s;color:#1b2a23;">%s</td></tr>%s' % (font, e(t), rows)
+                        for t, rows in sections),
+                font, e(inbox_url()), e(inbox_url())))
+    return subject, body
+
+
+def inbox_url():
+    return "%s/creators/licenses" % digest.app_url()
+
+
+def run_summaries(force=False):
+    """Email every creator with a verified handle whose summary is due and who has something to read. Each send is
+    claimed in creator_summaries first, so overlapping runs (scheduler and cron) never send twice."""
+    with connect() as db:
+        users = db.execute(
+            "SELECT DISTINCT u.* FROM users u JOIN creator_handles h ON h.user_id = u.id AND h.verified_at IS NOT NULL"
+            " LEFT JOIN creator_prefs p ON p.user_id = u.id LEFT JOIN creator_summaries s ON s.user_id = u.id"
+            " WHERE coalesce(p.weekly_summary, true) AND (%s OR s.sent_at IS NULL OR s.sent_at < now() - %s)",
+            (force, SUMMARY_EVERY)).fetchall()
+    sent = 0
+    for u in users:
+        mail = summary(u)
+        if not mail:
+            continue
+        with connect() as db:
+            claimed = db.execute("INSERT INTO creator_summaries (user_id, sent_at) VALUES (%s, now()) ON CONFLICT (user_id) DO UPDATE"
+                                 " SET sent_at = now() WHERE %s OR creator_summaries.sent_at < now() - %s RETURNING user_id",
+                                 (u["id"], force, SUMMARY_EVERY)).fetchone()
+        if claimed:
+            digest.send(u["email"], *mail)
+            creator.track(u["id"], "creator_summary", {"subject": mail[0]})
+            sent += 1
+    return sent
 
 
 # ---------------------------------------------------------------- operator: Instagram claims
