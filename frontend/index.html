@@ -97,6 +97,8 @@
   .saved-item:focus-visible { outline: 2px solid var(--lime); outline-offset: -2px; }
   .saved-brand { font-weight: 600; font-size: 0.875rem; transition: color 0.18s var(--ease); }
   .saved-meta, .saved-tags { font-size: 0.75rem; color: var(--on-forest-2); }
+  .saved-watch { justify-self: start; margin-top: 4px; padding: 1px 7px; border-radius: 999px; background: color-mix(in oklch, var(--lime) 16%, transparent); color: var(--lime); font: 500 0.6875rem/1.5 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+  .saved-watch.off { background: var(--forest-2); color: var(--on-forest-2); }
   .fx-switch { margin: 0 0 24px; padding: 12px; border: 0; border-radius: 12px; background: var(--forest-2); }
   .fx-switch legend { float: left; width: 100%; padding: 0; margin-bottom: 8px; font-size: 0.75rem; font-weight: 600; }
   .fx-switch .seg-opts { height: 32px; background: var(--forest); }
@@ -434,6 +436,18 @@
   .listen-wave { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; display: flex; align-items: flex-end; gap: 6px; padding: 0 28px; opacity: 0.9; pointer-events: none; mask-image: linear-gradient(to top, #000 20%, transparent); -webkit-mask-image: linear-gradient(to top, #000 20%, transparent); }
   .listen-wave i { flex: 1; height: var(--h); border-radius: 3px 3px 0 0; background: oklch(1 0 0 / 0.07); transform-origin: bottom; animation: listen 2.4s var(--ease) infinite alternate; animation-delay: var(--d); }
   .listen-wave i.hot { background: oklch(0.92 0.19 122 / 0.5); }
+  .listen-wave { transition: opacity 1s var(--ease); }
+  .landing.has-3d .listen-wave { opacity: 0; }
+  /* 3D listening drum (hero3d.js). Masked off the headline column and the bottom so text keeps its contrast. */
+  .hero-3d { position: absolute; top: 0; left: 0; z-index: 0; display: block; width: 100%; height: min(100%, 100vh); pointer-events: none; opacity: 0; transition: opacity 1.6s var(--ease);
+    -webkit-mask-image: linear-gradient(90deg, transparent 40%, #000 64%), linear-gradient(#000 72%, transparent 96%); -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent 40%, #000 64%), linear-gradient(#000 72%, transparent 96%); mask-composite: intersect; }
+  .landing.has-3d .hero-3d { opacity: 1; }
+  .hero-receipt { position: absolute; top: 0; left: 0; z-index: 1; width: min(260px, 22vw); padding: 12px 14px 11px; border-radius: 12px; background: oklch(0.2 0.035 160 / 0.86); box-shadow: inset 0 0 0 1px oklch(0.92 0.19 122 / 0.28), 0 22px 44px -20px oklch(0.08 0.03 160 / 0.95); color: var(--on-forest); pointer-events: none; opacity: 0; translate: 0 6px; transition: opacity 0.35s var(--ease), translate 0.5s var(--ease-expo); will-change: transform; }
+  .hero-receipt.on { opacity: 1; translate: 0 0; }
+  .hero-receipt-q { margin: 0 0 7px; font: italic 400 1rem/1.4 var(--serif); text-wrap: pretty; }
+  .hero-receipt-q mark { padding: 0 3px; border-radius: 3px; background: var(--lime); color: var(--ink); font-style: normal; font-weight: 600; font-family: var(--sans); font-size: 0.875em; }
+  .hero-receipt-meta { margin: 0; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--lime); }
   @keyframes listen { from { transform: scaleY(0.35); } to { transform: scaleY(1); } }
   ::view-transition-group(search-form) { animation-duration: 0.65s; animation-timing-function: var(--ease-expo); }
   ::view-transition-old(search-form) { animation: 0.3s var(--ease) both vt-fade-out; }
@@ -547,12 +561,14 @@
     <h2 class="side-h">Saved searches</h2>
     <ol id="saved" class="saved"></ol>
     <div class="side-foot" id="brand-account"><a href="#brand-sign-in">Sign in</a></div>
-    <p class="side-foot">Every search is stored in your local Postgres. Reopening one costs no Oriane credits.</p>
+    <p class="side-foot">Reopening a saved search is free. Searches marked <b>Watching</b> are checked again every 7 days and new mentions are emailed to you.</p>
     <p class="side-foot">Video intelligence by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a></p>
   </aside>
 
   <main class="main">
     <section id="landing" class="landing" aria-labelledby="landing-h">
+      <canvas class="hero-3d" aria-hidden="true"></canvas>
+      <div class="hero-receipt" aria-hidden="true"><p class="hero-receipt-q"><span class="q-a"></span><mark></mark><span class="q-b"></span></p><p class="hero-receipt-meta"></p></div>
       <div class="landing-top">
         <a class="wordmark home" href="/brands/">Un<span>prompted</span></a>
         <a href="https://oriane.xyz" target="_blank" rel="noopener">Video intelligence by Oriane ↗</a>
@@ -604,11 +620,11 @@
         <div class="landing-after">
           <section class="landing-digest" aria-labelledby="landing-digest-h">
             <div>
-              <h2 id="landing-digest-h">Get new creator mentions of your brand by email, every week.</h2>
-              <p>Search once and save it. Each week, get new videos, the quote, and whether each mention was spoken on camera, tagged, or paid. Search and transcripts by Oriane.</p>
+              <h2 id="landing-digest-h">Watch a brand: one email report a week.</h2>
+              <p>Run a search, then press <b>Watch weekly</b>. Every 7 days we check it again and email you only the new videos: who said it, the quote, and whether it was on camera, tagged or paid. The search is marked <b>Watching</b> in your list. No new mentions that week, no email. Search and transcripts by Oriane.</p>
             </div>
             <div class="landing-digest-actions">
-              <a class="landing-digest-action" href="/digest/sample">See a sample digest</a>
+              <a class="landing-digest-action" href="/digest/sample">See a sample report</a>
               <button class="landing-digest-action primary" id="digest-start-search" type="button">Start with a search</button>
             </div>
           </section>
@@ -627,7 +643,7 @@
         <ul class="proof">
           <li>Hears spoken mentions that never reach a caption</li>
           <li>Every match comes with its quote, timestamp and frame</li>
-          <li>Searches are saved to Postgres and reopen for free</li>
+          <li>Watch a search and get its new mentions by email every week</li>
         </ul>
       </div>
       <div class="listen-wave" aria-hidden="true"></div>
@@ -668,12 +684,12 @@
         </div>
         <section id="digest" class="digest" aria-labelledby="digest-h">
           <div>
-            <h2 id="digest-h">Hear the next ones first.</h2>
-            <p>Save this search and every week you get an email with the new videos where creators mention <b id="digest-brand"></b>: the quote, who said it, and whether it was said on camera, tagged or a disclosed partnership. No account; one click to stop.</p>
+            <h2 id="digest-h">Watch this search, get a weekly report.</h2>
+            <p>Every 7 days we check <b id="digest-brand"></b> again and email you only the videos you haven't seen: who said it, the quote, and whether it was said on camera, tagged or a disclosed partnership. It shows as <b>Watching</b> in your searches. No new mentions that week, no email; stop any time.</p>
           </div>
           <form id="digest-form" class="digest-form" autocomplete="off">
-            <input id="digest-email" type="email" required maxlength="254" placeholder="you@brand.com" aria-label="Your email">
-            <button class="btn btn-primary" type="submit">Email me weekly</button>
+            <input id="digest-email" type="email" required maxlength="254" placeholder="you@brand.com" aria-label="Email for the weekly report">
+            <button class="btn btn-primary" type="submit">Watch weekly</button>
           </form>
           <p id="digest-done" class="digest-done" role="status" hidden></p>
           <p class="digest-oriane">Search and transcripts by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a></p>
@@ -1081,12 +1097,29 @@
     document.title = `${s.brand} · Unprompted`;
     $('#results').classList.toggle('is-empty', !data.videos.length);
     $('#digest-brand').textContent = s.brand;
-    $('#digest-done').hidden = true;
-    $('#digest-form').hidden = false;
+    renderWatch(savedSearches.find((x) => x.id === s.id)?.watch);
     view('results');
     renderSummary();
     if (data.videos.length) { renderStats(); renderMix(); renderBoard(); renderDetail(); }
     markSaved(s.id);
+  }
+
+  // The watch card on a search: the form, or where this search's weekly report stands.
+  function renderWatch(watch, note) {
+    const done = $('#digest-done'), brand = state.data.search.brand;
+    $('#digest-h').textContent = watch ? "You're watching this search." : 'Watch this search, get a weekly report.';
+    $('#digest-form').hidden = !!watch;
+    if (!watch) {
+      if (!$('#digest-email').value && brandUser) $('#digest-email').value = brandUser.email;
+      done.hidden = true;
+      return;
+    }
+    done.replaceChildren(note || {
+      active: `Watching ${brand}. Every 7 days you get an email with any new mentions. `,
+      paused: `Watch paused. No ${brand} reports until you resume it. `,
+      pending: `Almost: confirm the email we sent to start watching ${brand}. `,
+    }[watch.status], h('a', { href: watch.manageUrl }, 'Manage watch'));
+    done.hidden = false;
   }
 
   $('#digest-form').addEventListener('submit', async (e) => {
@@ -1096,13 +1129,11 @@
     try {
       const d = await api('/api/digests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         email: $('#digest-email').value, brand: s.brand, variants: (s.params.variants || []).join(', '), platform: s.params.platform, lang: s.params.lang, searchId: s.id }) });
-      done.replaceChildren(d.status === 'active'
-        ? `You're in. New ${s.brand} mentions land in your inbox every ${d.every} days. `
-        : d.mailed ? `Almost: confirm the email we just sent to ${d.email}. `
-          : "Saved, but we couldn't send the confirmation email right now. Try again in a few minutes. ",
-      h('a', { href: d.manageUrl }, 'Manage this digest'));
-      done.hidden = false;
-      $('#digest-form').hidden = true;
+      renderWatch(d, d.status === 'active'
+        ? `Watching ${s.brand}. Every ${d.every} days we email ${d.email} any new mentions. `
+        : d.mailed ? `Almost: confirm the email we just sent to ${d.email} to start watching. `
+          : "Saved, but we couldn't send the confirmation email right now. Try again in a few minutes. ");
+      loadSaved();
     } catch (err) {
       done.textContent = err.message;
       done.hidden = false;
@@ -1484,9 +1515,11 @@
     return date(iso);
   }
 
+  let savedSearches = [];
+  const WATCH_TAG = { active: 'Watching · weekly', paused: 'Watch paused', pending: 'Watch: confirm email' };
   async function loadSaved() {
     let list;
-    try { list = await api('/api/searches'); } catch {
+    try { list = savedSearches = await api('/api/searches'); } catch {
       $('#saved').replaceChildren(h('li', { class: 'muted small' }, "Couldn't load saved searches."));
       return;
     }
@@ -1496,13 +1529,16 @@
       return h('li', {}, h('button', { type: 'button', class: 'saved-item', 'data-id': s.id, onclick: () => openSearch(s.id) },
         h('span', { class: 'saved-brand' }, s.brand),
         h('span', { class: 'saved-meta' }, `${fmt(s.totalCount)} found${s.fetchMs != null ? ` · ${(s.fetchMs / 1000).toFixed(1)} s` : ''} · ${ago(s.createdAt)}`),
-        tags.length ? h('span', { class: 'saved-tags' }, tags.join(' · ')) : null));
+        tags.length ? h('span', { class: 'saved-tags' }, tags.join(' · ')) : null,
+        s.watch ? h('span', { class: `saved-watch${s.watch.status === 'active' ? '' : ' off'}` }, WATCH_TAG[s.watch.status]) : null));
     }) : [h('li', { class: 'muted small' }, 'Your searches will show up here.')]));
     if (state.data) markSaved(state.data.search.id);
+    // The list can land after the search opened: show an existing watch instead of the form.
+    if (state.data && $('#digest-done').hidden) renderWatch(list.find((x) => x.id === state.data.search.id)?.watch);
     const recent = list.slice(0, 4);
     $('#recent').hidden = !recent.length;
     $('#recent-list').replaceChildren(...recent.map((s) => h('li', {}, h('button', { type: 'button', onclick: () => openSearch(s.id) },
-      h('b', {}, s.brand), h('span', {}, `${fmt(s.totalCount)} found · ${ago(s.createdAt)}`)))));
+      h('b', {}, s.brand), h('span', {}, `${fmt(s.totalCount)} found · ${ago(s.createdAt)}${s.watch?.status === 'active' ? ' · watching' : ''}`)))));
   }
 
   function markSaved(id) {
@@ -1921,6 +1957,15 @@
   addEventListener('hashchange', () => {
     const m = location.hash.match(/^#search=(\d+)$/);
     if (m && Number(m[1]) !== state.data?.search.id) openSearch(Number(m[1]));
+  });
+
+  // The 3D hero (three.js from jsDelivr) loads once the page is idle, and only on screens with room beside the
+  // headline. Without WebGL, or if the load fails, the CSS wave stays.
+  const hero3d = matchMedia('(min-width: 760px) and (min-aspect-ratio: 23/20)');
+  const load3d = () => import('/hero3d.js')
+    .then((m) => m.start($('.hero-3d'), { brandInput: brandEl, receipt: $('.hero-receipt'), reduced })).catch(() => {});
+  (window.requestIdleCallback || ((f) => setTimeout(f, 400)))(() => {
+    if (hero3d.matches) load3d(); else hero3d.addEventListener('change', load3d, { once: true });
   });
 
   setMode(true);

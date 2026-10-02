@@ -45,9 +45,9 @@ are cached globally for 24 hours, including for free users.
 `ORIANE_DAILY_BUDGET` defaults to 600 credits per UTC day and is shared across the brand dashboard, Receipts, digests,
 and prospecting. Once reached, live provider calls pause until the next UTC day; cached results remain available.
 
-## Weekly digest: the push side (`/brands/`, "Email me weekly")
+## Weekly watch: the push side (`/brands/`, "Watch weekly")
 
-Save a brand search once with just an email and get the new videos where creators mention the brand every week:
+Watch a brand search and get a weekly email report of the new videos where creators mention the brand:
 the quote, who said it, and whether it was said on camera, tagged, or a disclosed partnership. Built as an
 [Oriane](https://oriane.xyz) Community Tool: every digest is one Oriane content search (videos published since the
 last run) and the emails and pages credit Oriane.
@@ -57,14 +57,25 @@ last run) and the emails and pages credit Oriane.
   either provider the digest is active at once and emails are logged, not sent. A pending signup can
   be submitted again to retry its confirmation email. Videos already on the dashboard (`searchId`) count as seen, so
   the first digest only has new ones.
-- `/digest/<token>`: manage page (pause, resume, unsubscribe, past runs, latest email preview).
+- A signed-in user's watch is stored with their account (`digests.user_id`) and `GET /api/searches` marks every saved
+  search with the same brand and filters (any period) as `watch: {status, manageUrl}`; the sidebar shows it as
+  "Watching · weekly".
+- `/digest/<token>`: manage page (pause, resume, stop, past runs, next check, latest email preview).
 - `/digest/sample`: read-only public sample email; the stored digest's subscriber details are removed.
+- License for ads (manual test): each organic mention in the email (said on camera or tagged, not disclosed ads) links to
+  `/license/<token>/<video_id>`, which shows an indicative 30/60/90-day price (`license_price`: 25% of the rate card's
+  high end per month, $50 floor). Confirming saves one `license_requests` row per video and emails
+  `LICENSE_NOTIFY_EMAIL` (logged when unset). Nothing is charged: broker it with the creator by hand, then update
+  `license_requests.status` (`requested` → `contacted` → `accepted`/`declined` → `live`); the brand sees it on its page
+  and its manage page.
 - Each normalized email can subscribe to at most 2 digests. At most `DIGEST_MAX_ACTIVE` confirmed, unpaused digests run
   site-wide (default 25).
 - `POST /api/digests/run` with `Authorization: Bearer $DIGEST_RUN_TOKEN`: runs due digests (`{"force": true}` all,
   `{"id": n}` one, `{"id": n, "resend": true}` re-mails the newest rendered run without an Oriane call).
   `DIGEST_SCHEDULER=1` does the same in-process, first checking about a minute after startup and then every 15 minutes
   while awake. On Render free it runs whenever the instance is awake; any visit wakes it. Both are off until configured.
+  A watch is due 7 days after its last run (with an hour of slack so a daily cron that fires early still lands on day 7);
+  a new watch is due on the next pass.
 - Cost: 40 Oriane credits per digest per week (one search, `sort=publishedAt`, limit 100). Quiet weeks send nothing.
 
 ### Email delivery

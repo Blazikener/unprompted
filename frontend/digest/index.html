@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your weekly digest · Unprompted</title>
+<title>Your weekly watch · Unprompted</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,9 +47,11 @@
 </head>
 <body>
 <main>
-  <div class="brand"><a href="/brands/">Unprompted</a><span>Weekly digest</span></div>
-  <section class="card" id="card"><p class="muted">Loading your digest…</p></section>
-  <h2 id="runs-h" hidden>Past digests</h2>
+  <div class="brand"><a href="/brands/">Unprompted</a><span>Weekly watch</span></div>
+  <section class="card" id="card"><p class="muted">Loading your watch…</p></section>
+  <h2 id="lic-h" hidden>License requests</h2>
+  <ol class="runs" id="licenses"></ol>
+  <h2 id="runs-h" hidden>Past weekly checks</h2>
   <ol class="runs" id="runs"></ol>
   <h2 id="preview-h" hidden>Latest email</h2>
   <iframe id="preview" title="Latest digest email" hidden sandbox></iframe>
@@ -61,6 +63,7 @@
   const q = new URLSearchParams(location.search);
   const PLATFORM = { all: 'Instagram and TikTok', instagram: 'Instagram', tiktok: 'TikTok' };
   const LANG = { any: 'any language', en: 'English', ar: 'Arabic' };
+  const LICENSE = { requested: 'contacting the creator', contacted: 'creator contacted', accepted: 'creator accepted', declined: 'creator declined', live: 'live' };
   const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -77,7 +80,7 @@
   function render(d) {
     const card = $('#card');
     if (d.status === 'unsubscribed') {
-      card.replaceChildren(h('h1', {}, 'Unsubscribed.'), h('p', { class: 'sub' }, `No more ${d.brand} emails to ${d.email}. `, h('a', { href: '/brands/' }, 'Run a new search'), ' any time.'));
+      card.replaceChildren(h('h1', {}, 'Stopped watching.'), h('p', { class: 'sub' }, `No more ${d.brand} reports to ${d.email}. `, h('a', { href: '/brands/' }, 'Run a new search'), ' any time.'));
       return;
     }
     const act = (label, action, cls = '') => h('button', { class: `btn ${cls}`, type: 'button', onclick: async (e) => {
@@ -85,23 +88,29 @@
       try { render(await api(`/api/digests/${token}/${action}`, 'POST')); } catch (err) { card.append(h('p', { class: 'err' }, err.message)); e.target.disabled = false; }
     } }, label);
     const unsubscribe = h('button', { class: 'btn btn-danger', type: 'button', onclick: (e) => {
-      e.target.replaceWith(h('span', { class: 'muted' }, 'Stop all ', d.brand, ' emails? ', act('Yes, unsubscribe', 'unsubscribe', 'btn-danger')));
-    } }, 'Unsubscribe');
-    const status = { active: 'Active', paused: 'Paused', pending: 'Confirm your email' }[d.status];
+      e.target.replaceWith(h('span', { class: 'muted' }, 'Stop all ', d.brand, ' reports? ', act('Yes, stop', 'unsubscribe', 'btn-danger')));
+    } }, 'Stop watching');
+    const status = { active: 'Watching', paused: 'Paused', pending: 'Confirm your email' }[d.status];
+    // Due a week after the last check; a new watch is due on the next scheduler pass.
+    const next = d.lastRunAt ? when(new Date(d.lastRunAt).getTime() + d.every * 864e5) : 'Due now (first check)';
     card.replaceChildren(
-      h('h1', {}, 'New mentions of ', d.brand, ', weekly. ', h('span', { class: `pill ${d.status}` }, status)),
+      h('h1', {}, 'Weekly watch: ', d.brand, ' ', h('span', { class: `pill ${d.status}` }, status)),
       h('p', { class: 'sub' }, d.status === 'pending'
         ? (d.mail ? `We emailed ${d.email} a confirmation link. Nothing is sent until you click it.` : 'Mail isn\'t configured on this server yet, so confirm here:')
         : d.status === 'paused' ? 'Paused. Resume whenever you want the next one.'
-        : `Every ${d.every} days we search Oriane for new videos mentioning ${d.brand} and email ${d.email} the ones you haven't seen. Quiet weeks send nothing.`),
+        : `Every ${d.every} days we search Oriane for new videos mentioning ${d.brand} and email ${d.email} a report of the ones you haven't seen. Weeks with nothing new send no email.`),
       h('dl', {},
         h('dt', {}, 'Listening for'), h('dd', {}, [d.brand, ...(d.params.variants || [])].join(', ')),
         h('dt', {}, 'Where'), h('dd', {}, `${PLATFORM[d.params.platform]}, ${LANG[d.params.lang]}`),
         h('dt', {}, 'Saved'), h('dd', {}, when(d.createdAt)),
-        h('dt', {}, 'Last checked'), h('dd', {}, when(d.lastRunAt))),
+        h('dt', {}, 'Last checked'), h('dd', {}, when(d.lastRunAt)),
+        d.status === 'active' ? h('dt', {}, 'Next check') : null, d.status === 'active' ? h('dd', {}, next) : null),
       h('div', { class: 'actions' },
-        d.status === 'pending' ? act('Confirm digest', 'confirm', 'btn-primary') : d.status === 'paused' ? act('Resume', 'resume', 'btn-primary') : act('Pause', 'pause'),
+        d.status === 'pending' ? act('Start watching', 'confirm', 'btn-primary') : d.status === 'paused' ? act('Resume', 'resume', 'btn-primary') : act('Pause', 'pause'),
         unsubscribe));
+    $('#lic-h').hidden = !d.licenses.length;
+    $('#licenses').replaceChildren(...d.licenses.map((l) => h('li', {},
+      h('span', {}, `@${l.handle} · ${l.days} days · ~$${l.priceUsd} · ${LICENSE[l.status] || l.status}`), h('a', { href: l.url }, 'Details →'))));
     $('#runs-h').hidden = !d.runs.length;
     $('#runs').replaceChildren(...d.runs.map((r) => h('li', {},
       h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),
@@ -110,10 +119,11 @@
     preview(d.latestHtml);
   }
   function renderSample(d) {
-    document.title = 'Sample weekly digest · Unprompted';
+    document.title = 'Sample weekly report · Unprompted';
     $('#card').replaceChildren(
-      h('h1', {}, 'Sample weekly digest'),
+      h('h1', {}, 'Sample weekly report'),
       h('p', { class: 'sub' }, `${d.newCount} new ${d.newCount === 1 ? 'creator mention' : 'creator mentions'} of ${d.brand}.`),
+      h('p', { class: 'sub' }, 'Watch a search on the dashboard and this lands in your inbox every 7 days, with only the mentions you haven\'t seen.'),
       h('div', { class: 'actions' }, h('a', { class: 'btn btn-primary', href: '/brands/' }, 'Get this for your brand')));
     $('#runs-h').hidden = true;
     $('#runs').replaceChildren();

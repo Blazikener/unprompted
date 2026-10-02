@@ -528,13 +528,24 @@ def load(sid):
 
 
 def list_searches(user=None):
+    """The user's 20 latest searches; `watch` is set when they watch that brand and filters (any period)."""
     if not user:
         return []
     with connect() as db:
-        return db.execute(
+        rows = db.execute(
             'SELECT s.id, s.brand, s.params, s.total_count AS "totalCount", s.created_at AS "createdAt", s.fetch_ms AS "fetchMs",'
-            " count(m.video_id) AS analyzed FROM searches s LEFT JOIN mentions m ON m.search_id = s.id"
-            " WHERE s.user_id = %s GROUP BY s.id ORDER BY s.id DESC LIMIT 20", (user["id"],)).fetchall()
+            " count(m.video_id) AS analyzed, w.token AS watch_token,"
+            " CASE WHEN w.paused_at IS NOT NULL THEN 'paused' WHEN w.confirmed_at IS NOT NULL THEN 'active' ELSE 'pending' END AS watch_status"
+            " FROM searches s LEFT JOIN mentions m ON m.search_id = s.id"
+            " LEFT JOIN LATERAL (SELECT * FROM digests d WHERE d.user_id = s.user_id AND d.brand = s.brand AND d.params ="
+            "   jsonb_build_object('variants', s.params->'variants', 'platform', s.params->'platform', 'lang', s.params->'lang')"
+            "   ORDER BY d.id LIMIT 1) w ON true"
+            " WHERE s.user_id = %s GROUP BY s.id, w.token, w.paused_at, w.confirmed_at ORDER BY s.id DESC LIMIT 20",
+            (user["id"],)).fetchall()
+    for r in rows:
+        token, status = r.pop("watch_token"), r.pop("watch_status")
+        r["watch"] = {"status": status, "manageUrl": digest.manage_url(token)} if token else None
+    return rows
 
 
 def require_brand_user(headers):
@@ -588,6 +599,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/creators/index.html"
             elif re.fullmatch(r"/digest/[^/]+", path):
                 self.path = "/digest/index.html"
+            elif re.fullmatch(r"/license/[^/]+/[^/]+", path):
+                self.path = "/license/index.html"
             super().do_GET()
 
     def do_POST(self):

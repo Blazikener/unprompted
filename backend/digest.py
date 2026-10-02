@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 
 from psycopg.types.json import Jsonb
 
+import creator
 import demo
 import server
 from server import ApiError, connect, parse, profile_url
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS digests (
   created_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (email, brand, params)
 );
+ALTER TABLE digests ADD COLUMN IF NOT EXISTS user_id int REFERENCES users ON DELETE SET NULL;  -- dashboard account that started it
 CREATE TABLE IF NOT EXISTS digest_runs (
   id         serial PRIMARY KEY,
   digest_id  int NOT NULL REFERENCES digests ON DELETE CASCADE,
@@ -52,6 +54,17 @@ CREATE TABLE IF NOT EXISTS digest_runs (
   subject    text,
   html       text,
   created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS license_requests (    -- a brand asking to run a creator's video as a paid ad; brokered by hand for now
+  id         serial PRIMARY KEY,
+  digest_id  int  NOT NULL REFERENCES digests ON DELETE CASCADE,
+  video_id   text NOT NULL REFERENCES videos,
+  days       int  NOT NULL,
+  price_usd  int  NOT NULL,                     -- the indicative price shown when they asked
+  note       text,
+  status     text NOT NULL DEFAULT 'requested',  -- requested | contacted | accepted | declined | live
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (digest_id, video_id)
 );
 CREATE TABLE IF NOT EXISTS digest_seen (         -- videos already shown to this subscriber (or seen on the dashboard)
   digest_id int  NOT NULL REFERENCES digests ON DELETE CASCADE,
@@ -67,6 +80,10 @@ MAX_PER_EMAIL = 2
 KIND_LABEL = {"spoken": "said on camera only", "tagged": "tagged", "sponsored": "disclosed partnership"}
 KIND_COLOR = {"spoken": "#2f6b4f", "tagged": "#2d6f86", "sponsored": "#9a5a1c"}
 ORIANE_CREDIT = "Search and transcripts by Oriane"
+LICENSE_DAYS = (30, 60, 90)
+LICENSABLE = ("spoken", "tagged")                   # a disclosed partnership already has a deal behind it
+LICENSE_BASIS = ("Indicative: paid usage is usually quoted at about 25% of a creator's fee per month; "
+                 "the fee here is a $10-25 per 1,000 views rule of thumb on this video.")
 
 
 def app_url():
@@ -75,6 +92,16 @@ def app_url():
 
 def manage_url(token):
     return "%s/digest/%s" % (app_url(), token)
+
+
+def license_url(token, video_id):
+    return "%s/license/%s/%s" % (app_url(), token, video_id)
+
+
+def license_price(views, days=30):
+    """Indicative fee to run one video as a paid ad for `days`: creator.rate_card's usage line (25% of the high end
+    of a $10-25 CPM fee), at least $50 a month. The creator confirms the real price before anything is charged."""
+    return max(50, creator.rate_card(views)["usage"]) * days // 30
 
 
 def now():
@@ -154,10 +181,14 @@ TEMPLATES = {name: Template((Path(__file__).parent / "templates" / ("digest_%s.h
 FONT = "-apple-system,Segoe UI,Helvetica,Arial,sans-serif"
 
 
-def item_html(v):
+def item_html(v, token):
     kind, q = v["kind"], v.get("quote")
+    # Organic mentions get a license button; it opens a confirm page, so a mail scanner opening links requests nothing.
+    lic = ('<a href="%s" style="display:inline-block;margin-left:10px;padding:4px 11px;border-radius:999px;background:#d0f854;'
+           'color:#1b2a23;font:600 12px %s;text-decoration:none;">License for ads &middot; ~$%d / 30 days &rarr;</a>'
+           % (esc(license_url(token, v["id"])), FONT, license_price(v["views"]))) if kind in LICENSABLE else ""
     return TEMPLATES["item"].substitute(
-        profile=esc(profile_url(v["platform"], v["handle"])), handle=esc(v["handle"]),
+        license=lic, profile=esc(profile_url(v["platform"], v["handle"])), handle=esc(v["handle"]),
         platform="TikTok" if v["platform"] == "tiktok" else "Instagram", views=fmt(v["views"]),
         color=KIND_COLOR.get(kind, "#6b7a73"), label=esc(KIND_LABEL.get(kind, kind)),
         quote=quote_html(q, v.get("caption") or ""), url=esc(v["url"]),
@@ -173,8 +204,8 @@ def render(d, sid, new, since):
     more = ('<tr><td style="font:14px %s;color:#48564f;">+ %d more on the dashboard.</td></tr>' % (FONT, n - MAX_ITEMS)) if n > MAX_ITEMS else ""
     body = TEMPLATES["email"].substitute(
         headline="%d new video%s mention%s" % (n, "" if n == 1 else "s", "s" if n == 1 else ""), brand=esc(brand),
-        since=since.strftime("%-d %b"), filters=esc(filter_text(d["params"])), parts=esc(", ".join(parts) + "." if parts else ""),
-        items="".join(item_html(v) for v in new[:MAX_ITEMS]), more=more, dash=esc("%s/brands/#search=%d" % (app_url(), sid)),
+        since="%d %s" % (since.day, since.strftime("%b")), filters=esc(filter_text(d["params"])), parts=esc(", ".join(parts) + "." if parts else ""),
+        items="".join(item_html(v, d["token"]) for v in new[:MAX_ITEMS]), more=more, dash=esc("%s/brands/#search=%d" % (app_url(), sid)),
         credit=ORIANE_CREDIT, email=esc(d["email"]), manage=esc(manage_url(d["token"])))
     return subject, body
 
@@ -192,13 +223,17 @@ def filter_text(params):
 
 def confirm_mail(d):
     link = manage_url(d["token"]) + "?confirm=1"
-    return ("Confirm your weekly %s digest" % d["brand"],
+    return ("Confirm your weekly %s report" % d["brand"],
             TEMPLATES["confirm"].substitute(brand=esc(d["brand"]), filters=esc(filter_text(d["params"])), link=esc(link), credit=ORIANE_CREDIT))
 
 
 # ---------------------------------------------------------------- subscriptions
 
-def row_view(d, runs=None):
+def request_view(r):
+    return {"days": r["days"], "priceUsd": r["price_usd"], "status": r["status"], "note": r["note"], "createdAt": r["created_at"]}
+
+
+def row_view(d, runs=None, licenses=None):
     latest = next((r for r in runs or [] if r["html"]), None)
     return {"token": d["token"], "brand": d["brand"], "params": d["params"], "email": d["email"],
             "status": "unsubscribed" if d.get("gone") else "paused" if d["paused_at"] else "active" if d["confirmed_at"] else "pending",
@@ -206,18 +241,20 @@ def row_view(d, runs=None):
             "mail": mail_configured(), "every": EVERY_DAYS,
             "runs": [{"id": r["id"], "createdAt": r["created_at"], "newCount": r["new_count"], "sent": r["sent"],
                       "searchId": r["search_id"], "subject": r["subject"]} for r in runs or []],
-            "latestHtml": latest["html"] if latest else None}
+            "latestHtml": latest["html"] if latest else None,
+            "licenses": [{**request_view(r), "handle": r["handle"], "url": license_url(d["token"], r["video_id"])} for r in licenses or []]}
 
 
 def ensure_active_capacity(db):
     limit = int(os.environ.get("DIGEST_MAX_ACTIVE", "25"))
     active = db.execute("SELECT count(*) AS n FROM digests WHERE confirmed_at IS NOT NULL AND paused_at IS NULL").fetchone()["n"]
     if active >= limit:
-        raise ApiError(503, "Weekly digests are full right now.")
+        raise ApiError(503, "Weekly watches are full right now.")
 
 
-def subscribe(body):
-    """Save a search for a weekly email. Double opt-in when mail is configured; otherwise active immediately."""
+def subscribe(body, user=None):
+    """Watch a search: a weekly email of its new mentions. Double opt-in when mail is configured; otherwise active
+    immediately. A signed-in user's watch is marked on their saved searches."""
     email = str(body.get("email", "")).strip().lower()
     if not EMAIL_RE.match(email) or len(email) > 254:
         raise ApiError(400, "Enter a valid email address.")
@@ -233,11 +270,12 @@ def subscribe(body):
         if created:
             count = db.execute("SELECT count(*) AS n FROM digests WHERE lower(email) = lower(%s)", (email,)).fetchone()["n"]
             if count >= MAX_PER_EMAIL:
-                raise ApiError(429, "You already get 2 weekly digests; unsubscribe from one first.")
+                raise ApiError(429, "You already watch 2 searches; stop one first.")
             if not mail_configured():
                 ensure_active_capacity(db)
-            d = db.execute("INSERT INTO digests (email, brand, params, token, confirmed_at) VALUES (%s, %s, %s, %s, %s) RETURNING *",
-                           (email, brand, Jsonb(params), secrets.token_urlsafe(16), None if mail_configured() else now())).fetchone()
+            d = db.execute("INSERT INTO digests (email, brand, params, token, confirmed_at, user_id) VALUES (%s, %s, %s, %s, %s, %s)"
+                           " RETURNING *", (email, brand, Jsonb(params), secrets.token_urlsafe(16),
+                                            None if mail_configured() else now(), user["id"] if user else None)).fetchone()
         elif d["paused_at"]:
             if d["confirmed_at"]:
                 ensure_active_capacity(db)
@@ -255,7 +293,70 @@ def load_digest(token):
         if not d:
             raise ApiError(404, "This digest link isn't valid any more.")
         runs = db.execute("SELECT * FROM digest_runs WHERE digest_id = %s ORDER BY id DESC LIMIT 12", (d["id"],)).fetchall()
-    return d, runs
+        licenses = db.execute("SELECT r.*, v.handle FROM license_requests r JOIN videos v ON v.id = r.video_id"
+                              " WHERE r.digest_id = %s ORDER BY r.id DESC", (d["id"],)).fetchall()
+    return d, runs, licenses
+
+
+# ---------------------------------------------------------------- license requests
+
+def license_video(d, vid):
+    """The video behind a license link: it must have been in one of this digest's runs and not be a disclosed ad."""
+    with connect() as db:
+        row = db.execute(
+            "SELECT v.raw, m.kind, m.quote FROM mentions m JOIN searches s ON s.id = m.search_id JOIN videos v ON v.id = m.video_id"
+            " WHERE m.video_id = %s AND s.params->>'digest' = %s ORDER BY s.id DESC LIMIT 1", (vid, str(d["id"]))).fetchone()
+    if not row:
+        raise ApiError(404, "This video isn't in your weekly reports.")
+    if row["kind"] not in LICENSABLE:
+        raise ApiError(400, "This video is a disclosed partnership, so it already has a deal behind it.")
+    raw = row["raw"]
+    return {"id": vid, "handle": raw["profileHandle"], "platform": raw["platform"], "url": server.post_url(raw),
+            "profile": profile_url(raw["platform"], raw["profileHandle"]), "views": raw.get("viewsCount") or 0,
+            "publishedAt": raw.get("publishedAt"), "kind": row["kind"], "quote": row["quote"],
+            "caption": (raw.get("caption") or "")[:200]}
+
+
+def license_view(token, vid, body=None):
+    """GET (body None): the video, its indicative prices and any request already made. POST: record the request once
+    and tell the operator, who brokers it with the creator by hand. Nothing is charged here."""
+    d, _, _ = load_digest(token)
+    video = license_video(d, vid)
+    if body is not None:
+        days = body.get("days", 30)
+        if days not in LICENSE_DAYS:
+            raise ApiError(400, "Choose 30, 60 or 90 days.")
+        note = str(body.get("note") or "").strip()[:500] or None
+        with connect() as db:
+            req = db.execute("INSERT INTO license_requests (digest_id, video_id, days, price_usd, note) VALUES (%s, %s, %s, %s, %s)"
+                             " ON CONFLICT (digest_id, video_id) DO NOTHING RETURNING *",
+                             (d["id"], vid, days, license_price(video["views"], days), note)).fetchone()
+        if req:
+            notify_license(d, video, req)
+    with connect() as db:
+        req = db.execute("SELECT * FROM license_requests WHERE digest_id = %s AND video_id = %s", (d["id"], vid)).fetchone()
+    return {"brand": d["brand"], "email": d["email"], "manageUrl": manage_url(d["token"]), "video": video,
+            "prices": [{"days": n, "usd": license_price(video["views"], n)} for n in LICENSE_DAYS], "basis": LICENSE_BASIS,
+            "request": request_view(req) if req else None}
+
+
+def notify_license(d, video, req):
+    """Email the operator (LICENSE_NOTIFY_EMAIL); without it the request is only logged and waits in license_requests."""
+    subject = "License request: %s wants @%s's video for %d days (~$%d)" % (d["brand"], video["handle"], req["days"], req["price_usd"])
+    to = os.environ.get("LICENSE_NOTIFY_EMAIL")
+    if not to:
+        print("license request (no LICENSE_NOTIFY_EMAIL): %s" % subject, file=sys.stderr, flush=True)
+        return False
+    q = video["quote"]
+    rows = [("Brand", d["brand"]), ("Requested by", d["email"]), ("Creator", "@%s on %s" % (video["handle"], video["platform"])),
+            ("Video", video["url"]), ("Views", fmt(video["views"])), ("Quote", q["text"] if q else video["caption"]),
+            ("Window", "%d days" % req["days"]), ("Indicative price", "$%d" % req["price_usd"]), ("Note", req["note"] or "-"),
+            ("Request id", req["id"])]
+    body = ('<p style="font:15px %s;">Broker this with the creator, then set <code>license_requests.status</code> (id %d).</p>'
+            '<table style="font:14px %s;border-collapse:collapse;">%s</table>' % (
+                FONT, req["id"], FONT, "".join('<tr><td style="padding:3px 14px 3px 0;color:#6b7a73;">%s</td><td>%s</td></tr>'
+                                               % (esc(k), esc(v)) for k, v in rows)))
+    return send(to, subject, body)
 
 
 def sample():
@@ -267,7 +368,7 @@ def sample():
     if not run:
         raise ApiError(404, "No sample digest yet.")
     sample_html = re.sub(
-        r'href="[^"]*/digest/%s(?:\?unsubscribe=1)?"' % re.escape(run["token"]),
+        r'href="[^"]*/(?:digest/%s(?:\?unsubscribe=1)?|license/%s/[^"]*)"' % (re.escape(run["token"]), re.escape(run["token"])),
         lambda _: 'href="%s"' % esc("%s/brands/" % app_url()),
         run["html"])
     sample_html = sample_html.replace(run["token"], "sample")
@@ -276,7 +377,7 @@ def sample():
 
 
 def manage(token, action=None):
-    d, runs = load_digest(token)
+    d, runs, licenses = load_digest(token)
     if action:
         sql = {"confirm": "UPDATE digests SET confirmed_at = coalesce(confirmed_at, now()), paused_at = NULL WHERE id = %s RETURNING *",
                "pause": "UPDATE digests SET paused_at = coalesce(paused_at, now()) WHERE id = %s RETURNING *",
@@ -295,7 +396,7 @@ def manage(token, action=None):
             d = db.execute(sql, (d["id"],)).fetchone()
         if action == "unsubscribe":
             return row_view({**d, "gone": True})
-    return row_view(d, runs)
+    return row_view(d, runs, licenses)
 
 
 # ---------------------------------------------------------------- weekly run
@@ -333,7 +434,8 @@ def due(digest_id=None, force=False):
     with connect() as db:
         if digest_id:
             return db.execute("SELECT * FROM digests WHERE id = %s", (digest_id,)).fetchall()
-        where = "" if force else " AND (last_run_at IS NULL OR last_run_at < now() - interval '%d days')" % (EVERY_DAYS - 1)
+        # A week after the last run. The hour of slack lets a daily cron that fires a little early still land on day 7.
+        where = "" if force else " AND (last_run_at IS NULL OR last_run_at < now() - interval '%d days' + interval '1 hour')" % EVERY_DAYS
         return db.execute("SELECT * FROM digests WHERE confirmed_at IS NOT NULL AND paused_at IS NULL" + where + " ORDER BY id").fetchall()
 
 
@@ -405,9 +507,12 @@ def dispatch(handler):
     url = urlparse(handler.path)
     path, method = url.path.removeprefix("/api/digests"), handler.command
     m = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})(?:/(confirm|pause|resume|unsubscribe))?", path)
+    lic = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})/license/([A-Za-z0-9_-]{1,64})", path)
     if method == "GET":
         if path == "/sample":
             return sample()
+        if lic:
+            return license_view(lic.group(1), lic.group(2))
         if m and not m.group(2):
             return manage(m.group(1))
         raise ApiError(404, "Not found.")
@@ -417,11 +522,13 @@ def dispatch(handler):
         raise ApiError(415, "Send application/json.")
     body = read_json(handler)
     if path == "":
-        return subscribe(body)
+        return subscribe(body, creator.current_user(handler.headers))
     if path == "/run":
         return run_route(handler, body)
     if m and m.group(2):
         return manage(m.group(1), m.group(2))
+    if lic:
+        return license_view(lic.group(1), lic.group(2), body)
     raise ApiError(404, "Not found.")
 
 

@@ -13,6 +13,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 ## Layout
 - `backend/server.py`: stdlib HTTP server + psycopg 3. Oriane client, mention classifier, score check, Postgres storage (`searches`, `videos`, `mentions`, `checks`).
 - `frontend/index.html`: single-file dashboard, vanilla JS, no build step.
+- `frontend/hero3d.js`: the landing hero's 3D "listening drum" (three.js pinned on jsDelivr, imported lazily on screens ≥760px wide and wider than tall; the CSS wave is the fallback). Quotes in it are illustrative templates around the typed brand.
 - `PRODUCT.md`: design context (users, personality, principles).
 
 ## Oriane API notes

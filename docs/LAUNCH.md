@@ -82,7 +82,9 @@ Gate: `checkout_started / scan >= 5%` over the first 100 scans, or change the of
 
 ## 6. Weekly digest (Oriane Community Tool)
 
-The brand-side push product discussed with Oriane's CTO: save a search, email only, weekly digest of new mentions.
+The brand-side push product discussed with Oriane's CTO: watch a search, email only, one weekly report of new mentions.
+The dashboard calls it a "watch" ("Watch weekly" button, "Watching · weekly" tag on saved searches) and the email a
+"weekly report"; every surface states the cadence (every 7 days, no email when nothing is new).
 It lives on the brand dashboard at `/brands/` (card under the mention mix) and does not touch Receipts.
 
 - Searching and creator checks on `/brands/` require an email-and-password account. Free users get 2 brand searches and
