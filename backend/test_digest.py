@@ -257,11 +257,58 @@ def test_license_button_records_one_request_and_tells_the_operator(monkeypatch):
     # One request per video: asking again changes nothing and sends nothing.
     assert digest.license_view(d["token"], "lic1", {"days": 30})["request"]["days"] == 60 and len(sent) == n + 1
     assert digest.manage(d["token"])["licenses"][0]["handle"] == "ali"
+    with psycopg.connect(server.DB_URL) as db:
+        events = db.execute("SELECT name, count(*) FROM events WHERE data->>'digest' = (SELECT id::text FROM digests WHERE token = %s)"
+                            " GROUP BY name", (d["token"],)).fetchall()
+    assert dict(events) == {"report_sent": 1, "license_view": 1, "license_request": 1}
 
     for vid, body, status in (("lic2", {"days": 30}, 400), ("nope", None, 404), ("lic1", {"days": 45}, 400)):
         with pytest.raises(server.ApiError) as err:
             digest.license_view(d["token"], vid, body)
         assert err.value.status == status
+
+
+def licence_request(monkeypatch, vid="op1"):
+    """A watch with one emailed organic mention and a 30-day request for it; returns (digest, request id)."""
+    monkeypatch.setattr(digest, "send", lambda *a: True)
+    d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+    monkeypatch.setattr(server, "oriane", lambda *a, **k: page(video(vid, "a Tim Hortons iced capp every morning", handle="ali")))
+    digest.run_due()
+    digest.license_view(d["token"], vid, {"days": 30})
+    with psycopg.connect(server.DB_URL) as db:
+        return d, db.execute("SELECT id FROM license_requests WHERE digest_id = (SELECT id FROM digests WHERE token = %s)",
+                             (d["token"],)).fetchone()[0]
+
+
+def test_operator_console_records_brokering(base, monkeypatch):
+    d, rid = licence_request(monkeypatch)
+    op = {"Authorization": "Bearer run-secret"}
+    assert call(base, "GET", "/api/admin/licenses")[0] == 401
+    status, listing = call(base, "GET", "/api/admin/licenses", headers=op)
+    row = next(r for r in listing["requests"] if r["id"] == rid)
+    assert status == 200 and row["status"] == "requested" and row["handle"] == "ali" and row["priceUsd"] == 50
+    assert row["page"] == "https://u.test/license/%s/op1" % d["token"] and row["contactedAt"] is None
+
+    status, row = call(base, "POST", "/api/admin/licenses/%d" % rid, {"status": "contacted"}, op)
+    assert status == 200 and row["contactedAt"] and row["respondedAt"] is None
+    status, row = call(base, "POST", "/api/admin/licenses/%d" % rid, {"status": "live", "finalPriceUsd": 80, "brandPaid": True,
+                                                                     "codeReceived": True, "opsNote": "DM via bio email"}, op)
+    assert status == 200 and row["respondedAt"] and row["codeReceivedAt"] and row["brandPaidAt"] and row["creatorPaidAt"] is None
+    assert row["finalPriceUsd"] == 80 and row["opsNote"] == "DM via bio email"
+    with psycopg.connect(server.DB_URL) as db:
+        window = db.execute("SELECT expires_at - starts_at FROM license_requests WHERE id = %s", (rid,)).fetchone()[0]
+    assert window.days == 30
+    assert call(base, "POST", "/api/admin/licenses/%d" % rid, {"brandPaid": False}, op)[1]["brandPaidAt"] is None
+
+    # The brand's page follows: live, at the final price, with an end date.
+    req = digest.license_view(d["token"], "op1")["request"]
+    assert req["status"] == "live" and req["priceUsd"] == 80 and req["expiresAt"]
+
+    for body, code in (({"status": "maybe"}, 400), ({"finalPriceUsd": "80"}, 400), ({}, 400)):
+        assert call(base, "POST", "/api/admin/licenses/%d" % rid, body, op)[0] == code
+    assert call(base, "POST", "/api/admin/licenses/999999", {"status": "contacted"}, op)[0] == 404
+    status, html = call(base, "GET", "/admin/")
+    assert status == 200 and b"License requests" in html and b"/api/admin/licenses" in html
 
 
 def test_run_due_serializes_concurrent_callers(monkeypatch):

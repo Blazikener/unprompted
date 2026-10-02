@@ -582,6 +582,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: creator.dispatch(self))
         elif path.startswith("/api/digests"):
             self.api(lambda: digest.dispatch(self))
+        elif path.startswith("/api/admin/"):
+            self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
             self.api(lambda: list_searches(creator.current_user(self.headers)))
         elif m:
@@ -611,6 +613,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: creator.dispatch(self))
         if self.path.startswith("/api/digests"):
             return self.api(lambda: digest.dispatch(self))
+        if self.path.startswith("/api/admin/"):
+            return self.api(lambda: digest.admin(self))
         if not route:
             return self.api(not_found)
 

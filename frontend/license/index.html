@@ -101,7 +101,8 @@
       h('a', { href: v.url, target: '_blank', rel: 'noopener' }, `Watch${at} ↗`)));
     const back = h('a', { class: 'back', href: d.manageUrl }, `← Your weekly ${d.brand} watch`);
     if (d.request) {
-      const r = d.request, [title, text] = STATUS[r.status] || [r.status, ''];
+      const r = d.request, [title, status] = STATUS[r.status] || [r.status, ''];
+      const text = r.status === 'live' && r.expiresAt ? `The license runs until ${when(r.expiresAt)}.` : status;
       $('#card').replaceChildren(
         h('h1', {}, `@${v.handle}’s video for ${d.brand}`),
         h('div', { class: `status ${r.status}` }, h('b', {}, `${title}: ${r.days} days at ~$${r.priceUsd}`), text),

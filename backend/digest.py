@@ -66,6 +66,17 @@ CREATE TABLE IF NOT EXISTS license_requests (    -- a brand asking to run a crea
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (digest_id, video_id)
 );
+ALTER TABLE license_requests                     -- brokering by hand: what the operator records as it happens
+  ADD COLUMN IF NOT EXISTS contacted_at      timestamptz,
+  ADD COLUMN IF NOT EXISTS responded_at      timestamptz,
+  ADD COLUMN IF NOT EXISTS creator_price_usd int,
+  ADD COLUMN IF NOT EXISTS final_price_usd   int,
+  ADD COLUMN IF NOT EXISTS code_received_at  timestamptz,
+  ADD COLUMN IF NOT EXISTS brand_paid_at     timestamptz,
+  ADD COLUMN IF NOT EXISTS creator_paid_at   timestamptz,
+  ADD COLUMN IF NOT EXISTS starts_at         timestamptz,
+  ADD COLUMN IF NOT EXISTS expires_at        timestamptz,
+  ADD COLUMN IF NOT EXISTS ops_note          text;
 CREATE TABLE IF NOT EXISTS digest_seen (         -- videos already shown to this subscriber (or seen on the dashboard)
   digest_id int  NOT NULL REFERENCES digests ON DELETE CASCADE,
   video_id  text NOT NULL,
@@ -81,6 +92,7 @@ KIND_LABEL = {"spoken": "said on camera only", "tagged": "tagged", "sponsored": 
 KIND_COLOR = {"spoken": "#2f6b4f", "tagged": "#2d6f86", "sponsored": "#9a5a1c"}
 ORIANE_CREDIT = "Search and transcripts by Oriane"
 LICENSE_DAYS = (30, 60, 90)
+LICENSE_STATUS = ("requested", "contacted", "accepted", "declined", "live")
 LICENSABLE = ("spoken", "tagged")                   # a disclosed partnership already has a deal behind it
 LICENSE_BASIS = ("Indicative: paid usage is usually quoted at about 25% of a creator's fee per month; "
                  "the fee here is a $10-25 per 1,000 views rule of thumb on this video.")
@@ -230,7 +242,8 @@ def confirm_mail(d):
 # ---------------------------------------------------------------- subscriptions
 
 def request_view(r):
-    return {"days": r["days"], "priceUsd": r["price_usd"], "status": r["status"], "note": r["note"], "createdAt": r["created_at"]}
+    return {"days": r["days"], "priceUsd": r["final_price_usd"] or r["price_usd"], "status": r["status"], "note": r["note"],
+            "createdAt": r["created_at"], "expiresAt": r["expires_at"]}
 
 
 def row_view(d, runs=None, licenses=None):
@@ -332,7 +345,10 @@ def license_view(token, vid, body=None):
                              " ON CONFLICT (digest_id, video_id) DO NOTHING RETURNING *",
                              (d["id"], vid, days, license_price(video["views"], days), note)).fetchone()
         if req:
+            creator.track(d["user_id"], "license_request", {"digest": d["id"], "video": vid, "days": days, "price": req["price_usd"]})
             notify_license(d, video, req)
+    else:  # the page load; the email button is the only way here, so this is also the click-through
+        creator.track(d["user_id"], "license_view", {"digest": d["id"], "video": vid, "price": license_price(video["views"])})
     with connect() as db:
         req = db.execute("SELECT * FROM license_requests WHERE digest_id = %s AND video_id = %s", (d["id"], vid)).fetchone()
     return {"brand": d["brand"], "email": d["email"], "manageUrl": manage_url(d["token"]), "video": video,
@@ -422,6 +438,8 @@ def run_one(d, force=False):
     if new:
         subject, body = render(d, sid, new, since)
         sent = send(d["email"], subject, body)
+        creator.track(d["user_id"], "report_sent", {"digest": d["id"], "new": len(new), "sent": sent,
+                                                    "licensable": sum(v["kind"] in LICENSABLE for v in new[:MAX_ITEMS])})
     with connect() as db:
         db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s ON CONFLICT DO NOTHING",
                    (d["id"], sid))
@@ -452,13 +470,18 @@ def run_due(digest_id=None, force=False):
         return {"ran": len(out), "results": out}
 
 
-def run_route(handler, body):
-    """POST /api/digests/run with the operator token; {"id": n} runs one digest now, {"force": true} runs all."""
+def require_operator(handler):
+    """The operator's bearer token (DIGEST_RUN_TOKEN) guards runs and the licence console; without it they don't exist."""
     token = os.environ.get("DIGEST_RUN_TOKEN")
     if not token:
         raise ApiError(404, "Not found.")
     if not secrets.compare_digest((handler.headers.get("Authorization") or "").removeprefix("Bearer ").strip(), token):
         raise ApiError(401, "Bad run token.")
+
+
+def run_route(handler, body):
+    """POST /api/digests/run with the operator token; {"id": n} runs one digest now, {"force": true} runs all."""
+    require_operator(handler)
     digest_id = body.get("id")
     if body.get("resend") and isinstance(digest_id, int):
         return resend_last(digest_id)
@@ -477,6 +500,78 @@ def resend_last(digest_id):
     with connect() as db:
         db.execute("UPDATE digest_runs SET sent = sent OR %s WHERE id = %s", (sent, run["id"]))
     return {"digest": digest_id, "run": run["id"], "new": run["new_count"], "sent": sent, "resent": True}
+
+
+# ---------------------------------------------------------------- operator console (/admin/)
+
+ADMIN_SQL = """
+SELECT r.*, d.brand, d.email, d.token, v.handle, v.platform, v.views, v.raw,
+       round(extract(epoch FROM now() - r.created_at) / 3600) AS age_hours
+FROM license_requests r JOIN digests d ON d.id = r.digest_id JOIN videos v ON v.id = r.video_id
+"""
+
+
+def admin_row(r):
+    return {"id": r["id"], "status": r["status"], "brand": r["brand"], "requestedBy": r["email"], "handle": r["handle"],
+            "platform": r["platform"], "views": r["views"], "videoUrl": server.post_url(r["raw"]),
+            "profileUrl": profile_url(r["platform"], r["handle"]), "page": license_url(r["token"], r["video_id"]),
+            "days": r["days"], "priceUsd": r["price_usd"], "creatorPriceUsd": r["creator_price_usd"],
+            "finalPriceUsd": r["final_price_usd"], "note": r["note"], "opsNote": r["ops_note"], "ageHours": int(r["age_hours"]),
+            **{k: r[c] for k, c in (("createdAt", "created_at"), ("contactedAt", "contacted_at"), ("respondedAt", "responded_at"),
+                                    ("codeReceivedAt", "code_received_at"), ("brandPaidAt", "brand_paid_at"),
+                                    ("creatorPaidAt", "creator_paid_at"), ("startsAt", "starts_at"), ("expiresAt", "expires_at"))}}
+
+
+def admin_list():
+    with connect() as db:
+        rows = db.execute(ADMIN_SQL + " ORDER BY r.status IN ('declined', 'live'), r.id DESC LIMIT 200").fetchall()
+    return {"requests": [admin_row(r) for r in rows]}
+
+
+def admin_update(rid, body):
+    """Record a brokering step. A status stamps the times it implies, once (going live also starts the window and sets
+    the expiry from the requested days). Flags sent alongside override those stamps: true stamps now, false clears."""
+    sets = {}                                     # column -> (SQL expression, params); later entries win
+    status = body.get("status")
+    if status is not None:
+        if status not in LICENSE_STATUS:
+            raise ApiError(400, "Unknown status.")
+        sets["status"] = ("%s", (status,))
+        stamp = {"contacted": ["contacted_at"], "accepted": ["contacted_at", "responded_at"], "declined": ["contacted_at", "responded_at"],
+                 "live": ["contacted_at", "responded_at", "code_received_at", "starts_at"]}.get(status, [])
+        sets.update({c: ("coalesce(%s, now())" % c, ()) for c in stamp})
+        if status == "live":
+            sets["expires_at"] = ("coalesce(expires_at, coalesce(starts_at, now()) + days * interval '1 day')", ())
+    for key, col in (("creatorPriceUsd", "creator_price_usd"), ("finalPriceUsd", "final_price_usd")):
+        if key in body:
+            v = body[key]
+            if v is not None and (not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= 1_000_000):
+                raise ApiError(400, "Prices are whole dollars.")
+            sets[col] = ("%s", (v,))
+    for key, col in (("codeReceived", "code_received_at"), ("brandPaid", "brand_paid_at"), ("creatorPaid", "creator_paid_at")):
+        if key in body:
+            sets[col] = ("coalesce(%s, now())" % col if body[key] else "NULL", ())
+    if "opsNote" in body:
+        sets["ops_note"] = ("%s", (str(body["opsNote"] or "").strip()[:1000] or None,))
+    if not sets:
+        raise ApiError(400, "Nothing to update.")
+    sql = "UPDATE license_requests SET %s WHERE id = %%s RETURNING id" % ", ".join("%s = %s" % (c, e) for c, (e, _) in sets.items())
+    with connect() as db:
+        if not db.execute(sql, (*(p for _, ps in sets.values() for p in ps), rid)).fetchone():
+            raise ApiError(404, "No such request.")
+        return admin_row(db.execute(ADMIN_SQL + " WHERE r.id = %s", (rid,)).fetchone())
+
+
+def admin(handler):
+    """Route /api/admin/licenses (GET list) and /api/admin/licenses/<id> (POST update), operator token only."""
+    require_operator(handler)
+    path = urlparse(handler.path).path
+    if handler.command == "GET" and path == "/api/admin/licenses":
+        return admin_list()
+    m = re.fullmatch(r"/api/admin/licenses/(\d+)", path)
+    if handler.command == "POST" and m:
+        return admin_update(int(m.group(1)), read_json(handler))
+    raise ApiError(404, "Not found.")
 
 
 def scheduler(every_s=900, first_s=60):
