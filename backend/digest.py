@@ -345,8 +345,10 @@ def license_view(token, vid, body=None):
                              " ON CONFLICT (digest_id, video_id) DO NOTHING RETURNING *",
                              (d["id"], vid, days, license_price(video["views"], days), note)).fetchone()
         if req:
+            import licenses  # the creator side; imported here because it imports this module
+            after = licenses.on_request(req["id"])     # the handle owner's rules may answer it straight away
             creator.track(d["user_id"], "license_request", {"digest": d["id"], "video": vid, "days": days, "price": req["price_usd"]})
-            notify_license(d, video, req)
+            notify_license(d, video, req, after)
     else:  # the page load; the email button is the only way here, so this is also the click-through
         creator.track(d["user_id"], "license_view", {"digest": d["id"], "video": vid, "price": license_price(video["views"])})
     with connect() as db:
@@ -356,8 +358,10 @@ def license_view(token, vid, body=None):
             "request": request_view(req) if req else None}
 
 
-def notify_license(d, video, req):
-    """Email the operator (LICENSE_NOTIFY_EMAIL); without it the request is only logged and waits in license_requests."""
+def notify_license(d, video, req, after):
+    """Email the operator (LICENSE_NOTIFY_EMAIL); without it the request is only logged and waits in license_requests.
+    `after` is the request once the creator's rules ran: it carries the creator link and whether the handle is claimed."""
+    import licenses
     subject = "License request: %s wants @%s's video for %d days (~$%d)" % (d["brand"], video["handle"], req["days"], req["price_usd"])
     to = os.environ.get("LICENSE_NOTIFY_EMAIL")
     if not to:
@@ -367,8 +371,11 @@ def notify_license(d, video, req):
     rows = [("Brand", d["brand"]), ("Requested by", d["email"]), ("Creator", "@%s on %s" % (video["handle"], video["platform"])),
             ("Video", video["url"]), ("Views", fmt(video["views"])), ("Quote", q["text"] if q else video["caption"]),
             ("Window", "%d days" % req["days"]), ("Indicative price", "$%d" % req["price_usd"]), ("Note", req["note"] or "-"),
+            ("Creator link", licenses.offer_url(after["creator_token"])),
+            ("Handle claimed", "yes: they were emailed" if after["owner_id"] else "no: send them the creator link"),
+            ("Status", after["status"] + (" (by the creator's own rule)" if after["responded_via"] == "auto" else "")),
             ("Request id", req["id"])]
-    body = ('<p style="font:15px %s;">Broker this with the creator, then set <code>license_requests.status</code> (id %d).</p>'
+    body = ('<p style="font:15px %s;">Broker this with the creator in /admin/ (request %d).</p>'
             '<table style="font:14px %s;border-collapse:collapse;">%s</table>' % (
                 FONT, req["id"], FONT, "".join('<tr><td style="padding:3px 14px 3px 0;color:#6b7a73;">%s</td><td>%s</td></tr>'
                                                % (esc(k), esc(v)) for k, v in rows)))
@@ -506,7 +513,9 @@ def resend_last(digest_id):
 
 ADMIN_SQL = """
 SELECT r.*, d.brand, d.email, d.token, v.handle, v.platform, v.views, v.raw,
-       round(extract(epoch FROM now() - r.created_at) / 3600) AS age_hours
+       round(extract(epoch FROM now() - r.created_at) / 3600) AS age_hours,
+       EXISTS (SELECT 1 FROM creator_handles h WHERE h.platform = v.platform AND h.handle = lower(v.handle)
+               AND h.verified_at IS NOT NULL) AS claimed
 FROM license_requests r JOIN digests d ON d.id = r.digest_id JOIN videos v ON v.id = r.video_id
 """
 
@@ -517,6 +526,8 @@ def admin_row(r):
             "profileUrl": profile_url(r["platform"], r["handle"]), "page": license_url(r["token"], r["video_id"]),
             "days": r["days"], "priceUsd": r["price_usd"], "creatorPriceUsd": r["creator_price_usd"],
             "finalPriceUsd": r["final_price_usd"], "note": r["note"], "opsNote": r["ops_note"], "ageHours": int(r["age_hours"]),
+            "offerUrl": "%s/offer/%s" % (app_url(), r["creator_token"]), "claimed": r["claimed"], "respondedVia": r["responded_via"],
+            "adCode": r["ad_code"], "declineReason": r["decline_reason"],
             **{k: r[c] for k, c in (("createdAt", "created_at"), ("contactedAt", "contacted_at"), ("respondedAt", "responded_at"),
                                     ("codeReceivedAt", "code_received_at"), ("brandPaidAt", "brand_paid_at"),
                                     ("creatorPaidAt", "creator_paid_at"), ("startsAt", "starts_at"), ("expiresAt", "expires_at"))}}
@@ -540,6 +551,8 @@ def admin_update(rid, body):
         stamp = {"contacted": ["contacted_at"], "accepted": ["contacted_at", "responded_at"], "declined": ["contacted_at", "responded_at"],
                  "live": ["contacted_at", "responded_at", "code_received_at", "starts_at"]}.get(status, [])
         sets.update({c: ("coalesce(%s, now())" % c, ()) for c in stamp})
+        if "responded_at" in stamp:                  # answered through you, unless the creator already did in the app
+            sets["responded_via"] = ("coalesce(responded_via, 'operator')", ())
         if status == "live":
             sets["expires_at"] = ("coalesce(expires_at, coalesce(starts_at, now()) + days * interval '1 day')", ())
     for key, col in (("creatorPriceUsd", "creator_price_usd"), ("finalPriceUsd", "final_price_usd")):

@@ -582,6 +582,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: creator.dispatch(self))
         elif path.startswith("/api/digests"):
             self.api(lambda: digest.dispatch(self))
+        elif path.startswith("/api/licenses/") or path.startswith("/api/admin/handles"):
+            self.api(lambda: licenses.dispatch(self))
         elif path.startswith("/api/admin/"):
             self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
@@ -603,6 +605,10 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/digest/index.html"
             elif re.fullmatch(r"/license/[^/]+/[^/]+", path):
                 self.path = "/license/index.html"
+            elif re.fullmatch(r"/offer/[^/]+", path):
+                self.path = "/offer/index.html"
+            elif path in ("/creators/licenses", "/creators/licenses/"):
+                self.path = "/creators/licenses.html"
             super().do_GET()
 
     def do_POST(self):
@@ -613,6 +619,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: creator.dispatch(self))
         if self.path.startswith("/api/digests"):
             return self.api(lambda: digest.dispatch(self))
+        if self.path.startswith("/api/licenses/") or self.path.startswith("/api/admin/handles"):
+            return self.api(lambda: licenses.dispatch(self))
         if self.path.startswith("/api/admin/"):
             return self.api(lambda: digest.admin(self))
         if not route:
@@ -674,6 +682,7 @@ class Handler(SimpleHTTPRequestHandler):
 sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us back; don't load this file twice
 import creator  # noqa: E402
 import digest  # noqa: E402
+import licenses  # noqa: E402
 
 
 def init_db():
@@ -685,6 +694,7 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS searches_user ON searches (user_id, created_at DESC)")
         db.execute("CREATE INDEX IF NOT EXISTS checks_user ON checks (user_id, created_at DESC)")
         db.execute(digest.SCHEMA)
+        db.execute(licenses.SCHEMA)
 
 
 if __name__ == "__main__":

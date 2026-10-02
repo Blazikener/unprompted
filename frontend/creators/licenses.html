@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>License offers · Receipts</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
+    --amber-soft: oklch(0.96 0.05 80);
+    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: 36px 20px 60px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .top a { color: var(--ink); text-decoration: none; font-weight: 700; }
+  .top .who { font-size: 0.8125rem; color: var(--ink-2); }
+  .top .who a { font-weight: 500; color: var(--moss); margin-left: 8px; }
+  h1 { margin: 0 0 6px; font: italic 500 1.875rem/1.2 var(--serif); letter-spacing: -0.01em; }
+  .lede { margin: 0 0 24px; color: var(--ink-2); max-width: 60ch; }
+  section { margin: 0 0 18px; padding: 20px 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+  h2 { margin: 0 0 12px; font-size: 1rem; }
+  .muted { color: var(--ink-2); font-size: 0.875rem; }
+  .money { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .money div { padding: 12px 14px; border-radius: 12px; background: var(--moss-soft); }
+  .money b { display: block; font-size: 1.25rem; }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+  ul.list li:first-child { border-top: 0; padding-top: 0; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 600 0.6875rem var(--mono); text-transform: uppercase; letter-spacing: 0.03em; background: var(--moss-soft); color: var(--moss); }
+  .pill.wait { background: var(--amber-soft); color: oklch(0.45 0.1 70); }
+  .pill.declined { background: var(--coral-soft); color: var(--coral); }
+  code { font: 600 0.9375rem var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--moss-soft); }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  label { display: grid; gap: 4px; font-size: 0.8125rem; font-weight: 600; }
+  input, select { font: inherit; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+  input.wide { min-width: min(100%, 320px); }
+  .btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.875rem var(--sans); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  .btn.primary { background: var(--lime); border-color: transparent; }
+  .btn.small { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  .err { color: var(--coral); margin: 8px 0 0; font-size: 0.875rem; }
+  .ok { color: var(--moss); margin: 8px 0 0; font-size: 0.875rem; }
+  .how { margin: 8px 0 0; font-size: 0.875rem; color: var(--ink-2); }
+  @media (max-width: 560px) { .money { grid-template-columns: minmax(0, 1fr); } section { padding: 18px 16px; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a href="/creators/">Receipts by Unprompted</a><span class="who" id="who"></span></div>
+  <h1>License offers</h1>
+  <p class="lede">When a brand wants to run one of your videos as an ad, the offer lands here and in your inbox. You choose: accept, counter or decline. Nothing runs without your yes.</p>
+  <div id="app"><p class="muted">Loading…</p></div>
+</main>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const STATUS = { requested: ['Waiting for you', 'wait'], contacted: ['Waiting for you', 'wait'], accepted: ['Accepted', ''], live: ['Live', ''], declined: ['Declined', 'declined'] };
+  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
+    el.append(...kids.filter((k) => k != null));
+    return el;
+  }
+  async function call(path, body) {
+    const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    return data;
+  }
+  const brands = (s) => s.split(',').map((b) => b.trim()).filter(Boolean);
+
+  function signIn() {
+    let signup = true;
+    const email = h('input', { type: 'email', required: true, autocomplete: 'email', class: 'wide', id: 'email' });
+    const pw = h('input', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password', id: 'pw' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const submit = h('button', { class: 'btn primary' }, 'Create account');
+    const toggle = h('button', { class: 'btn', type: 'button', onclick: () => {
+      signup = !signup;
+      submit.textContent = signup ? 'Create account' : 'Sign in';
+      toggle.textContent = signup ? 'I already have an account' : 'Create an account';
+      pw.autocomplete = signup ? 'new-password' : 'current-password';
+    } }, 'I already have an account');
+    const form = h('form', { onsubmit: async (e) => {
+      e.preventDefault(); err.textContent = ''; submit.disabled = true;
+      try { await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value }); load(); }
+      catch (ex) { err.textContent = ex.message; submit.disabled = false; }
+    } }, h('label', { for: 'email' }, 'Email', email), h('label', { for: 'pw' }, 'Password', pw), submit, toggle);
+    $('#app').replaceChildren(h('section', {}, h('h2', {}, 'Sign in to see your offers'),
+      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Same account as Receipts. Free.'), form, err));
+  }
+
+  function handles(d) {
+    const pre = new URLSearchParams(location.search).get('claim') || '';
+    const [prePlatform, preHandle] = pre.includes(':') ? pre.split(':') : ['tiktok', ''];
+    const platform = h('select', { id: 'platform' }, h('option', { value: 'tiktok', selected: prePlatform === 'tiktok' }, 'TikTok'),
+      h('option', { value: 'instagram', selected: prePlatform === 'instagram' }, 'Instagram'));
+    const handle = h('input', { id: 'handle', placeholder: 'yourhandle', value: decodeURIComponent(preHandle || ''), autocomplete: 'off' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const items = d.handles.map((x) => {
+      const msg = h('p', { class: 'err', role: 'alert' });
+      const body = { platform: x.platform, handle: x.handle };
+      const verify = h('button', { class: 'btn small primary', type: 'button', onclick: async () => {
+        verify.disabled = true; msg.textContent = '';
+        try { await call('/api/licenses/verify', body); load(); } catch (ex) { msg.textContent = ex.message; verify.disabled = false; }
+      } }, 'Check my bio');
+      const remove = h('button', { class: 'btn small', type: 'button', onclick: async () => { render(await call('/api/licenses/remove', body)); } }, 'Remove');
+      const how = x.verified ? null : x.platform === 'tiktok'
+        ? h('p', { class: 'how' }, 'Add ', h('code', {}, x.code), ' anywhere in your TikTok bio, save, then press Check my bio. You can remove it once verified.')
+        : h('p', { class: 'how' }, 'Instagram is checked by hand: DM ', h('code', {}, x.code), ` from @${x.handle} to the account that contacted you, or email it from the address in your bio. We’ll confirm within a day.`);
+      return h('li', {}, h('div', {}, h('b', {}, `@${x.handle}`), h('span', { class: 'muted' }, ` · ${x.platform === 'tiktok' ? 'TikTok' : 'Instagram'}`), how, msg),
+        h('div', {}, x.verified ? h('span', { class: 'pill' }, 'Verified') : x.platform === 'tiktok' ? verify : h('span', { class: 'pill wait' }, 'Pending'), ' ', remove));
+    });
+    const form = h('form', { onsubmit: async (e) => {
+      e.preventDefault(); err.textContent = '';
+      try { await call('/api/licenses/handles', { platform: platform.value, handle: handle.value }); history.replaceState(null, '', location.pathname); load(); }
+      catch (ex) { err.textContent = ex.message; }
+    } }, h('label', { for: 'platform' }, 'Platform', platform), h('label', { for: 'handle' }, 'Handle', handle), h('button', { class: 'btn primary' }, 'Claim'));
+    return h('section', {}, h('h2', {}, 'Your handles'),
+      items.length ? h('ul', { class: 'list' }, ...items) : h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Claim your handle so offers for your videos come straight to you.'),
+      h('div', { style: 'margin-top:12px' }, form, err));
+  }
+
+  function offers(d) {
+    if (!d.offers.length) return h('section', {}, h('h2', {}, 'Offers'), h('p', { class: 'muted', style: 'margin:0' },
+      d.handles.some((x) => x.verified) ? 'No offers yet. When a brand asks to license one of your videos, it shows up here and we email you.'
+        : 'Verify a handle above and offers for its videos will show up here.'));
+    return h('section', {}, h('h2', {}, 'Offers'), h('ul', { class: 'list' }, ...d.offers.map((o) => {
+      const [label, cls] = STATUS[o.status] || [o.status, ''];
+      const detail = o.status === 'live' ? `until ${when(o.expiresAt)}` : o.status === 'declined' && o.respondedVia === 'auto' ? 'by your rule' : when(o.createdAt);
+      return h('li', {}, h('div', {}, h('b', {}, o.brand), h('span', { class: 'muted' }, ` · @${o.video.handle} · ${o.days} days · $${o.shareUsd} to you · ${detail}`)),
+        h('div', {}, h('span', { class: `pill ${cls}` }, label), ' ', h('a', { class: 'btn small', href: o.url }, ['requested', 'contacted'].includes(o.status) ? 'Answer' : 'Open')));
+    })));
+  }
+
+  function rules(d) {
+    const min = h('input', { id: 'min', type: 'number', min: 0, step: 1, value: d.prefs.minPriceUsd ?? '', placeholder: 'none' });
+    const approve = h('input', { id: 'approve', class: 'wide', value: d.prefs.approveBrands.join(', '), placeholder: 'e.g. Rhode, Glossier' });
+    const block = h('input', { id: 'block', class: 'wide', value: d.prefs.blockBrands.join(', '), placeholder: 'brands you never want to run ads for' });
+    const msg = h('p', { class: 'ok', role: 'status' });
+    const form = h('form', { onsubmit: async (e) => {
+      e.preventDefault(); msg.textContent = ''; msg.className = 'ok';
+      try {
+        render(await call('/api/licenses/prefs', { minPriceUsd: min.value === '' ? null : Number(min.value), approveBrands: brands(approve.value), blockBrands: brands(block.value) }));
+        $('#rules-msg').textContent = 'Saved';
+      } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
+    } }, h('label', { for: 'min' }, 'Minimum you’ll take ($)', min), h('label', { for: 'approve' }, 'Say yes automatically to', approve),
+      h('label', { for: 'block' }, 'Always decline', block), h('button', { class: 'btn primary' }, 'Save rules'));
+    return h('section', {}, h('h2', {}, 'Rules'),
+      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Optional. Offers below your minimum or from blocked brands are declined for you; brands on your yes list are accepted, and you just send the code.'),
+      form, h('p', { class: 'ok', role: 'status', id: 'rules-msg' }), msg);
+  }
+
+  function render(d) {
+    const m = d.money;
+    $('#app').replaceChildren(
+      h('section', {}, h('div', { class: 'money' }, h('div', {}, h('b', {}, `$${m.paidUsd}`), h('span', { class: 'muted' }, 'Paid to you')),
+        h('div', {}, h('b', {}, `$${m.owedUsd}`), h('span', { class: 'muted' }, 'On its way')), h('div', {}, h('b', {}, String(m.live)), h('span', { class: 'muted' }, 'Ads live now')))),
+      offers(d), handles(d), rules(d));
+  }
+
+  async function load() {
+    try {
+      const me = await call('/api/creators/me');
+      if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
+      $('#who').replaceChildren(me.user.email, h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      render(await call('/api/licenses/mine'));
+    } catch (ex) { $('#app').replaceChildren(h('p', { class: 'err' }, ex.message)); }
+  }
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offer for your video · Receipts</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
+    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  main { max-width: 600px; margin: 0 auto; padding: 36px 20px 60px; }
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .brand a { color: var(--ink); text-decoration: none; font-weight: 700; }
+  .brand span { font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px 26px 24px; }
+  h1 { margin: 0 0 8px; font: italic 500 1.75rem/1.2 var(--serif); letter-spacing: -0.01em; text-wrap: balance; }
+  .sub { margin: 0 0 18px; color: var(--ink-2); text-wrap: pretty; }
+  .sub b { color: var(--ink); }
+  .amount { display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--lime); color: var(--ink); font-weight: 700; }
+  .video { margin: 0 0 18px; padding: 14px 16px; border-radius: 12px; background: var(--moss-soft); }
+  .video blockquote { margin: 0 0 8px; font: italic 400 1.125rem/1.45 var(--serif); }
+  .video blockquote b { font-style: normal; font-family: var(--sans); font-weight: 600; background: var(--lime); padding: 0 3px; border-radius: 3px; }
+  .video .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.8125rem; color: var(--ink-2); }
+  .video a { color: var(--moss); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 20px; font-size: 0.875rem; }
+  dt { color: var(--ink-2); } dd { margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.9375rem var(--sans); cursor: pointer; }
+  .btn.primary { background: var(--lime); border-color: transparent; }
+  .btn.quiet { color: var(--ink-2); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  .panel { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; }
+  .panel label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.875rem; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  input, textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; width: 100%; }
+  .money { max-width: 160px; }
+  textarea { min-height: 64px; resize: vertical; }
+  .status { margin: 0 0 18px; padding: 14px 16px; border-radius: 12px; background: var(--moss-soft); }
+  .status.declined { background: var(--coral-soft); }
+  .status b { display: block; margin-bottom: 2px; }
+  .steps { margin: 6px 0 12px; padding-left: 20px; font-size: 0.875rem; }
+  .err { color: var(--coral); margin: 10px 0 0; }
+  .claim { margin-top: 18px; font-size: 0.875rem; color: var(--ink-2); }
+  .claim a { color: var(--moss); font-weight: 600; }
+  footer { margin-top: 24px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><a href="/creators/">Receipts by Unprompted</a><span>Offer for your video</span></div>
+  <section class="card" id="card" aria-live="polite"><p class="sub">Loading the offer…</p></section>
+  <footer>Unprompted arranges the license and handles payment. Nothing is posted on your account.</footer>
+</main>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const token = location.pathname.split('/').pop();
+  const api = `/api/licenses/offer/${token}`;
+  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const fmt = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K` : String(n);
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
+    el.append(...kids.filter((k) => k != null));
+    return el;
+  }
+  async function call(body) {
+    const res = await fetch(api, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    return data;
+  }
+  // One button that posts an action and re-renders, showing any error under the panel it sits in.
+  function act(label, cls, body, err) {
+    const b = h('button', { class: `btn ${cls}`, type: 'button', onclick: async () => {
+      b.disabled = true; err.textContent = '';
+      try { render(await call(typeof body === 'function' ? body() : body)); }
+      catch (ex) { err.textContent = ex.message; b.disabled = false; }
+    } }, label);
+    return b;
+  }
+  function quote(v) {
+    const q = v.quote;
+    if (!q) return h('blockquote', {}, v.caption || '');
+    const [a, b] = q.hit;
+    return h('blockquote', { dir: 'auto' }, '“', q.text.slice(0, a), h('b', {}, q.text.slice(a, b)), q.text.slice(b), '”');
+  }
+  const show = (...kids) => $('#card').replaceChildren(...kids.filter((k) => k != null));
+  function render(o) {
+    const v = o.video, tiktok = v.platform === 'tiktok', ad = tiktok ? 'a TikTok Spark Ad' : 'an Instagram partnership ad';
+    document.title = `${o.brand} offer · Receipts`;
+    const at = v.quote && v.quote.start != null ? ` at ${Math.floor(v.quote.start / 60)}:${String(Math.floor(v.quote.start % 60)).padStart(2, '0')}` : '';
+    const video = h('div', { class: 'video' }, quote(v), h('div', { class: 'meta' },
+      h('span', {}, `@${v.handle} · ${tiktok ? 'TikTok' : 'Instagram'} · ${fmt(v.views)} views`),
+      v.publishedAt ? h('span', {}, `Posted ${when(v.publishedAt)}`) : null,
+      h('a', { href: v.url, target: '_blank', rel: 'noopener' }, `Watch${at} ↗`)));
+    const terms = h('dl', {},
+      h('dt', {}, 'Where'), h('dd', {}, `As ${ad}, run by ${o.brand}`),
+      h('dt', {}, 'How long'), h('dd', {}, `${o.days} days, then it stops`),
+      h('dt', {}, 'You keep'), h('dd', {}, 'Ownership. No edits beyond captions and cropping. Nothing new to post.'),
+      h('dt', {}, 'Payment'), h('dd', {}, `${o.brand} pays upfront; you’re paid within 3 days of the ad going live.`));
+    const claim = o.claimed ? null : h('p', { class: 'claim' }, 'Want offers like this sent straight to you? ',
+      h('a', { href: `/creators/licenses?claim=${v.platform}:${encodeURIComponent(v.handle)}` }, `Claim @${v.handle} →`));
+    const err = h('p', { class: 'err', role: 'alert' });
+    const head = h('h1', {}, `${o.brand} wants to run your video as an ad`);
+    const sub = h('p', { class: 'sub' }, 'You get ', h('span', { class: 'amount' }, `$${o.shareUsd}`), ` for ${o.days} days. `,
+      `${o.brand} pays $${o.brandPriceUsd}; Unprompted keeps 15% for arranging it and handling the payment.`);
+    const status = (cls, title, text) => h('div', { class: `status ${cls || ''}` }, h('b', {}, title), text);
+
+    if (o.status === 'declined') {
+      show(head, status('declined', 'Declined', o.declineReason || 'You said no to this one. Nothing else happens.'), video, claim);
+      return;
+    }
+    if (o.status === 'live') {
+      show(head, status('', `Live until ${when(o.expiresAt)}`,
+        o.creatorPaidAt ? `$${o.shareUsd} paid on ${when(o.creatorPaidAt)}.` : `$${o.shareUsd} is on its way: within 3 days of ${when(o.startsAt)}.`), video, claim);
+      return;
+    }
+    if (o.status === 'accepted') {
+      if (o.adCode) {
+        show(head, status('', 'Code received', `We’ll tell you when the ad goes live. You’ll get $${o.shareUsd} within 3 days of that.`), video, terms, claim);
+        return;
+      }
+      const code = h('input', { id: 'code', autocomplete: 'off', placeholder: tiktok ? 'Paste the ad code' : '' });
+      const step = tiktok
+        ? h('div', { class: 'panel' }, h('label', { for: 'code' }, 'Last step: send the ad code'),
+            h('ol', { class: 'steps' }, h('li', {}, 'In TikTok, open this video’s ad settings and turn on ad authorization.'),
+              h('li', {}, `Create a code for ${o.days} days, or the closest option.`), h('li', {}, 'Paste it here.')),
+            h('div', { class: 'row' }, code, act('Send code', 'primary', () => ({ action: 'code', code: code.value }), err)), err)
+        : h('div', { class: 'panel' }, h('b', {}, 'Last step: approve the partnership ad'),
+            h('p', { class: 'sub', style: 'margin:6px 0 12px' }, `${o.brand} will send a partnership ad request in Instagram for this video. Approve it there, then press the button.`),
+            act('I’ve approved it', 'primary', { action: 'code', code: 'approved partnership ad request' }, err), err);
+      show(head, status('', 'You accepted', `You get $${o.shareUsd} for ${o.days} days.`), step, video, terms, claim);
+      return;
+    }
+    // requested / contacted: accept, counter or decline
+    const ask = h('input', { class: 'money', id: 'ask', type: 'number', min: 1, step: 1, inputmode: 'numeric', placeholder: String(o.shareUsd) });
+    const reason = h('textarea', { id: 'reason', maxlength: 300, placeholder: 'Optional: why not (not a fit, already exclusive, …)' });
+    const counter = h('div', { class: 'panel', hidden: true }, h('label', { for: 'ask' }, `How much do you want to receive for ${o.days} days?`),
+      h('div', { class: 'row' }, h('span', {}, '$'), ask, act('Send', 'primary', () => ({ action: 'counter', price: Number(ask.value) }), err)));
+    const decline = h('div', { class: 'panel', hidden: true }, h('label', { for: 'reason' }, 'Decline this offer'), reason,
+      h('div', { style: 'margin-top:8px' }, act('Decline', '', () => ({ action: 'decline', reason: reason.value }), err)));
+    const toggle = (show, hide) => () => { show.hidden = !show.hidden; hide.hidden = true; };
+    const countered = o.counterUsd && o.respondedVia
+      ? status('', `You asked for $${o.counterUsd}`, `We’ve passed it to ${o.brand} and will email you their answer. You can still accept the original offer.`) : null;
+    show(head, sub, countered, video, terms,
+      h('div', { class: 'actions' }, act(`Accept $${o.shareUsd}`, 'primary', { action: 'accept' }, err),
+        h('button', { class: 'btn', type: 'button', onclick: toggle(counter, decline) }, 'Counter'),
+        h('button', { class: 'btn quiet', type: 'button', onclick: toggle(decline, counter) }, 'Decline')),
+      counter, decline, err, claim);
+  }
+  call().then(render).catch((ex) => {
+    show(h('h1', {}, 'This offer link isn’t valid.'), h('p', { class: 'sub' }, ex.message));
+  });
+</script>
+</body>
+</html>
