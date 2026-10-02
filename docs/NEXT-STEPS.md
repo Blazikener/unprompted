@@ -76,6 +76,8 @@ Brokering 20 brands from raw SQL won't hold up. Build a small private page.
 
 Goal: prove that brands pay upfront for unprompted clips, and that creators accept a pre-priced 30-day licence.
 
+Day-to-day steps, message drafts and the licence template: `docs/CONCIERGE.md`. Shortlist script: `backend/prospect_brands.py`.
+
 **1.1 Shortlist 20 brands with unprompted mentions [Code + Ops]**
 1. [Code] Add `backend/prospect_brands.py`, modelled on `backend/prospect.py`.
    - Input: a list of 40-60 candidate brands in beauty, fashion and DTC (the research's first vertical), plus GCC brands.

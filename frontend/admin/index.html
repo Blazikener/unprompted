@@ -32,6 +32,8 @@
   th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
   th { font: 600 0.75rem var(--sans); letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-2); background: var(--bg); }
   tr.late td:first-child { box-shadow: inset 3px 0 0 var(--coral); }
+  tr.renew td:first-child { box-shadow: inset 3px 0 0 oklch(0.7 0.14 70); }
+  .copy { margin-top: 6px; height: 26px; padding: 0 8px; font-size: 0.75rem; }
   td a { color: var(--moss); }
   .num { width: 84px; }
   textarea { width: 100%; min-width: 180px; min-height: 52px; resize: vertical; }
@@ -71,6 +73,26 @@
   }
   const day = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
   const age = (hrs) => hrs < 48 ? `${hrs}h` : `${Math.round(hrs / 24)}d`;
+  const CREATOR_SHARE = 0.85;                 // the pilot pays creators 85% of what the brand pays
+  const price = (r) => r.finalPriceUsd ?? r.creatorPriceUsd ?? r.priceUsd;
+  const daysLeft = (r) => r.expiresAt ? Math.ceil((new Date(r.expiresAt) - Date.now()) / 864e5) : null;
+  const renewalDue = (r) => r.status === 'live' && daysLeft(r) !== null && daysLeft(r) <= 7;
+  // Message drafts the operator copies into a DM or email; nothing is sent from here.
+  function creatorMessage(r) {
+    const ad = r.platform === 'tiktok' ? 'a TikTok Spark Ad (you authorise the video for ads and send me the code)'
+      : 'an Instagram partnership ad (you approve the brand\u2019s partnership request)';
+    return `Hi @${r.handle}, ${r.brand} saw your video where you talk about them (${r.videoUrl}) and wants to run it as ${ad} for ${r.days} days. `
+      + `You\u2019d get $${Math.round(price(r) * CREATOR_SHARE)}: the brand pays upfront, and you’re paid within 3 days of the ad going live. You keep ownership: paid ads only, ${r.days} days, `
+      + `no edits beyond captions and cropping. If you\u2019re in, reply and I\u2019ll send the one-page licence. If not, just say no and that\u2019s it.`;
+  }
+  function renewalMessage(r) {
+    return `Your licence for @${r.handle}\u2019s video ends on ${day(r.expiresAt)}. Want another ${r.days} days at $${price(r)}? `
+      + `Reply yes and I\u2019ll arrange it with the creator (a new ad code is needed once the old one expires).`;
+  }
+  async function copy(text, btn) {
+    try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
+    catch { window.prompt('Copy this message:', text); }
+  }
   async function call(path, body) {
     const res = await fetch(path, { method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     const data = await res.json();
@@ -81,9 +103,18 @@
     const n = (s) => list.filter((r) => r.status === s).length;
     const paid = list.filter((r) => r.brandPaidAt).reduce((t, r) => t + (r.finalPriceUsd ?? r.priceUsd), 0);
     const owed = list.filter((r) => r.brandPaidAt && !r.creatorPaidAt).length;
+    // Gate 1 (docs/NEXT-STEPS.md): 50%+ of creators accept within 72 hours of the request.
+    const answered = list.filter((r) => r.respondedAt);
+    const wait = (r) => (new Date(r.respondedAt) - new Date(r.contactedAt || r.createdAt)) / 36e5;   // the creator's answer time
+    const hours = answered.map(wait).sort((a, b) => a - b);
+    const median = hours.length ? Math.round(hours[Math.floor((hours.length - 1) / 2)]) : null;
+    const quick = list.filter((r) => ['accepted', 'live'].includes(r.status) && r.respondedAt && wait(r) <= 72).length;
+    const asked = list.filter((r) => r.status !== 'requested').length;
     $('#stats').replaceChildren(...[
       ['Waiting on you', n('requested')], ['With creator', n('contacted')], ['Accepted', n('accepted')], ['Live', n('live')],
-      ['Declined', n('declined')], ['Paid by brands', `$${paid}`], ['Creators to pay', owed],
+      ['Declined', n('declined')], ['Renewals due (7 days)', list.filter(renewalDue).length], ['Paid by brands', `$${paid}`],
+      ['Creators to pay', owed], ['Median hours to answer', median ?? '—'],
+      ['Accepted within 72h', asked ? `${Math.round(100 * quick / asked)}%` : '—'],
     ].map(([k, v]) => h('li', {}, h('b', {}, String(v)), h('span', { class: 'muted' }, k))));
   }
   function row(r) {
@@ -111,12 +142,16 @@
       catch (ex) { saved.textContent = ex.message; saved.className = 'err'; save.disabled = false; }
     } }, 'Save');
     const late = r.status === 'requested' && r.ageHours >= 24;
-    const tr = h('tr', { class: late ? 'late' : null },
+    const copyCreator = h('button', { class: 'copy', type: 'button', onclick: (e) => copy(creatorMessage(r), e.currentTarget) }, 'Copy message to creator');
+    const copyRenewal = renewalDue(r) ? h('button', { class: 'copy', type: 'button', onclick: (e) => copy(renewalMessage(r), e.currentTarget) }, 'Copy renewal note to brand') : null;
+    const tr = h('tr', { class: late ? 'late' : renewalDue(r) ? 'renew' : null },
       h('td', {}, age(r.ageHours), late ? h('div', { class: 'err' }, 'over 24h') : null),
       h('td', {}, h('b', {}, r.brand), h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
       h('td', {}, h('a', { href: r.profileUrl, target: '_blank', rel: 'noopener' }, `@${r.handle}`), ` · ${r.platform} · ${r.views.toLocaleString()} views`,
-        h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null),
-      h('td', {}, `${r.days} days`, h('div', { class: 'muted' }, `~$${r.priceUsd} shown`), r.expiresAt ? h('div', {}, `until ${day(r.expiresAt)}`) : null),
+        h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null,
+        ['requested', 'contacted'].includes(r.status) ? copyCreator : null),
+      h('td', {}, `${r.days} days`, h('div', { class: 'muted' }, `~$${r.priceUsd} shown`),
+        r.expiresAt ? h('div', {}, `until ${day(r.expiresAt)}`, renewalDue(r) ? h('b', {}, ` (${daysLeft(r)}d left)`) : null) : null, copyRenewal),
       h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), h('div', { style: 'margin-top:6px' }, status)),
       h('td', {}, creatorPrice, ' ', finalPrice),
       h('td', {}, flags), h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
