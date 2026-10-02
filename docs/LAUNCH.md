@@ -98,7 +98,15 @@ It lives on the brand dashboard at `/brands/` (card under the mention mix) and d
   checks about a minute after boot, then every 15 minutes while awake. Render free instances sleep after 15 idle minutes,
   so it runs whenever awake (any visit wakes it); use an external cron calling `POST /api/digests/run` with `{"force": false}`
   for a reliable wall-clock trigger.
-- Email delivery needs `RESEND_API_KEY` + `DIGEST_FROM` (Resend free tier, verified domain). Without them the flow
-  still works end to end: subscribers are active immediately and see the latest digest on `/digest/<token>`.
+- Email delivery uses the Apps Script relay first when both `MAIL_RELAY_URL` and `MAIL_RELAY_SECRET` are set, then
+  Resend (`RESEND_API_KEY` + `DIGEST_FROM`). Without either provider, subscribers are active immediately and no email
+  is sent; a failed confirmation can be retried by submitting the same pending signup again.
+- Render's free tier blocks outbound SMTP and Resend requires a verified domain. The relay sends from your Gmail over
+  HTTPS; a consumer Gmail account has a 100-recipient/day Apps Script mail quota.
+- Relay setup: open `script.google.com`, paste `docs/mail-relay.gs`, replace `CHANGE_ME` with a private secret, then
+  Deploy > New deployment > Web app with **Execute as Me** and **Anyone** access. Set the deployment URL as
+  `MAIL_RELAY_URL` and the same secret as `MAIL_RELAY_SECRET`; this takes priority over Resend.
+- `/digest/sample` is a read-only sample email. Its public preview removes subscriber details and links back to
+  `/brands/`.
 - Review checklist before sending Oriane the link: a real brand search → subscribe → `POST /api/digests/run {"id": n}`
   (40 credits) → email received → dashboard link opens the digest's search.

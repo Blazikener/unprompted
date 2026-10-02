@@ -2,18 +2,22 @@
 
 DATABASE_URL=postgresql:///unprompted_test pytest backend/test_digest.py
 """
+import io
 import json
 import os
 import threading
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 os.environ.setdefault("DATABASE_URL", "postgresql:///unprompted_test")
 os.environ["DEMO_MODE"] = "1"
 os.environ["APP_URL"] = "https://u.test"
 os.environ["DIGEST_RUN_TOKEN"] = "run-secret"
-os.environ.pop("RESEND_API_KEY", None)
+os.environ["ORIANE_API_KEY"] = ""
+os.environ["RESEND_API_KEY"] = ""
+os.environ.pop("MAIL_RELAY_URL", None)
+os.environ.pop("MAIL_RELAY_SECRET", None)
 
 import psycopg  # noqa: E402
 import pytest  # noqa: E402
@@ -54,7 +58,7 @@ def test_subscribe_validates_and_is_active_without_mail(monkeypatch):
         digest.subscribe({"email": "a@b.co", "brand": "T"})
     d = digest.subscribe({"email": "Brand@Example.com ", "brand": "Tim Hortons", "variants": "Timmies, Tim Hortons",
                           "platform": "tiktok", "lang": "en"})
-    assert d["status"] == "active" and d["created"] and d["email"] == "brand@example.com"
+    assert d["status"] == "active" and d["created"] and d["email"] == "brand@example.com" and d["mailed"] is False
     assert d["params"] == {"variants": ["Timmies"], "platform": "tiktok", "lang": "en"}
     assert d["manageUrl"] == "https://u.test/digest/" + d["token"] and not sent
     again = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons", "variants": ["Timmies"], "platform": "tiktok", "lang": "en"})
@@ -67,10 +71,123 @@ def test_subscribe_is_double_opt_in_when_mail_is_configured(monkeypatch):
     sent = []
     monkeypatch.setattr(digest, "send", lambda to, subject, body: sent.append((to, subject, body)) or True)
     d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
-    assert d["status"] == "pending" and sent[0][0] == "brand@example.com" and "Confirm" in sent[0][1]
+    assert d["status"] == "pending" and d["mailed"] is True and sent[0][0] == "brand@example.com" and "Confirm" in sent[0][1]
     assert "https://u.test/digest/%s?confirm=1" % d["token"] in sent[0][2] and "Oriane" in sent[0][2]
     assert digest.manage(d["token"], "confirm")["status"] == "active"
     assert len(digest.due()) == 1
+
+
+def test_pending_subscription_retries_confirmation_and_reports_mail_result(monkeypatch):
+    monkeypatch.setenv("MAIL_RELAY_URL", "https://relay.test/mail")
+    monkeypatch.setenv("MAIL_RELAY_SECRET", "relay-test-secret")
+    attempts = []
+    monkeypatch.setattr(digest, "send", lambda *args: attempts.append(args) or len(attempts) == 1)
+
+    first = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+    again = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+
+    assert first["status"] == again["status"] == "pending"
+    assert first["mailed"] is True and again["mailed"] is False
+    assert first["token"] == again["token"] and len(attempts) == 2
+
+
+def test_mail_relay_takes_priority_and_sends_expected_payload(monkeypatch):
+    monkeypatch.setenv("MAIL_RELAY_URL", "https://relay.test/mail")
+    monkeypatch.setenv("MAIL_RELAY_SECRET", "relay-test-secret")
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    monkeypatch.setenv("DIGEST_FROM", "Unprompted <digest@u.test>")
+
+    def urlopen(req, timeout):
+        assert req.full_url == "https://relay.test/mail" and req.get_method() == "POST"
+        assert req.headers["Content-type"] == "application/json"
+        assert req.headers["User-agent"] == "Unprompted digest (+https://u.test)"
+        assert timeout == 30
+        payload = json.loads(req.data)
+        assert payload == {
+            "secret": "relay-test-secret", "to": "brand@example.com", "subject": "Weekly update", "html": "<p>Update</p>",
+            "text": "Weekly update\n\nhttps://u.test/brands/", "name": "Unprompted",
+        }
+        return io.BytesIO(b'{"ok":true,"remaining":99}')
+
+    monkeypatch.setattr(digest.request, "urlopen", urlopen)
+    assert digest.mail_configured()
+    assert digest.send("brand@example.com", "Weekly update", "<p>Update</p>") is True
+
+
+@pytest.mark.parametrize("failure", ["rejected", "http", "oserror", "json"])
+def test_mail_relay_failures_are_safe_and_do_not_fallback(monkeypatch, capsys, failure):
+    secret = "relay-test-secret"
+    monkeypatch.setenv("MAIL_RELAY_URL", "https://relay.test/mail")
+    monkeypatch.setenv("MAIL_RELAY_SECRET", secret)
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    monkeypatch.setenv("DIGEST_FROM", "Unprompted <digest@u.test>")
+
+    def urlopen(req, timeout):
+        assert req.full_url == "https://relay.test/mail"
+        if failure == "rejected":
+            return io.BytesIO(json.dumps({"ok": False, "error": secret}).encode())
+        if failure == "http":
+            raise urllib.error.HTTPError(req.full_url, 502, secret, {}, None)
+        if failure == "oserror":
+            raise OSError(secret)
+        return io.BytesIO(b"not json")
+
+    monkeypatch.setattr(digest.request, "urlopen", urlopen)
+    assert digest.send("brand@example.com", "Weekly update", "<p>Update</p>") is False
+    logged = capsys.readouterr().err
+    assert secret not in logged and len(logged.strip().splitlines()) == 1
+
+
+def test_resend_is_used_when_relay_is_not_configured(monkeypatch):
+    monkeypatch.delenv("MAIL_RELAY_URL", raising=False)
+    monkeypatch.delenv("MAIL_RELAY_SECRET", raising=False)
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    monkeypatch.setenv("DIGEST_FROM", "Unprompted <digest@u.test>")
+
+    def urlopen(req, timeout):
+        assert req.full_url == "https://api.resend.com/emails" and timeout == 20
+        assert req.headers["Authorization"] == "Bearer re_test"
+        return io.BytesIO(b'{"id":"mail-id"}')
+
+    monkeypatch.setattr(digest.request, "urlopen", urlopen)
+    assert digest.send("brand@example.com", "Weekly update", "<p>Update</p>") is True
+
+
+def test_mail_relay_follows_post_302_with_get_without_body(monkeypatch):
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.server.post_method = self.command
+            self.server.post_body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            self.send_response(302)
+            self.send_header("Location", "/script.googleusercontent.com/result")
+            self.end_headers()
+
+        def do_GET(self):
+            self.server.redirect_method = self.command
+            self.server.redirect_body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"ok":true}')
+
+        def log_message(self, *_):
+            pass
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setenv("MAIL_RELAY_URL", "http://127.0.0.1:%d/mail" % srv.server_port)
+    monkeypatch.setenv("MAIL_RELAY_SECRET", "redirect-test-secret")
+    try:
+        assert digest.send("brand@example.com", "Weekly update", "<p>Update</p>") is True
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        thread.join(timeout=5)
+
+    assert srv.post_method == "POST"
+    assert json.loads(srv.post_body)["secret"] == "redirect-test-secret"
+    assert srv.redirect_method == "GET" and srv.redirect_body == b""
 
 
 def test_run_mails_only_unseen_mentions_and_credits_oriane(monkeypatch):
@@ -251,10 +368,41 @@ def test_http_routes(base, monkeypatch):
     assert call(base, "POST", "/api/digests/run", {}, {"Authorization": "Bearer run-secret"})[0] == 404
 
 
+def test_sample_api_is_anonymized_and_does_not_call_oriane(base, monkeypatch):
+    monkeypatch.setattr(server, "oriane", lambda *a, **k: pytest.fail("sample endpoint must not call Oriane"))
+    status, missing = call(base, "GET", "/api/digests/sample")
+    assert status == 404 and missing == {"error": "No sample digest yet."}
+
+    subscriber = "private-sample@example.com"
+    d = digest.subscribe({"email": subscriber, "brand": "Tim Hortons"})
+    manage = digest.manage_url(d["token"])
+    sample_html = (
+        '<!doctype html><html><body><p>2 new Tim Hortons videos.</p>'
+        '<a href="%s">Manage</a><a href="%s?unsubscribe=1">Unsubscribe</a>'
+        '<p>You get this because %s saved a search.</p></body></html>' % (manage, manage, subscriber)
+    )
+    with psycopg.connect(server.DB_URL) as db:
+        row = db.execute("SELECT id FROM digests WHERE token = %s", (d["token"],)).fetchone()
+        db.execute("INSERT INTO digest_runs (digest_id, new_count, sent, html) VALUES (%s, 2, true, %s)", (row[0], sample_html))
+
+    status, result = call(base, "GET", "/api/digests/sample")
+    assert status == 200 and set(result) == {"brand", "newCount", "createdAt", "html"}
+    assert result["brand"] == "Tim Hortons" and result["newCount"] == 2 and result["createdAt"]
+    assert d["token"] not in result["html"] and subscriber not in result["html"]
+    assert "you@brand.com" in result["html"]
+    assert result["html"].count('href="https://u.test/brands/"') == 2
+
+
 def test_frontend_routes(base):
     status, html = call(base, "GET", "/")
     assert status == 200 and b"Receipts by Unprompted" in html
     status, html = call(base, "GET", "/brands/")
     assert status == 200 and b"<title>Unprompted</title>" in html and b"Hear the next ones first" in html
+    assert b"Saved, but we couldn't send the confirmation email right now. Try again in a few minutes." in html
+    assert b"Get new creator mentions of your brand by email, every week" in html
+    assert b"See a sample digest" in html and b"Start with a search" in html
     status, html = call(base, "GET", "/digest/x")
     assert status == 200 and b"href: '/brands/'" in html and b"/brands/#search=${r.searchId}" in html
+    status, html = call(base, "GET", "/digest/sample")
+    assert status == 200 and b"Sample weekly digest" in html and b"/api/digests/sample" in html
+    assert b"Get this for your brand" in html and b"sandbox" in html

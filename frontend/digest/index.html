@@ -30,6 +30,7 @@
   dt { color: var(--ink-2); } dd { margin: 0; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .btn { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.875rem var(--sans); cursor: pointer; }
+  a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .btn-primary { background: var(--lime); border-color: transparent; }
   .btn-danger { color: var(--coral); }
   .btn:disabled { opacity: 0.5; cursor: default; }
@@ -108,6 +109,18 @@
     $('#preview-h').hidden = !d.latestHtml;
     preview(d.latestHtml);
   }
+  function renderSample(d) {
+    document.title = 'Sample weekly digest · Unprompted';
+    $('#card').replaceChildren(
+      h('h1', {}, 'Sample weekly digest'),
+      h('p', { class: 'sub' }, `${d.newCount} new ${d.newCount === 1 ? 'creator mention' : 'creator mentions'} of ${d.brand}.`),
+      h('div', { class: 'actions' }, h('a', { class: 'btn btn-primary', href: '/brands/' }, 'Get this for your brand')));
+    $('#runs-h').hidden = true;
+    $('#runs').replaceChildren();
+    $('#preview-h').textContent = 'Email preview';
+    $('#preview-h').hidden = !d.html;
+    preview(d.html);
+  }
   let latestHtml = null;
   // A fresh iframe each time: on a back/forward navigation the browser restores the old frame's own history entry
   // instead of loading srcdoc, which leaves the preview blank.
@@ -121,12 +134,16 @@
   window.addEventListener('pageshow', (e) => { if (e.persisted && latestHtml) preview(latestHtml); });
   (async () => {
     try {
+      if (token === 'sample') {
+        renderSample(await api('/api/digests/sample'));
+        return;
+      }
       let d = await api(`/api/digests/${token}`);
       if (q.get('confirm') === '1' && d.status === 'pending') d = await api(`/api/digests/${token}/confirm`, 'POST');
       render(d);
       if (q.get('unsubscribe') === '1') document.querySelector('.btn-danger')?.click();
     } catch (err) {
-      $('#card').replaceChildren(h('h1', {}, 'This link isn\'t valid any more.'), h('p', { class: 'sub' }, err.message, ' ', h('a', { href: '/' }, 'Start a new search'), '.'));
+      $('#card').replaceChildren(h('h1', {}, 'This link isn\'t valid any more.'), h('p', { class: 'sub' }, err.message, ' ', h('a', { href: '/brands/' }, 'Start a new search'), '.'));
     }
   })();
 </script>
