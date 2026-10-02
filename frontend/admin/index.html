@@ -52,6 +52,11 @@
     <form class="auth" id="auth"><input id="token" type="password" placeholder="Operator token (DIGEST_RUN_TOKEN)" aria-label="Operator token" autocomplete="off"><button class="primary">Load</button></form>
   </header>
   <p id="msg" class="muted" role="status"></p>
+  <section id="claims" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
+    <b>Handle claims to verify</b>
+    <p class="muted" style="margin:2px 0 8px">Instagram can't be checked automatically: verify once the code arrives by DM from the handle, or from the email in its bio.</p>
+    <ul id="claim-list" style="margin:0;padding-left:18px"></ul>
+  </section>
   <ul class="stats" id="stats"></ul>
   <div class="wrap" id="wrap" hidden>
     <table>
@@ -79,14 +84,14 @@
   const renewalDue = (r) => r.status === 'live' && daysLeft(r) !== null && daysLeft(r) <= 7;
   // Message drafts the operator copies into a DM or email; nothing is sent from here.
   function creatorMessage(r) {
-    const ad = r.platform === 'tiktok' ? 'a TikTok Spark Ad (you authorise the video for ads and send me the code)'
+    const ad = r.platform === 'tiktok' ? 'a TikTok Spark Ad (you authorize the video for ads and send me the code)'
       : 'an Instagram partnership ad (you approve the brand\u2019s partnership request)';
     return `Hi @${r.handle}, ${r.brand} saw your video where you talk about them (${r.videoUrl}) and wants to run it as ${ad} for ${r.days} days. `
       + `You\u2019d get $${Math.round(price(r) * CREATOR_SHARE)}: the brand pays upfront, and you’re paid within 3 days of the ad going live. You keep ownership: paid ads only, ${r.days} days, `
-      + `no edits beyond captions and cropping. If you\u2019re in, reply and I\u2019ll send the one-page licence. If not, just say no and that\u2019s it.`;
+      + `no edits beyond captions and cropping. Details, and accept, counter or decline in one tap: ${r.offerUrl}`;
   }
   function renewalMessage(r) {
-    return `Your licence for @${r.handle}\u2019s video ends on ${day(r.expiresAt)}. Want another ${r.days} days at $${price(r)}? `
+    return `Your license for @${r.handle}\u2019s video ends on ${day(r.expiresAt)}. Want another ${r.days} days at $${price(r)}? `
       + `Reply yes and I\u2019ll arrange it with the creator (a new ad code is needed once the old one expires).`;
   }
   async function copy(text, btn) {
@@ -115,6 +120,7 @@
       ['Declined', n('declined')], ['Renewals due (7 days)', list.filter(renewalDue).length], ['Paid by brands', `$${paid}`],
       ['Creators to pay', owed], ['Median hours to answer', median ?? '—'],
       ['Accepted within 72h', asked ? `${Math.round(100 * quick / asked)}%` : '—'],
+      ['Answered in app', answered.length ? `${Math.round(100 * answered.filter((r) => r.respondedVia !== 'operator').length / answered.length)}%` : '—'],
     ].map(([k, v]) => h('li', {}, h('b', {}, String(v)), h('span', { class: 'muted' }, k))));
   }
   function row(r) {
@@ -148,14 +154,32 @@
       h('td', {}, age(r.ageHours), late ? h('div', { class: 'err' }, 'over 24h') : null),
       h('td', {}, h('b', {}, r.brand), h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
       h('td', {}, h('a', { href: r.profileUrl, target: '_blank', rel: 'noopener' }, `@${r.handle}`), ` · ${r.platform} · ${r.views.toLocaleString()} views`,
+        r.claimed ? h('div', { class: 'saved' }, 'Handle claimed: they get offers by email') : null,
         h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null,
         ['requested', 'contacted'].includes(r.status) ? copyCreator : null),
       h('td', {}, `${r.days} days`, h('div', { class: 'muted' }, `~$${r.priceUsd} shown`),
         r.expiresAt ? h('div', {}, `until ${day(r.expiresAt)}`, renewalDue(r) ? h('b', {}, ` (${daysLeft(r)}d left)`) : null) : null, copyRenewal),
-      h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), h('div', { style: 'margin-top:6px' }, status)),
+      h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), r.respondedVia ? h('div', { class: 'muted' }, `via ${r.respondedVia}`) : null,
+        r.declineReason ? h('div', { class: 'muted' }, r.declineReason) : null, h('div', { style: 'margin-top:6px' }, status)),
       h('td', {}, creatorPrice, ' ', finalPrice),
-      h('td', {}, flags), h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
+      h('td', {}, flags, r.adCode ? h('div', { style: 'margin-top:6px' }, 'Code: ', h('code', {}, r.adCode)) : null),
+      h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
     return tr;
+  }
+  async function loadClaims() {
+    try {
+      const { handles } = await call('/api/admin/handles');
+      const pending = handles.filter((x) => !x.verified);
+      $('#claims').hidden = !pending.length;
+      $('#claim-list').replaceChildren(...pending.map((x) => {
+        const msg = h('span', { class: 'saved', role: 'status' });
+        const btn = h('button', { class: 'copy', type: 'button', onclick: async () => {
+          btn.disabled = true;
+          try { await call(`/api/admin/handles/${x.id}/verify`, {}); loadClaims(); } catch (ex) { msg.textContent = ex.message; msg.className = 'err'; btn.disabled = false; }
+        } }, 'Verify');
+        return h('li', {}, `@${x.handle} (${x.platform}) · code `, h('code', {}, x.code), ` · ${x.email} `, btn, ' ', msg);
+      }));
+    } catch {}
   }
   async function load(quiet) {
     if (!quiet) $('#msg').textContent = 'Loading…';
@@ -166,6 +190,7 @@
       $('#rows').replaceChildren(...requests.map(row));
       $('#wrap').hidden = !requests.length;
       $('#msg').textContent = requests.length ? '' : 'No license requests yet.';
+      loadClaims();
     } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
   }
   $('#auth').addEventListener('submit', (e) => {
