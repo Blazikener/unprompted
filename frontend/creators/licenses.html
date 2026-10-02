@@ -145,15 +145,18 @@
     const min = h('input', { id: 'min', type: 'number', min: 0, step: 1, value: d.prefs.minPriceUsd ?? '', placeholder: 'none' });
     const approve = h('input', { id: 'approve', class: 'wide', value: d.prefs.approveBrands.join(', '), placeholder: 'e.g. Rhode, Glossier' });
     const block = h('input', { id: 'block', class: 'wide', value: d.prefs.blockBrands.join(', '), placeholder: 'brands you never want to run ads for' });
+    const weekly = h('input', { id: 'weekly', type: 'checkbox', checked: d.prefs.weeklySummary, style: 'height:auto' });
     const msg = h('p', { class: 'ok', role: 'status' });
     const form = h('form', { onsubmit: async (e) => {
       e.preventDefault(); msg.textContent = ''; msg.className = 'ok';
       try {
-        render(await call('/api/licenses/prefs', { minPriceUsd: min.value === '' ? null : Number(min.value), approveBrands: brands(approve.value), blockBrands: brands(block.value) }));
+        render(await call('/api/licenses/prefs', { minPriceUsd: min.value === '' ? null : Number(min.value), approveBrands: brands(approve.value), blockBrands: brands(block.value), weeklySummary: weekly.checked }));
         $('#rules-msg').textContent = 'Saved';
       } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
     } }, h('label', { for: 'min' }, 'Minimum you’ll take ($)', min), h('label', { for: 'approve' }, 'Say yes automatically to', approve),
-      h('label', { for: 'block' }, 'Always decline', block), h('button', { class: 'btn primary' }, 'Save rules'));
+      h('label', { for: 'block' }, 'Always decline', block),
+      h('label', { for: 'weekly', style: 'display:flex;align-items:center;gap:8px;height:40px' }, weekly, 'Weekly summary email'),
+      h('button', { class: 'btn primary' }, 'Save rules'));
     return h('section', {}, h('h2', {}, 'Rules'),
       h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Optional. Offers below your minimum or from blocked brands are declined for you; brands on your yes list are accepted, and you just send the code.'),
       form, h('p', { class: 'ok', role: 'status', id: 'rules-msg' }), msg);

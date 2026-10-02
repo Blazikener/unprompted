@@ -492,7 +492,11 @@ def run_route(handler, body):
     digest_id = body.get("id")
     if body.get("resend") and isinstance(digest_id, int):
         return resend_last(digest_id)
-    return run_due(digest_id if isinstance(digest_id, int) else None, bool(body.get("force")))
+    out = run_due(digest_id if isinstance(digest_id, int) else None, bool(body.get("force")))
+    if not isinstance(digest_id, int):             # the same cron also sends creators their weekly license summary
+        import licenses
+        out["summaries"] = licenses.run_summaries(bool(body.get("forceSummaries")))
+    return out
 
 
 def resend_last(digest_id):
@@ -602,6 +606,8 @@ def scheduler(every_s=900, first_s=60):
             time.sleep(wait_s)
             try:
                 run_due()
+                import licenses
+                licenses.run_summaries()
             except Exception:
                 traceback.print_exc()
             wait_s = every_s

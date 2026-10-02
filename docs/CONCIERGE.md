@@ -119,3 +119,31 @@ This is a starting template, not legal advice. Fill in the brackets for each dea
 > **Governing law:** [jurisdiction].
 >
 > Agreed by Creator ______ Brand ______ Unprompted ______  Date ______
+
+---
+
+## Phase 2: the creator side (once it's live)
+
+Creators now answer in the product instead of by DM. Your job shifts from relaying messages to moving money.
+
+- **Creator links.** Every request has a private offer link (`/offer/<token>`). **Copy message to creator** in `/admin/`
+  includes it. The creator accepts, counters (with the amount *they* want; the brand price shown in the console
+  becomes that ÷ 0.85) or declines, and after accepting pastes the TikTok ad code or confirms the Instagram
+  partnership approval. You're emailed each step; the row shows "via app" and the code.
+- **Claimed handles.** Creators who sign in at `/creators/licenses` and verify a handle get every new offer by email
+  (the console says "Handle claimed"). TikTok verifies itself from a code in the bio. Instagram claims appear at the top
+  of `/admin/`: press **Verify** only after the code arrives by DM from that handle, or from the email in its bio.
+- **Rules.** A creator's minimum, auto-yes and auto-decline lists answer new requests on the spot ("via auto"). An
+  auto-accepted request still needs payment and the code, exactly like a manual yes.
+- **Weekly summary.** The same cron that runs brand reports (`POST /api/digests/run`) emails each verified creator a
+  summary when something is waiting, ending, or owed to them (never an empty email). Creators can turn it off.
+- **Gate 2 (end of week 7):** *Answered in app* at 70% or more in the console, with a median under 48 hours.
+
+### Unlicensed-reuse sample (research test 7, by hand, before building any alert)
+
+1. Take 50 creators from the shortlist with unprompted mentions in the last 30 days.
+2. For each, look up the mentioned brand on the Meta Ad Library (facebook.com/ads/library) and TikTok's Creative Center
+   top ads, and scroll the brand's own TikTok and Instagram for the last 30 days.
+3. Count reposts or ads that use the creator's footage without a disclosed partnership or credit.
+4. Build the "a brand reused your video" alert only if it would fire at least monthly for an active creator. Record the
+   count and examples in the sheet either way.

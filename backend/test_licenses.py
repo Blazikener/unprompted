@@ -178,3 +178,26 @@ def test_http_routes(base, monkeypatch, mail):
     for page, marker in (("/offer/" + token, b"Offer for your video"), ("/creators/licenses", b"License offers")):
         status, html = call(base, "GET", page)
         assert status == 200 and marker in html
+
+
+def test_weekly_summary_only_when_there_is_something_to_read(base, monkeypatch, mail):
+    ali = user(EMAILS[0])
+    licenses.mark_verified(licenses.claim(ali, {"platform": "tiktok", "handle": "ali"})["id"], "operator")
+    to_ali = lambda: [(s, b) for to, s, b in mail if to == EMAILS[0]]  # noqa: E731
+    assert licenses.run_summaries() == 0                       # nothing yet: no email
+    [token] = request_for(monkeypatch, "lo5")
+    n = len(to_ali())                                           # the instant "new offer" email
+    assert licenses.run_summaries() == 1
+    subject, body = to_ali()[n]
+    assert subject == "Your license offers this week: 1 offer waiting" and licenses.offer_url(token) in body
+    assert licenses.run_summaries() == 0                        # once a week
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("UPDATE license_requests SET status = 'live', starts_at = now(), expires_at = now() + interval '3 days',"
+                   " brand_paid_at = now() WHERE creator_token = %s", (token,))
+    assert licenses.run_summaries(force=True) == 1
+    assert to_ali()[-1][0] == "Your license offers this week: 1 ad ending soon, $42 on its way"
+    licenses.set_prefs(ali, {"weeklySummary": False})
+    assert licenses.mine(ali)["prefs"]["weeklySummary"] is False and licenses.run_summaries(force=True) == 0
+    # The operator's cron runs it too.
+    status, out = call(base, "POST", "/api/digests/run", {}, {"Authorization": "Bearer run-secret"})
+    assert status == 200 and out["summaries"] == 0
