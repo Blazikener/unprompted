@@ -82,7 +82,9 @@ Gate: `checkout_started / scan >= 5%` over the first 100 scans, or change the of
 
 ## 6. Weekly digest (Oriane Community Tool)
 
-The brand-side push product discussed with Oriane's CTO: save a search, email only, weekly digest of new mentions.
+The brand-side push product discussed with Oriane's CTO: watch a search, email only, one weekly report of new mentions.
+The dashboard calls it a "watch" ("Watch weekly" button, "Watching · weekly" tag on saved searches) and the email a
+"weekly report"; every surface states the cadence (every 7 days, no email when nothing is new).
 It lives on the brand dashboard at `/brands/` (card under the mention mix) and does not touch Receipts.
 
 - Searching and creator checks on `/brands/` require an email-and-password account. Free users get 2 brand searches and
@@ -110,3 +112,21 @@ It lives on the brand dashboard at `/brands/` (card under the mention mix) and d
   `/brands/`.
 - Review checklist before sending Oriane the link: a real brand search → subscribe → `POST /api/digests/run {"id": n}`
   (40 credits) → email received → dashboard link opens the digest's search.
+
+## 7. License for ads (concierge test, see `docs/NEXT-STEPS.md`)
+
+- Set `LICENSE_NOTIFY_EMAIL` on the service: every "License for ads" request from a weekly report is emailed there.
+- Broker requests at `/admin/` with the operator token (`DIGEST_RUN_TOKEN`): contact the creator within 24 hours,
+  then record contacted, accepted or declined, creator and final price, code received, brand paid and creator paid.
+  Setting a request live starts its window and sets the expiry from the requested days; the brand's licence page
+  shows each change. Nothing is charged by the app: take payment and pay the creator by hand during the pilot.
+- Weekly funnel (`events`), run every Monday:
+
+  ```sql
+  SELECT name, count(*) FROM events
+  WHERE name IN ('report_sent', 'license_view', 'license_request') AND created_at > now() - interval '7 days'
+  GROUP BY 1;
+  SELECT status, count(*), sum(coalesce(final_price_usd, price_usd)) FILTER (WHERE brand_paid_at IS NOT NULL) AS paid_usd,
+         percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM responded_at - created_at) / 3600) AS median_hours_to_answer
+  FROM license_requests GROUP BY 1;
+  ```

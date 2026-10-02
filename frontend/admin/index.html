@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>License requests · Unprompted operator</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
+    --amber-soft: oklch(0.96 0.05 80);
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
+  main { max-width: 1280px; margin: 0 auto; padding: 28px 20px 60px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  h1 { margin: 0; font-size: 1.25rem; }
+  .muted { color: var(--ink-2); }
+  form.auth { display: flex; gap: 8px; }
+  input, select, textarea { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--moss); outline-offset: 1px; }
+  button { font: 600 0.8125rem var(--sans); height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--lime); border-color: transparent; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+  .stats li { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  .stats b { display: block; font-size: 1.125rem; }
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { font: 600 0.75rem var(--sans); letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-2); background: var(--bg); }
+  tr.late td:first-child { box-shadow: inset 3px 0 0 var(--coral); }
+  td a { color: var(--moss); }
+  .num { width: 84px; }
+  textarea { width: 100%; min-width: 180px; min-height: 52px; resize: vertical; }
+  .flags label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 600 0.6875rem var(--mono); text-transform: uppercase; background: var(--moss-soft); color: var(--moss); }
+  .pill.requested { background: var(--amber-soft); color: oklch(0.45 0.1 70); }
+  .pill.declined { background: var(--coral-soft); color: var(--coral); }
+  .saved { color: var(--moss); font-size: 0.75rem; }
+  .err { color: var(--coral); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>License requests</h1><p class="muted" style="margin:2px 0 0">Broker each one by hand: contact the creator within 24 hours, record what happens here.</p></div>
+    <form class="auth" id="auth"><input id="token" type="password" placeholder="Operator token (DIGEST_RUN_TOKEN)" aria-label="Operator token" autocomplete="off"><button class="primary">Load</button></form>
+  </header>
+  <p id="msg" class="muted" role="status"></p>
+  <ul class="stats" id="stats"></ul>
+  <div class="wrap" id="wrap" hidden>
+    <table>
+      <thead><tr><th>Age</th><th>Brand</th><th>Creator and video</th><th>Ask</th><th>Status</th><th>Creator / final $</th><th>Done</th><th>Notes</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const STATUSES = ['requested', 'contacted', 'accepted', 'declined', 'live'];
+  let token = '', list = [];
+  try { token = sessionStorage.getItem('opToken') || ''; } catch {}
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
+    el.append(...kids.filter((k) => k != null));
+    return el;
+  }
+  const day = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+  const age = (hrs) => hrs < 48 ? `${hrs}h` : `${Math.round(hrs / 24)}d`;
+  async function call(path, body) {
+    const res = await fetch(path, { method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+  function stats(list) {
+    const n = (s) => list.filter((r) => r.status === s).length;
+    const paid = list.filter((r) => r.brandPaidAt).reduce((t, r) => t + (r.finalPriceUsd ?? r.priceUsd), 0);
+    const owed = list.filter((r) => r.brandPaidAt && !r.creatorPaidAt).length;
+    $('#stats').replaceChildren(...[
+      ['Waiting on you', n('requested')], ['With creator', n('contacted')], ['Accepted', n('accepted')], ['Live', n('live')],
+      ['Declined', n('declined')], ['Paid by brands', `$${paid}`], ['Creators to pay', owed],
+    ].map(([k, v]) => h('li', {}, h('b', {}, String(v)), h('span', { class: 'muted' }, k))));
+  }
+  function row(r) {
+    const status = h('select', { 'aria-label': `Status for request ${r.id}` }, ...STATUSES.map((s) => h('option', { value: s, selected: s === r.status }, s)));
+    const creatorPrice = h('input', { class: 'num', type: 'number', min: 0, step: 1, value: r.creatorPriceUsd ?? '', placeholder: 'creator', 'aria-label': 'Creator price' });
+    const finalPrice = h('input', { class: 'num', type: 'number', min: 0, step: 1, value: r.finalPriceUsd ?? '', placeholder: 'final', 'aria-label': 'Final price' });
+    const flag = (key, label, at) => h('label', {}, h('input', { type: 'checkbox', 'data-key': key, checked: !!at }), label, at ? h('span', { class: 'muted' }, ` ${day(at)}`) : null);
+    const flags = h('div', { class: 'flags' }, flag('codeReceived', 'Code received', r.codeReceivedAt), flag('brandPaid', 'Brand paid', r.brandPaidAt), flag('creatorPaid', 'Creator paid', r.creatorPaidAt));
+    const note = h('textarea', { 'aria-label': 'Operator note', placeholder: 'Contact used, counter, next step…' }, r.opsNote || '');
+    const saved = h('span', { class: 'saved', role: 'status' });
+    const save = h('button', { class: 'primary', onclick: async () => {
+      save.disabled = true; saved.textContent = '';
+      const num = (el) => el.value === '' ? null : Number(el.value);
+      const body = { status: status.value, creatorPriceUsd: num(creatorPrice), finalPriceUsd: num(finalPrice), opsNote: note.value };
+      // Send only flags you changed, so setting a status still stamps what it implies (e.g. live = code received).
+      for (const box of flags.querySelectorAll('input')) if (box.checked !== box.defaultChecked) body[box.dataset.key] = box.checked;
+      try {
+        const updated = await call(`/api/admin/licenses/${r.id}`, body);
+        list = list.map((x) => x.id === r.id ? updated : x);
+        stats(list);
+        const next = row(updated);
+        tr.replaceWith(next);
+        next.querySelector('.saved').textContent = 'Saved';
+      }
+      catch (ex) { saved.textContent = ex.message; saved.className = 'err'; save.disabled = false; }
+    } }, 'Save');
+    const late = r.status === 'requested' && r.ageHours >= 24;
+    const tr = h('tr', { class: late ? 'late' : null },
+      h('td', {}, age(r.ageHours), late ? h('div', { class: 'err' }, 'over 24h') : null),
+      h('td', {}, h('b', {}, r.brand), h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
+      h('td', {}, h('a', { href: r.profileUrl, target: '_blank', rel: 'noopener' }, `@${r.handle}`), ` · ${r.platform} · ${r.views.toLocaleString()} views`,
+        h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null),
+      h('td', {}, `${r.days} days`, h('div', { class: 'muted' }, `~$${r.priceUsd} shown`), r.expiresAt ? h('div', {}, `until ${day(r.expiresAt)}`) : null),
+      h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), h('div', { style: 'margin-top:6px' }, status)),
+      h('td', {}, creatorPrice, ' ', finalPrice),
+      h('td', {}, flags), h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
+    return tr;
+  }
+  async function load(quiet) {
+    if (!quiet) $('#msg').textContent = 'Loading…';
+    try {
+      const { requests } = await call('/api/admin/licenses');
+      list = requests;
+      stats(requests);
+      $('#rows').replaceChildren(...requests.map(row));
+      $('#wrap').hidden = !requests.length;
+      $('#msg').textContent = requests.length ? '' : 'No license requests yet.';
+    } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
+  }
+  $('#auth').addEventListener('submit', (e) => {
+    e.preventDefault();
+    token = $('#token').value.trim() || token;
+    try { sessionStorage.setItem('opToken', token); } catch {}
+    load();
+  });
+  if (token) load();
+</script>
+</body>
+</html>

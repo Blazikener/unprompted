@@ -142,6 +142,28 @@ def test_search_quotas_reuse_ownership_and_usage(base, monkeypatch):
     assert status == 200 and public["search"]["id"] == public_id
 
 
+def test_watch_marks_only_the_watchers_matching_searches(base, monkeypatch):
+    monkeypatch.setattr(server, "oriane", lambda *a, **k: empty_page())
+    for name in ("MAIL_RELAY_URL", "RESEND_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    client_a, _ = signup(base, "a@example.com")
+    client_b, _ = signup(base, "b@example.com")
+    _, year = client_a.request("POST", "/api/searches", {"brand": "Alpha Brand"})
+    _, month = client_a.request("POST", "/api/searches", {"brand": "Alpha Brand", "days": 30})
+    _, other = client_b.request("POST", "/api/searches", {"brand": "Alpha Brand"})
+    status, watch = client_a.request("POST", "/api/digests", {"email": "team@alpha.test", "brand": "Alpha Brand",
+                                                              "searchId": year["search"]["id"]})
+    assert status == 200 and watch["status"] == "active"
+    status, _ = client_b.request("POST", "/api/digests", {"email": "b@example.com", "brand": "Alpha Brand", "platform": "tiktok"})
+    assert status == 200
+
+    _, rows_a = client_a.request("GET", "/api/searches")
+    marked = {"status": "active", "manageUrl": watch["manageUrl"]}
+    assert {r["id"]: r["watch"] for r in rows_a} == {year["search"]["id"]: marked, month["search"]["id"]: marked}  # any period
+    _, rows_b = client_b.request("GET", "/api/searches")
+    assert [r["watch"] for r in rows_b] == [None] and rows_b[0]["id"] == other["search"]["id"]  # tiktok watch, all-platform search
+
+
 def test_stream_uses_one_call_and_keeps_progress_then_done(base, monkeypatch):
     calls = []
 

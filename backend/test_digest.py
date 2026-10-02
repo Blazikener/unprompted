@@ -231,6 +231,86 @@ def test_run_mails_only_unseen_mentions_and_credits_oriane(monkeypatch):
     assert len(calls) == n_calls and sent[1] == sent[0]
 
 
+def test_license_button_records_one_request_and_tells_the_operator(monkeypatch):
+    monkeypatch.setenv("LICENSE_NOTIFY_EMAIL", "ops@u.test")
+    sent = []
+    monkeypatch.setattr(digest, "send", lambda to, subject, body: sent.append((to, subject, body)) or True)
+    d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+    organic = video("lic1", "I always get a Tim Hortons iced capp on the way", handle="ali")
+    paid = video("lic2", "Tim Hortons sent me this", caption="#ad", handle="ad")
+    monkeypatch.setattr(server, "oriane", lambda *a, **k: page(organic, paid))
+    digest.run_due()
+
+    # Only the organic mention gets a button; 1,200 views price at the $50/month floor.
+    body = sent[-1][2]
+    assert "https://u.test/license/%s/lic1" % d["token"] in body and "/license/%s/lic2" % d["token"] not in body
+    assert "License for ads &middot; ~$50 / 30 days" in body
+
+    view = digest.license_view(d["token"], "lic1")
+    assert view["request"] is None and view["video"]["handle"] == "ali" and view["video"]["kind"] == "spoken"
+    assert view["prices"] == [{"days": 30, "usd": 50}, {"days": 60, "usd": 100}, {"days": 90, "usd": 150}]
+    n = len(sent)
+    made = digest.license_view(d["token"], "lic1", {"days": 60, "note": "UAE launch"})
+    assert made["request"]["days"] == 60 and made["request"]["priceUsd"] == 100 and made["request"]["status"] == "requested"
+    to, subject, mail = sent[-1]
+    assert len(sent) == n + 1 and to == "ops@u.test" and "@ali" in subject and "60 days" in subject and "UAE launch" in mail
+    # One request per video: asking again changes nothing and sends nothing.
+    assert digest.license_view(d["token"], "lic1", {"days": 30})["request"]["days"] == 60 and len(sent) == n + 1
+    assert digest.manage(d["token"])["licenses"][0]["handle"] == "ali"
+    with psycopg.connect(server.DB_URL) as db:
+        events = db.execute("SELECT name, count(*) FROM events WHERE data->>'digest' = (SELECT id::text FROM digests WHERE token = %s)"
+                            " GROUP BY name", (d["token"],)).fetchall()
+    assert dict(events) == {"report_sent": 1, "license_view": 1, "license_request": 1}
+
+    for vid, body, status in (("lic2", {"days": 30}, 400), ("nope", None, 404), ("lic1", {"days": 45}, 400)):
+        with pytest.raises(server.ApiError) as err:
+            digest.license_view(d["token"], vid, body)
+        assert err.value.status == status
+
+
+def licence_request(monkeypatch, vid="op1"):
+    """A watch with one emailed organic mention and a 30-day request for it; returns (digest, request id)."""
+    monkeypatch.setattr(digest, "send", lambda *a: True)
+    d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+    monkeypatch.setattr(server, "oriane", lambda *a, **k: page(video(vid, "a Tim Hortons iced capp every morning", handle="ali")))
+    digest.run_due()
+    digest.license_view(d["token"], vid, {"days": 30})
+    with psycopg.connect(server.DB_URL) as db:
+        return d, db.execute("SELECT id FROM license_requests WHERE digest_id = (SELECT id FROM digests WHERE token = %s)",
+                             (d["token"],)).fetchone()[0]
+
+
+def test_operator_console_records_brokering(base, monkeypatch):
+    d, rid = licence_request(monkeypatch)
+    op = {"Authorization": "Bearer run-secret"}
+    assert call(base, "GET", "/api/admin/licenses")[0] == 401
+    status, listing = call(base, "GET", "/api/admin/licenses", headers=op)
+    row = next(r for r in listing["requests"] if r["id"] == rid)
+    assert status == 200 and row["status"] == "requested" and row["handle"] == "ali" and row["priceUsd"] == 50
+    assert row["page"] == "https://u.test/license/%s/op1" % d["token"] and row["contactedAt"] is None
+
+    status, row = call(base, "POST", "/api/admin/licenses/%d" % rid, {"status": "contacted"}, op)
+    assert status == 200 and row["contactedAt"] and row["respondedAt"] is None
+    status, row = call(base, "POST", "/api/admin/licenses/%d" % rid, {"status": "live", "finalPriceUsd": 80, "brandPaid": True,
+                                                                     "codeReceived": True, "opsNote": "DM via bio email"}, op)
+    assert status == 200 and row["respondedAt"] and row["codeReceivedAt"] and row["brandPaidAt"] and row["creatorPaidAt"] is None
+    assert row["finalPriceUsd"] == 80 and row["opsNote"] == "DM via bio email"
+    with psycopg.connect(server.DB_URL) as db:
+        window = db.execute("SELECT expires_at - starts_at FROM license_requests WHERE id = %s", (rid,)).fetchone()[0]
+    assert window.days == 30
+    assert call(base, "POST", "/api/admin/licenses/%d" % rid, {"brandPaid": False}, op)[1]["brandPaidAt"] is None
+
+    # The brand's page follows: live, at the final price, with an end date.
+    req = digest.license_view(d["token"], "op1")["request"]
+    assert req["status"] == "live" and req["priceUsd"] == 80 and req["expiresAt"]
+
+    for body, code in (({"status": "maybe"}, 400), ({"finalPriceUsd": "80"}, 400), ({}, 400)):
+        assert call(base, "POST", "/api/admin/licenses/%d" % rid, body, op)[0] == code
+    assert call(base, "POST", "/api/admin/licenses/999999", {"status": "contacted"}, op)[0] == 404
+    status, html = call(base, "GET", "/admin/")
+    assert status == 200 and b"License requests" in html and b"/api/admin/licenses" in html
+
+
 def test_run_due_serializes_concurrent_callers(monkeypatch):
     monkeypatch.delenv("RESEND_API_KEY", raising=False)
     digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
@@ -299,6 +379,18 @@ def test_scheduler_checks_first_after_first_s(monkeypatch):
     assert checks == [60, 900]
 
 
+def test_watch_is_due_every_seven_days():
+    d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
+
+    def due_after(ago):
+        with psycopg.connect(server.DB_URL) as db:
+            db.execute("UPDATE digests SET last_run_at = now() - %s::interval WHERE token = %s", (ago, d["token"]))
+        return len(digest.due())
+    assert due_after("6 days 22 hours") == 0  # a 15-minute scheduler used to mail every 6 days
+    assert due_after("6 days 23 hours 30 minutes") == 1  # a daily cron firing a bit early still lands on day 7
+    assert due_after("8 days") == 1
+
+
 def test_manage_actions():
     d = digest.subscribe({"email": "brand@example.com", "brand": "Tim Hortons"})
     assert digest.manage(d["token"], "pause")["status"] == "paused" and digest.due() == []
@@ -315,7 +407,7 @@ def test_digest_email_limit_is_case_insensitive(monkeypatch):
     with pytest.raises(server.ApiError) as err:
         digest.subscribe({"email": "BRAND@example.com", "brand": "Talabat"})
     assert err.value.status == 429
-    assert str(err.value) == "You already get 2 weekly digests; unsubscribe from one first."
+    assert str(err.value) == "You already watch 2 searches; stop one first."
 
 
 def test_digest_active_limit_on_subscribe_and_resume(monkeypatch):
@@ -324,7 +416,7 @@ def test_digest_active_limit_on_subscribe_and_resume(monkeypatch):
     digest.subscribe({"email": "one@example.com", "brand": "Tim Hortons"})
     with pytest.raises(server.ApiError) as err:
         digest.subscribe({"email": "two@example.com", "brand": "Noon"})
-    assert err.value.status == 503 and str(err.value) == "Weekly digests are full right now."
+    assert err.value.status == 503 and str(err.value) == "Weekly watches are full right now."
 
     monkeypatch.setenv("DIGEST_MAX_ACTIVE", "2")
     paused = digest.subscribe({"email": "two@example.com", "brand": "Noon"})
@@ -332,7 +424,7 @@ def test_digest_active_limit_on_subscribe_and_resume(monkeypatch):
     monkeypatch.setenv("DIGEST_MAX_ACTIVE", "1")
     with pytest.raises(server.ApiError) as err:
         digest.manage(paused["token"], "resume")
-    assert err.value.status == 503 and str(err.value) == "Weekly digests are full right now."
+    assert err.value.status == 503 and str(err.value) == "Weekly watches are full right now."
 
 
 @pytest.fixture(scope="module")
@@ -363,7 +455,7 @@ def test_http_routes(base, monkeypatch):
     assert call(base, "POST", "/api/digests/run", {"force": True}, {"Authorization": "Bearer run-secret"})[1]["ran"] == 1
     assert call(base, "POST", "/api/digests/%s/pause" % d["token"], {})[1]["status"] == "paused"
     status, html = call(base, "GET", "/digest/" + d["token"])
-    assert status == 200 and b"Weekly digest" in html
+    assert status == 200 and b"Weekly watch" in html
     monkeypatch.delenv("DIGEST_RUN_TOKEN")
     assert call(base, "POST", "/api/digests/run", {}, {"Authorization": "Bearer run-secret"})[0] == 404
 
@@ -377,9 +469,9 @@ def test_sample_api_is_anonymized_and_does_not_call_oriane(base, monkeypatch):
     d = digest.subscribe({"email": subscriber, "brand": "Tim Hortons"})
     manage = digest.manage_url(d["token"])
     sample_html = (
-        '<!doctype html><html><body><p>2 new Tim Hortons videos.</p>'
+        '<!doctype html><html><body><p>2 new Tim Hortons videos.</p><a href="%s">License</a>'
         '<a href="%s">Manage</a><a href="%s?unsubscribe=1">Unsubscribe</a>'
-        '<p>You get this because %s saved a search.</p></body></html>' % (manage, manage, subscriber)
+        '<p>You get this because %s saved a search.</p></body></html>' % (digest.license_url(d["token"], "v1"), manage, manage, subscriber)
     )
     with psycopg.connect(server.DB_URL) as db:
         row = db.execute("SELECT id FROM digests WHERE token = %s", (d["token"],)).fetchone()
@@ -390,19 +482,22 @@ def test_sample_api_is_anonymized_and_does_not_call_oriane(base, monkeypatch):
     assert result["brand"] == "Tim Hortons" and result["newCount"] == 2 and result["createdAt"]
     assert d["token"] not in result["html"] and subscriber not in result["html"]
     assert "you@brand.com" in result["html"]
-    assert result["html"].count('href="https://u.test/brands/"') == 2
+    assert result["html"].count('href="https://u.test/brands/"') == 3
 
 
 def test_frontend_routes(base):
     status, html = call(base, "GET", "/")
     assert status == 200 and b"Receipts by Unprompted" in html
     status, html = call(base, "GET", "/brands/")
-    assert status == 200 and b"<title>Unprompted</title>" in html and b"Hear the next ones first" in html
+    assert status == 200 and b"<title>Unprompted</title>" in html and b"Watch this search, get a weekly report." in html
     assert b"Saved, but we couldn't send the confirmation email right now. Try again in a few minutes." in html
-    assert b"Get new creator mentions of your brand by email, every week" in html
-    assert b"See a sample digest" in html and b"Start with a search" in html
+    assert b"Watch a brand: one email report a week." in html and "Watching · weekly".encode() in html
+    assert b"See a sample report" in html and b"Start with a search" in html
     status, html = call(base, "GET", "/digest/x")
     assert status == 200 and b"href: '/brands/'" in html and b"/brands/#search=${r.searchId}" in html
     status, html = call(base, "GET", "/digest/sample")
-    assert status == 200 and b"Sample weekly digest" in html and b"/api/digests/sample" in html
+    assert status == 200 and b"Sample weekly report" in html and b"/api/digests/sample" in html
     assert b"Get this for your brand" in html and b"sandbox" in html
+    status, html = call(base, "GET", "/license/x/y")
+    assert status == 200 and b"Request license" in html and b"/api/digests/${token}/license/${vid}" in html
+    assert call(base, "GET", "/api/digests/%s/license/v1" % ("x" * 20))[0] == 404
