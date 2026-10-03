@@ -50,10 +50,11 @@ turn red.
 1. **Contact the creator.** Press **Copy message to creator**, then send it to the email in their bio (best) or by DM from
    a personal account. Set the row to `contacted` and save.
 2. **Follow up** at 24 and 48 hours if there's no answer. After 72 hours with no answer, set `declined` and note
-   "no answer"; tell the brand and offer another clip.
+   "no answer". Setting `declined` emails the brand; reply to that thread to offer another clip.
 3. **Counter-offer:** put the creator's number in *Creator $*. If the brand accepts it, put the final price in *Final $*.
    If not, set `declined`.
-4. **Yes:** send the licence below with the numbers filled in, set `accepted`, then take payment (next section).
+4. **Yes:** send the licence below with the numbers filled in, set `accepted` (the brand is emailed that the creator said
+   yes), then take payment (next section).
 
 ## Money
 
@@ -173,14 +174,16 @@ work either way.
    it goes live → a test transfer appears in Stripe. Only then switch to live keys.
 
 **What happens on its own now:**
-- The creator accepts (or their rule does) → the brand's licence page shows **Pay $X** (Stripe Checkout).
+- The creator accepts (or their rule does) → the brand is emailed and its licence page shows **Pay $X** (Stripe
+  Checkout). A counter or a no is emailed to the brand the same way.
 - Paid + code received → the licence goes **live** by itself: the window starts, the brand gets the code by email and
   on its page, and the creator's 85% is transferred to their Stripe account (once they've set up payouts in their
   inbox; anything owed goes out the moment they finish).
 - A counter-offer shows on the brand's page with **Accept / Decline**; accepting moves straight to payment.
 - The creator declines after the brand paid → full refund, automatically.
 - A week before the end, the brand gets a **Renew** email (one click: same window and price; the creator confirms and
-  sends a new code). At the end the licence is marked `ended`.
+  sends a new code). The renewal starts when the current licence ends, so no paid days overlap. At the end the licence
+  is marked `ended`.
 - A creator's own 30-day rate (set in their inbox) replaces the rule-of-thumb price for their videos: in reports, on
   licence pages and in the shortlist script.
 
@@ -215,3 +218,29 @@ rosters of 15 Instagram creators is ~6,000 credits a week: ask Oriane for a pilo
 is set to a $99/month Stripe price; then it opens Stripe Checkout and puts the account on the `roster` plan.
 
 **Gate 4:** in `/admin/` → Roster pilots, **Deals** ≥ 1 across the cohort and **Committed** = yes for 3+ managers.
+
+---
+
+## Phase 5: the seeding report pilot
+
+Brands that gift product track who posted through tags and discount codes, which misses everyone who only says the
+brand on camera. The seeding report finds those posts and puts a licence button next to them (research test 4).
+
+**Who:** 5 Shopify brands from the Phase 1 shortlist that send product to creators every month and already have a
+weekly watch. Ask each for last quarter's gifting list (handle, ship date) and how many posts their own tracking found.
+
+**Running it:**
+1. Open the brand's watch page (`/digest/<token>`, the **Manage** link in any report) → **Gifted creators**. Paste the
+   list or pick a CSV: one creator per line with handle or profile URL, platform, ship date (YYYY-MM-DD) and `yes` if
+   their own tracking caught the post. Lines it can't read are listed back with the reason.
+2. TikTok creators are checked straight away from their public page (free; an upload never spends Oriane credits).
+   Each weekly report then checks the rest: first the brand search the report already ran, then up to 15 TikTok
+   creators' public pages, and at most 5 creators through Oriane (Instagram, or a TikTok page that can't be read): about
+   200-400 credits a run at most. Creators not reached go first the next week.
+3. A creator counts as posted from their first video that says, tags or discloses the brand after the ship date, within
+   90 days. The weekly report gets a **Gifted creators** block (posted X of Y, how many only on camera, versus their own
+   tracking) and the new posts with **License for ads**; a week with only gifted posts still sends.
+4. `/admin/` → **Seeding reports** shows each brand's gifted, posted, on-camera-only and tracked counts.
+
+**Gate 5:** for 3 of the 5 brands, posters found ≥ 2× what their own tracking had (the console's ×). Vendors claim 3-4×;
+below 2× the add-on isn't worth selling separately.

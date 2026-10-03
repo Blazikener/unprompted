@@ -153,6 +153,7 @@ def test_the_whole_licence_workflow(base, monkeypatch):
     api_offer = "/api/licenses" + offer_path
     assert creator_web("GET", api_offer)[1]["shareUsd"] == 255
     assert creator_web("POST", api_offer, {"action": "accept"})[1]["status"] == "accepted"
+    assert any(s_ == "@lena said yes: pay $300 to start the licence" and "wf_new" in b for s_, b in inbox(BRAND))   # the brand is told
 
     # Phase 3 "What happens on its own": the brand pays through Stripe; the webhook marks it paid.
     status, out = brand("POST", api, {"action": "pay"})
@@ -210,3 +211,11 @@ def test_the_whole_licence_workflow(base, monkeypatch):
         by_status = {r[0]: r for r in db.execute(second).fetchall()}
     assert funnel["report_sent"] >= 1 and funnel["license_view"] >= 1 and funnel["license_request"] >= 1
     assert by_status["ended"][2] == 300 and "requested" in by_status
+
+
+def test_one_failing_job_does_not_stop_the_others(base, monkeypatch):
+    import licenses
+    monkeypatch.setattr(licenses, "run_summaries", lambda force=False: 1 / 0)
+    status, out = Client(base)("POST", "/api/digests/run", {}, OP)
+    assert status == 200 and out["summaries"] == {"error": "division by zero"}
+    assert out["licenses"] == {"ended": 0, "reminded": 0} and "rosters" in out and "ran" in out

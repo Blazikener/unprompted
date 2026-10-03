@@ -234,3 +234,37 @@ def test_payments_off_keeps_the_manual_flow(monkeypatch, mail):
     digest.admin_update(rid, {"brandPaid": True})          # the operator records a payment link that was paid
     req = brand_request(d, "pp7")
     assert req["status"] == "live" and req["adCode"] == "SPARK-7"                      # paid + code = live, no Stripe
+
+
+def test_renewal_starts_when_the_licence_it_renews_ends(monkeypatch, mail, stripe):
+    _, d, rid, token = setup(monkeypatch, "pp8")
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("UPDATE license_requests SET status = 'live', starts_at = now() - interval '24 days',"
+                   " expires_at = now() + interval '6 days' WHERE id = %s", (rid,))
+    digest.license_view(d["token"], "pp8", {"action": "renew"})
+    with psycopg.connect(server.DB_URL) as db:
+        new_id, new_token = db.execute("SELECT id, creator_token FROM license_requests WHERE renewal_of = %s", (rid,)).fetchone()
+    n = len(mail)
+    licenses.answer(new_token, {"action": "accept"})
+    assert any(to == "brand@example.com" and "said yes: pay $50 to start" in s for to, s, _ in mail[n:])   # the brand is told
+    payments.on_event(paid_event(new_id, 5000))
+    licenses.answer(new_token, {"action": "code", "code": "SPARK-RENEW"})
+    with psycopg.connect(server.DB_URL) as db:
+        old_end, new_start, new_end = db.execute(
+            "SELECT o.expires_at, n.starts_at, n.expires_at FROM license_requests o JOIN license_requests n ON n.renewal_of = o.id"
+            " WHERE o.id = %s", (rid,)).fetchone()
+    assert new_start == old_end and (new_end - new_start).days == 30           # no paid days lost to the overlap
+
+
+def test_brand_hears_every_answer(monkeypatch, mail, stripe):
+    ali, d, rid, token = setup(monkeypatch, "pp9")
+    n = len(mail)
+    digest.admin_update(rid, {"status": "declined"})                          # the operator records a no
+    assert any(to == "brand@example.com" and s == "@ali passed on this one" for to, s, _ in mail[n:])
+    licenses.set_prefs(ali, {"blockBrands": ["Tim Hortons"]})                 # a creator's rule says no on the spot
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("DELETE FROM license_requests WHERE id = %s", (rid,))
+    n = len(mail)
+    digest.license_view(d["token"], "pp9", {"days": 30})
+    licenses.set_prefs(ali, {"blockBrands": []})
+    assert any(to == "brand@example.com" and s == "@ali passed on this one" for to, s, _ in mail[n:])

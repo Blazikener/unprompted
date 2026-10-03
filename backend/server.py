@@ -589,6 +589,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: licenses.dispatch(self))
         elif path.startswith("/api/rosters/") or path == "/api/admin/rosters":
             self.api(lambda: rosters.dispatch(self))
+        elif path == "/api/admin/seeding":
+            self.api(lambda: seeding.admin_route(self))
         elif path.startswith("/api/admin/"):
             self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
@@ -694,6 +696,7 @@ import digest  # noqa: E402
 import licenses  # noqa: E402
 import payments  # noqa: E402
 import rosters  # noqa: E402
+import seeding  # noqa: E402
 
 
 def init_db():
@@ -708,6 +711,7 @@ def init_db():
         db.execute(licenses.SCHEMA)
         db.execute(payments.SCHEMA)
         db.execute(rosters.SCHEMA)
+        db.execute(seeding.SCHEMA)
 
 
 if __name__ == "__main__":

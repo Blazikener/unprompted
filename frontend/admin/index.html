@@ -29,6 +29,7 @@
   .stats b { display: block; font-size: 1.125rem; }
   .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  #rosters, #seeding { overflow-x: auto; }   /* their tables scroll inside the card, not the page */
   th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
   th { font: 600 0.75rem var(--sans); letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-2); background: var(--bg); }
   tr.late td:first-child { box-shadow: inset 3px 0 0 var(--coral); }
@@ -58,6 +59,11 @@
     <ul id="claim-list" style="margin:0;padding-left:18px"></ul>
   </section>
   <ul class="stats" id="stats"></ul>
+  <section id="seeding" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
+    <b>Seeding reports (gifted creators)</b>
+    <p class="muted" style="margin:2px 0 8px">Gate 5: posters found at least 2× what the brand's own tag and code tracking had.</p>
+    <table><thead><tr><th>Brand</th><th>Contact</th><th>Gifted</th><th>Posted</th><th>On camera only</th><th>Their tracking</th><th>Multiple</th></tr></thead><tbody id="seeding-rows"></tbody></table>
+  </section>
   <section id="rosters" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
     <b>Roster pilots (talent managers)</b>
     <p class="muted" style="margin:2px 0 8px">Gate 4: 1+ deal from a Monday report across the cohort, and 3+ managers committing at $99/month.</p>
@@ -184,6 +190,14 @@
       h('td', {}, String(x.creators)), h('td', {}, String(x.reports)), h('td', {}, String(x.deals)), h('td', {}, x.committed ? 'yes' : '—'),
       h('td', {}, day(x.lastSentAt) || '—'))));
   }
+  async function loadSeeding() {
+    try {
+      const { watches } = await call('/api/admin/seeding');
+      $('#seeding').hidden = !watches.length;
+      $('#seeding-rows').replaceChildren(...watches.map((w) => h('tr', {}, h('td', {}, w.brand), h('td', {}, w.email), h('td', {}, String(w.gifted)),
+        h('td', {}, String(w.posted)), h('td', {}, String(w.spokenOnly)), h('td', {}, String(w.tracked)), h('td', {}, w.multiple ? `${w.multiple}×` : '—'))));
+    } catch {}
+  }
   async function loadRosters() {
     try { rosterRows((await call('/api/admin/rosters')).rosters); } catch {}
   }
@@ -222,6 +236,7 @@
       $('#msg').textContent = requests.length ? '' : 'No license requests yet.';
       loadClaims();
       loadRosters();
+      loadSeeding();
     } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
   }
   $('#auth').addEventListener('submit', (e) => {

@@ -142,6 +142,8 @@ def answer(token, body, via="app"):
     with connect() as db:
         db.execute("UPDATE license_requests SET " + sql + " WHERE id = %s", (*args, r["id"]))
     import payments                             # a code on a paid licence makes it live; a decline after payment refunds
+    if action in ("accept", "counter", "decline"):
+        payments.tell_brand(r["id"], {"accept": "accepted", "counter": "countered", "decline": "declined"}[action])
     payments.maybe_go_live(r["id"])
     payments.refund_if_paid(r["id"])
     r = load_offer(token)
@@ -189,6 +191,9 @@ def on_request(request_id):
         r = rule(r, "decline", "Declined by your rule: below your $%d minimum." % owner["min_price_usd"])
     elif brand in [b.lower() for b in owner["approve_brands"] or []]:
         r = rule(r, "accept", None)
+    if r["responded_via"] == "auto":
+        import payments
+        payments.tell_brand(r["id"], r["status"])
     if r["status"] != "declined":
         accepted = r["status"] == "accepted"
         notify("%s %s your video as an ad: $%d to you" % (r["brand"], "will run" if accepted else "wants to run", creator_share(r)),

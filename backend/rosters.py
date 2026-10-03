@@ -12,6 +12,7 @@ Credits: TikTok creators are read from the public page first (free); Instagram c
 """
 import os
 import re
+import traceback
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -218,6 +219,9 @@ def scan(c, lookups):
         videos, source = creator.fetch_videos(c["platform"], c["handle"])
     except ApiError as e:
         return {**item, "error": str(e)}
+    except Exception:                       # an unexpected failure on one creator mustn't sink the whole report
+        traceback.print_exc()
+        return {**item, "error": "Couldn't read this creator this week."}
     if not videos:
         return {**item, "error": "No public videos found."}
     with connect() as db:

@@ -41,6 +41,15 @@
   iframe { width: 100%; height: 720px; border: 1px solid var(--line); border-radius: 12px; background: #f3f6f4; }
   .muted { color: var(--ink-2); font-size: 0.875rem; }
   .err { color: var(--coral); }
+  #seeding { margin-top: 18px; }
+  #seeding h2 { margin: 0 0 6px; }
+  #seeding textarea { width: 100%; min-height: 110px; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: 0.875rem/1.5 var(--mono); resize: vertical; }
+  #seeding textarea:focus-visible, #seeding input:focus-visible { outline: 2px solid var(--moss); outline-offset: 1px; }
+  .tally { margin: 0 0 10px; }
+  .tally b { color: var(--moss); }
+  .gifts { list-style: none; margin: 12px 0 0; padding: 0; font-size: 0.875rem; }
+  .gifts li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .gifts a { color: var(--moss); }
   footer { margin-top: 28px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
   footer a { color: inherit; }
 </style>
@@ -49,6 +58,7 @@
 <main>
   <div class="brand"><a href="/brands/">Unprompted</a><span>Weekly watch</span></div>
   <section class="card" id="card"><p class="muted">Loading your watch…</p></section>
+  <section class="card" id="seeding" hidden></section>
   <h2 id="lic-h" hidden>License requests</h2>
   <ol class="runs" id="licenses"></ol>
   <h2 id="runs-h" hidden>Past weekly checks</h2>
@@ -76,6 +86,47 @@
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || 'Something went wrong.');
     return body;
+  }
+  // Gifted creators (seeding.py): the gifting list, and which of them posted about the brand after it shipped.
+  function seeding(d) {
+    const box = $('#seeding'), s = d.seeding;
+    if (!s) { box.hidden = true; return; }
+    box.hidden = false;
+    const text = h('textarea', { id: 'gift-list', 'aria-label': 'Gifting list', placeholder: 'One creator per line: handle or profile URL, platform, ship date, tracked\n@maya.eats, tiktok, 2026-09-14\nhttps://www.instagram.com/sami.lifts, 2026-09-20, yes' });
+    const file = h('input', { type: 'file', accept: '.csv,.txt,text/csv,text/plain', 'aria-label': 'Upload a CSV', onchange: async (e) => {
+      const f = e.target.files[0]; if (f) text.value = (await f.text()).slice(0, 200000);
+    } });
+    const msg = h('p', { class: 'muted', role: 'status' });
+    const post = async (path, body) => {
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || 'Something went wrong.');
+      return out;
+    };
+    const add = h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+      add.disabled = true; msg.textContent = 'Adding, and checking TikTok creators now…';
+      try {
+        const out = await post(`/api/digests/${token}/gifts`, { text: text.value });
+        seeding({ ...d, seeding: out.seeding });
+        $('#seeding .status-line').textContent = `Added ${out.added}.` + (out.skipped.length ? ` Skipped ${out.skipped.length}: ` + out.skipped.slice(0, 5).map((x) => `line ${x.line} (${x.reason})`).join(', ') : '');
+      } catch (ex) { msg.textContent = ex.message; msg.className = 'err'; add.disabled = false; }
+    } }, 'Add creators');
+    const clear = s.gifted ? h('button', { class: 'btn', type: 'button', onclick: async (e) => {
+      if (!confirm('Remove the whole gifting list?')) return;
+      e.target.disabled = true;
+      try { seeding({ ...d, seeding: (await post(`/api/digests/${token}/gifts/clear`, {})).seeding }); } catch (ex) { msg.textContent = ex.message; }
+    } }, 'Clear list') : null;
+    const tally = s.gifted ? h('p', { class: 'tally' }, h('b', {}, `${s.posted} of ${s.gifted}`), ' gifted creators have posted',
+      s.spokenOnly ? `, ${s.spokenOnly} of them only on camera (no tag to track)` : '', '.',
+      s.tracked ? ` Your own tracking had ${s.tracked}` + (s.multiple > 1 ? `: we found ${s.multiple}× as many.` : '.') : '') :
+      h('p', { class: 'sub', style: 'margin:0 0 6px' }, `Paste the creators you sent ${d.brand} to. Each weekly check looks for their first post about it after it shipped, including the ones that only say it on camera.`);
+    const list = s.gifts.length ? h('ul', { class: 'gifts' }, ...s.gifts.slice(0, 200).map((g) => h('li', {},
+      h('span', {}, h('b', {}, `@${g.handle}`), ` · ${g.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · shipped ${when(g.shippedOn)}${g.tracked ? ' · you tracked it' : ''}`),
+      g.videoId ? h('span', {}, `${g.kind === 'spoken' ? 'Said it on camera' : g.kind === 'tagged' ? 'Tagged' : 'Disclosed post'} ${when(g.postedOn)} `, g.url ? h('a', { href: g.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null,
+        g.licenseUrl ? h('a', { href: g.licenseUrl, style: 'margin-left:10px' }, 'License for ads') : null)
+        : h('span', { class: 'muted' }, g.checkedAt ? `No post yet (checked ${when(g.checkedAt)})` : 'Checked in the next weekly run')))) : null;
+    box.replaceChildren(h('h2', {}, 'Gifted creators'), tally, h('p', { class: 'muted status-line' }), text,
+      h('div', { class: 'actions' }, file, add, clear), msg, list);
   }
   function render(d) {
     const card = $('#card');
@@ -111,6 +162,7 @@
     $('#lic-h').hidden = !d.licenses.length;
     $('#licenses').replaceChildren(...d.licenses.map((l) => h('li', {},
       h('span', {}, `@${l.handle} · ${l.days} days · ~$${l.priceUsd} · ${LICENSE[l.status] || l.status}`), h('a', { href: l.url }, 'Details →'))));
+    seeding(d);
     $('#runs-h').hidden = !d.runs.length;
     $('#runs').replaceChildren(...d.runs.map((r) => h('li', {},
       h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),

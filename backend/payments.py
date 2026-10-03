@@ -157,10 +157,14 @@ def renew(d, r):
 def maybe_go_live(rid):
     """Once an accepted request is both paid for and has its code, start the window, pay the creator and tell everyone."""
     with connect() as db:
-        row = db.execute("UPDATE license_requests SET status = 'live', starts_at = coalesce(starts_at, now()),"
-                         " expires_at = coalesce(expires_at, now() + days * interval '1 day')"
-                         " WHERE id = %s AND status = 'accepted' AND brand_paid_at IS NOT NULL AND code_received_at IS NOT NULL"
-                         " RETURNING id", (rid,)).fetchone()
+        # A renewal picks up where the licence it renews ends, so the brand keeps the days it already paid for.
+        row = db.execute("UPDATE license_requests r SET status = 'live', starts_at = coalesce(r.starts_at, greatest(now(),"
+                         " (SELECT o.expires_at FROM license_requests o WHERE o.id = r.renewal_of))) WHERE r.id = %s"
+                         " AND r.status = 'accepted' AND r.brand_paid_at IS NOT NULL AND r.code_received_at IS NOT NULL RETURNING r.id",
+                         (rid,)).fetchone()
+        if row:
+            db.execute("UPDATE license_requests SET expires_at = coalesce(expires_at, starts_at + days * interval '1 day') WHERE id = %s",
+                       (rid,))
     if not row:
         return False
     r = load(rid)
@@ -234,6 +238,27 @@ def refund_if_paid(rid):
                     "The creator declined, so the full payment is on its way back to your card.",
                     [("Amount", "$%d" % licenses.brand_price(r))], to=brand["email"])
     return True
+
+
+def tell_brand(rid, event):
+    """Email the brand when the creator (or their rule, or the operator) answers: accepted means pay; countered means
+    answer the new price; declined means nothing was charged (a paid one is refunded and emailed by refund_if_paid)."""
+    r = load(rid)
+    if not r or (event == "declined" and r["brand_paid_at"]):
+        return False
+    with connect() as db:
+        brand = db.execute("SELECT email, token FROM digests WHERE id = %s", (r["digest_id"],)).fetchone()
+    page = digest.license_url(brand["token"], r["video_id"])
+    subject, lead = {
+        "accepted": ("@%s said yes: %s the licence" % (r["handle"], "pay $%d to start" % licenses.brand_price(r) if enabled() else "next, payment"),
+                     "Pay on the licence page and the ad code is released as soon as it's paid." if enabled()
+                     else "We'll email you a payment link; the ad code follows once it's paid."),
+        "countered": ("@%s asked for $%d instead (you'd pay $%d)" % (r["handle"], r["creator_price_usd"] or 0, licenses.brand_price(r)),
+                      "Accept or decline the new price on the licence page."),
+        "declined": ("@%s passed on this one" % r["handle"], "Nothing was charged. Your next weekly report may have another clip."),
+    }[event]
+    return licenses.notify(subject, lead, [("Video", "@%s on %s" % (r["handle"], r["platform"])), ("Window", "%d days" % r["days"]),
+                                           ("Licence page", page)], to=brand["email"])
 
 
 def tell(r, what, creator_too=False):

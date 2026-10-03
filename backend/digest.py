@@ -212,17 +212,21 @@ def item_html(v, token):
         at=" at %d:%02d" % divmod(int(q["start"]), 60) if q and q.get("start") is not None else "")
 
 
-def render(d, sid, new, since):
-    """Subject and HTML for one digest email."""
+def render(d, sid, new, since, found=()):
+    """Subject and HTML for one digest email; `found` are gifted creators (seeding.py) found posting in this run."""
+    import seeding
     brand, n = d["brand"], len(new)
     counts = {k: sum(1 for v in new if v["kind"] == k) for k in KIND_LABEL}
     parts = ["%d %s" % (counts[k], KIND_LABEL[k]) for k in KIND_LABEL if counts[k]]
-    subject = "%d new creator mention%s of %s this week" % (n, "" if n == 1 else "s", brand)
+    subject = ("%d new creator mention%s of %s this week" % (n, "" if n == 1 else "s", brand) if n
+               else "%d gifted creator%s posted about %s" % (len(found), "" if len(found) == 1 else "s", brand))
     more = ('<tr><td style="font:14px %s;color:#48564f;">+ %d more on the dashboard.</td></tr>' % (FONT, n - MAX_ITEMS)) if n > MAX_ITEMS else ""
     body = TEMPLATES["email"].substitute(
-        headline="%d new video%s mention%s" % (n, "" if n == 1 else "s", "s" if n == 1 else ""), brand=esc(brand),
+        headline=("%d new video%s mention%s" % (n, "" if n == 1 else "s", "s" if n == 1 else "") if n
+                  else "Gifted creators posted about"), brand=esc(brand),
         since="%d %s" % (since.day, since.strftime("%b")), filters=esc(filter_text(d["params"])), parts=esc(", ".join(parts) + "." if parts else ""),
         items="".join(item_html(v, d["token"]) for v in new[:MAX_ITEMS]), more=more, dash=esc("%s/brands/#search=%d" % (app_url(), sid)),
+        seeding=seeding.email_section(d, found, lambda vid: license_url(d["token"], vid)),
         credit=ORIANE_CREDIT, email=esc(d["email"]), manage=esc(manage_url(d["token"])))
     return subject, body
 
@@ -429,7 +433,8 @@ def manage(token, action=None):
             d = db.execute(sql, (d["id"],)).fetchone()
         if action == "unsubscribe":
             return row_view({**d, "gone": True})
-    return row_view(d, runs, licenses)
+    import seeding
+    return {**row_view(d, runs, licenses), "seeding": seeding.summary(d)}
 
 
 # ---------------------------------------------------------------- weekly run
@@ -445,6 +450,12 @@ def run_one(d, force=False):
     results = data["data"]["results"]
     sid = server.new_search(brand, {**params, "digest": d["id"]}, data)
     server.store_results(sid, results, brand, variants)
+    import seeding                                # gifted creators' posts join this run's results
+    try:
+        found = seeding.check(d, sid)
+    except Exception:                             # never let it block the brand's weekly report
+        traceback.print_exc()
+        found = []
     with connect() as db:
         seen = {r["video_id"] for r in db.execute("SELECT video_id FROM digest_seen WHERE digest_id = %s", (d["id"],))}
         db.execute("UPDATE digests SET last_run_at = now() WHERE id = %s", (d["id"],))
@@ -452,17 +463,18 @@ def run_one(d, force=False):
            if v["id"] not in seen and v["kind"] in KIND_LABEL and v.get("publishedAt") and v["publishedAt"][:10] >= since.date().isoformat()]
     subject = body = None
     sent = False
-    if new:
-        subject, body = render(d, sid, new, since)
+    if new or found:
+        subject, body = render(d, sid, new, since, found)
         sent = send(d["email"], subject, body)
-        creator.track(d["user_id"], "report_sent", {"digest": d["id"], "new": len(new), "sent": sent,
+        creator.track(d["user_id"], "report_sent", {"digest": d["id"], "new": len(new), "sent": sent, "gifted_found": len(found),
                                                     "licensable": sum(v["kind"] in LICENSABLE for v in new[:MAX_ITEMS])})
     with connect() as db:
         db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s ON CONFLICT DO NOTHING",
                    (d["id"], sid))
         run = db.execute("INSERT INTO digest_runs (digest_id, search_id, new_count, sent, subject, html)"
                          " VALUES (%s, %s, %s, %s, %s, %s) RETURNING id", (d["id"], sid, len(new), sent, subject, body)).fetchone()
-    return {"digest": d["id"], "run": run["id"], "searchId": sid, "new": len(new), "sent": sent, "matched": len(results)}
+    return {"digest": d["id"], "run": run["id"], "searchId": sid, "new": len(new), "sent": sent, "matched": len(results),
+            "giftedFound": len(found)}
 
 
 def due(digest_id=None, force=False):
@@ -503,14 +515,26 @@ def run_route(handler, body):
     if body.get("resend") and isinstance(digest_id, int):
         return resend_last(digest_id)
     out = run_due(digest_id if isinstance(digest_id, int) else None, bool(body.get("force")))
-    if not isinstance(digest_id, int):             # the same cron sends creators' weekly summary and licence reminders
+    if not isinstance(digest_id, int):             # the same cron runs the other weekly jobs, each on its own
         import licenses
         import payments
-        out["summaries"] = licenses.run_summaries(bool(body.get("forceSummaries")))
-        out["licenses"] = payments.run_reminders()
-        import rosters                            # Monday roster reports for talent managers
-        out["rosters"] = rosters.run_rosters()
+        import rosters
+        for key, job in (("summaries", lambda: licenses.run_summaries(bool(body.get("forceSummaries")))),
+                         ("licenses", payments.run_reminders), ("rosters", rosters.run_rosters)):
+            try:
+                out[key] = job()
+            except Exception as e:
+                traceback.print_exc()
+                out[key] = {"error": str(e)}
     return out
+
+
+def jobs():
+    """The background jobs the scheduler runs every pass: brand reports, creator summaries, licence reminders, rosters."""
+    import licenses
+    import payments
+    import rosters
+    return (run_due, licenses.run_summaries, payments.run_reminders, rosters.run_rosters)
 
 
 def resend_last(digest_id):
@@ -591,9 +615,12 @@ def admin_update(rid, body):
         raise ApiError(400, "Nothing to update.")
     sql = "UPDATE license_requests SET %s WHERE id = %%s RETURNING id" % ", ".join("%s = %s" % (c, e) for c, (e, _) in sets.items())
     with connect() as db:
+        before = db.execute("SELECT status FROM license_requests WHERE id = %s", (rid,)).fetchone()
         if not db.execute(sql, (*(p for _, ps in sets.values() for p in ps), rid)).fetchone():
             raise ApiError(404, "No such request.")
     import payments                             # paid + code now means live; a decline after a Stripe payment is refunded
+    if status in ("accepted", "declined") and before["status"] != status:
+        payments.tell_brand(rid, status)
     payments.maybe_go_live(rid)
     payments.pay_creator(rid)
     payments.refund_if_paid(rid)
@@ -626,16 +653,11 @@ def scheduler(every_s=900, first_s=60):
         wait_s = first_s
         while True:
             time.sleep(wait_s)
-            try:
-                run_due()
-                import licenses
-                import payments
-                licenses.run_summaries()
-                payments.run_reminders()
-                import rosters
-                rosters.run_rosters()
-            except Exception:
-                traceback.print_exc()
+            for job in jobs():                      # each on its own: one failing doesn't stop the rest
+                try:
+                    job()
+                except Exception:
+                    traceback.print_exc()
             wait_s = every_s
     threading.Thread(target=loop, name="digest-scheduler", daemon=True).start()
 
@@ -647,7 +669,8 @@ def dispatch(handler):
     url = urlparse(handler.path)
     path, method = url.path.removeprefix("/api/digests"), handler.command
     m = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})(?:/(confirm|pause|resume|unsubscribe))?", path)
-    lic = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})/license/([A-Za-z0-9_-]{1,64})", path)
+    lic = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})/license/([A-Za-z0-9_.-]{1,96})", path)   # demo ids carry the handle's dots
+    gifts = re.fullmatch(r"/([A-Za-z0-9_-]{16,32})/gifts(/clear)?", path)
     if method == "GET":
         if path == "/sample":
             return sample()
@@ -669,6 +692,10 @@ def dispatch(handler):
         return manage(m.group(1), m.group(2))
     if lic:
         return license_view(lic.group(1), lic.group(2), body)
+    if gifts:
+        import seeding
+        d, _, _ = load_digest(gifts.group(1))
+        return seeding.clear(d) if gifts.group(2) else seeding.upload(d, body)
     raise ApiError(404, "Not found.")
 
 
