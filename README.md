@@ -79,6 +79,10 @@ last run) and the emails and pages credit Oriane.
   spellings: the dashboard offers them under "Also listen for" and the creator scan uses them; spellings that are also
   everyday words (طلبات, كريم) only count with a context word nearby. The Arabic check in `/admin/`
   (`backend/eval_mentions.py`) measures precision and recall on hand-labelled Arabic videos.
+- Receipts pricing test (`backend/packaging.py`): `/creators/` visitors are split by cookie between Pro at $29/month,
+  free with licence payouts, and Weekly leads at $9/month (a Monday email of the brands a creator mentions that are paying
+  creators that week, `STRIPE_PRICE_LEADS`). `/admin/` compares week-4 active and paid conversion per offer;
+  `RECEIPTS_ARMS` keeps the winner.
 - Seeding report (`backend/seeding.py`): a brand pastes its gifting list (handle, platform, ship date, tracked) on its
   watch page; TikTok creators are checked on upload and everyone in each weekly run, and the report shows posted X of Y,
   how many only on camera, versus the brand's own tracking, with licence buttons. Totals in `/admin/`.

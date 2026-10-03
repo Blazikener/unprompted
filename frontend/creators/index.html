@@ -187,6 +187,9 @@
   .empty b { display: block; color: var(--ink); font-size: 1.0625rem; margin-bottom: 6px; }
   aside .share-url { display: block; width: 100%; height: 34px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 10px; margin-top: 8px; background: var(--bg); font: 500 0.75rem var(--mono); }
   aside p { margin: 0 0 8px; color: var(--ink-2); font-size: 0.8125rem; }
+  .bar { overflow-x: auto; scrollbar-width: none; }    /* on a phone the bar scrolls, never the page */
+  @media (max-width: 1100px) { .bar .who { display: none; } }
+  @media (max-width: 900px) { .bar .bar-link + .bar-link { display: none; } }   /* keep "License offers" */
   @media (max-width: 860px) {
     .app { grid-template-columns: 1fr; } .how, .pricing { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; }
     .scan-form { grid-template-columns: 1fr; }
@@ -277,7 +280,8 @@ const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram' };
 const STATUS = { unpaid: 'Unpaid mentions', 'past-sponsor': 'Past sponsor, still mentioning', 'sponsored-only': 'Sponsored only' };
 const VERDICT = { active: 'Actively paying creators', some: 'Some paid posts', quiet: 'Quiet lately' };
 
-const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {}, reserved: false };
+const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {}, reserved: false,
+  offer: { arm: 'a', plan: 'pro', name: 'Pro', price: 29, checkout: false } };
 
 async function api(path, body, method) {
   const res = await fetch('/api/creators' + path, body === undefined ? { method: method || 'GET' }
@@ -286,15 +290,46 @@ async function api(path, body, method) {
   if (!res.ok) { const e = new Error(data.error || res.statusText); e.status = res.status; e.data = data; throw e; }
   return data;
 }
+// ---- the packaging test (backend/packaging.py): which offer this browser sees. Offer (a) is the page as written.
+const PLAN_NAME = { free: 'Free', open: 'Free', pro: 'Pro', leads: 'Weekly leads', roster: 'Roster' };
+const OFFER_COPY = {
+  b: {
+    fine: 'Free, for good: every brand you mention, with receipts and pitch drafts. Brands pay to run your videos as ads, and you keep 85%.',
+    cards: [['Free', '$0', ['1 scan a week', 'Every brand, every receipt', 'Pitch drafts with your rate range', 'A public receipt page for pitches']],
+      ['Licences', 'you keep 85%', ['Brands that find your videos ask to run them as ads', 'Accept their price, counter, or set your own rate',
+        'Paid before the ad goes live', 'Nothing to post, nothing exclusive']]],
+  },
+  c: {
+    fine: 'Free: your top 3 brands with receipts. Weekly leads ($9/mo): every Monday, the brands you mention that are paying creators that week.',
+    cards: [['Free', '$0', ['1 scan a week', 'Top 3 brands with full receipts', 'Counts for everything else']],
+      ['Weekly leads', '$9/mo', ['Every Monday: the brands you mention that are paying creators that week', 'Your receipt and a pitch draft for each one',
+        'Every brand in the app, and the sponsor check', '3 scans a week']]],
+    why: 'Unlock every brand, the sponsor check and pitch drafts, and get the brands paying creators in your inbox every Monday.',
+    bullets: ['A Monday email: the brands you mention that are paying creators that week', 'Every brand in your scan, every receipt',
+      'Sponsor activity check for any brand', 'Pitch drafts that quote your own video'],
+  },
+};
+function applyOffer() {
+  const c = OFFER_COPY[S.offer.arm];
+  if (!c) return;
+  $('#fine > span').textContent = c.fine;
+  $('.pricing').innerHTML = c.cards.map(([t, p, items], i) => `<div class="price${i ? ' pro' : ''}"><h3>${esc(t)} <span>${esc(p)}</span></h3><ul>${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('');
+  if (c.bullets) {
+    $('#upgrade h3').textContent = `${S.offer.name}, $${S.offer.price}/month`;
+    $('#upgrade ul').innerHTML = c.bullets.map((x) => `<li>${esc(x)}</li>`).join('');
+  }
+}
+const upgradeWhy = () => OFFER_COPY[S.offer.arm]?.why || 'Unlock every brand, the sponsor check and pitch drafts.';
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), Math.min(8000, 2200 + msg.length * 35)); }
 
 // ---- account bar
 function renderAccount() {
   const el = $('#account');
   if (!S.user) { el.innerHTML = `<button class="btn btn-quiet btn-sm" id="signin">Sign in</button>`; $('#signin').onclick = () => openAuth('login'); return; }
-  const pro = S.user.plan === 'pro';
-  el.innerHTML = `<span class="who">${esc(S.user.email)}</span> <span class="plan ${pro ? 'pro' : ''}">${pro ? 'Pro' : 'Free'}</span>
-    ${pro ? (S.user.billing && S.billing.enabled ? `<button class="btn btn-quiet btn-sm" id="portal">Billing</button>` : '') : `<button class="btn btn-primary btn-sm" id="up">Go Pro</button>`}
+  const paid = !['free', 'open'].includes(S.user.plan);
+  el.innerHTML = `<span class="who">${esc(S.user.email)}</span> <span class="plan ${paid ? 'pro' : ''}">${esc(PLAN_NAME[S.user.plan] || 'Free')}</span>
+    ${paid ? (S.user.billing ? `<button class="btn btn-quiet btn-sm" id="portal">Billing</button>` : '')
+      : S.offer.plan ? `<button class="btn btn-primary btn-sm" id="up">${S.offer.arm === 'a' ? 'Go Pro' : esc(S.offer.name)}</button>` : ''}
     <button class="btn btn-quiet btn-sm" id="signout">Sign out</button>`;
   el.style.display = 'flex'; el.style.gap = '10px'; el.style.alignItems = 'center';
   $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory(); };
@@ -324,24 +359,25 @@ $('#auth-form').onsubmit = async (e) => {
 
 // ---- upgrade
 function openUpgrade(why) {
-  $('#upgrade-why').textContent = why || 'Unlock every brand, the sponsor check and pitch drafts.';
-  $('#upgrade-err').textContent = '';
-  const go = $('#upgrade-go');
   if (!S.user) { openAuth('signup'); return; }
+  if (!S.offer.plan) { toast(why || 'Receipts is free on your account.'); return; }   // offer (b): nothing to buy
+  $('#upgrade-why').textContent = why || upgradeWhy();
+  $('#upgrade-err').textContent = '';
+  const go = $('#upgrade-go'), name = S.offer.name;
   go.disabled = false;
-  if (S.billing.enabled) go.textContent = 'Continue to checkout';
-  else if (S.billing.devSwitch) go.textContent = 'Switch to Pro (dev)';
+  if (S.offer.checkout) go.textContent = 'Continue to checkout';
+  else if (S.billing.devSwitch) go.textContent = `Switch to ${name} (dev)`;
   else if (S.reserved) { go.disabled = true; go.textContent = 'Reserved'; $('#upgrade-err').textContent = reservedCopy(); }
-  else go.textContent = `Reserve Pro at $${S.billing.price}/mo`;
+  else go.textContent = `Reserve ${name} at $${S.offer.price}/mo`;
   $('#upgrade').showModal();
 }
-const reservedCopy = () => `Checkout opens in a few days. You're first in line at $${S.billing.price}/mo and we'll email ${S.user.email}.`;
+const reservedCopy = () => `Checkout opens in a few days. You're first in line at $${S.offer.price}/mo and we'll email ${S.user.email}.`;
 $('#upgrade-close').onclick = () => $('#upgrade').close();
 $('#upgrade-go').onclick = async () => {
   const go = $('#upgrade-go');
   try {
-    if (S.billing.enabled) { location.href = (await api('/billing/checkout', {})).url; return; }
-    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: 'pro' })).user; $('#upgrade').close(); renderAccount(); toast("You're on Pro"); if (S.scan) await openScan(S.scan.id); return; }
+    if (S.offer.checkout) { location.href = (await api('/billing/checkout', {})).url; return; }
+    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: S.offer.plan })).user; $('#upgrade').close(); renderAccount(); toast(`You're on ${S.offer.name}`); if (S.scan) await openScan(S.scan.id); return; }
     await api('/billing/interest', { scan: S.scan ? S.scan.id : null });
     S.reserved = true; go.disabled = true; go.textContent = 'Reserved';
     $('#upgrade-err').textContent = reservedCopy();
@@ -411,11 +447,13 @@ function render() {
     </div>
     ${s.sample ? `<p class="locked-note">Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.</p>`
       : s.source === 'demo' ? `<p class="locked-note">Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn't.</p>`
-      : s.source === 'public' ? `<p class="locked-note">Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. ${free ? 'Pro scans use our full transcript index: up to 100 videos, every spoken mention, frame-level receipts.' : 'Our transcript index doesn\'t cover this creator yet, so older videos aren\'t included.'}</p>` : ''}
+      : s.source === 'public' ? `<p class="locked-note">Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. ${free && S.offer.arm === 'a' ? 'Pro scans use our full transcript index: up to 100 videos, every spoken mention, frame-level receipts.' : ['pro', 'roster'].includes(s.plan) ? 'Our transcript index doesn\'t cover this creator yet, so older videos aren\'t included.' : ''}</p>` : ''}
     <div class="section-h"><h3>${ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'}</h3><small>unpaid mentions rank above past sponsors</small></div>
     ${s.brands.length ? s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')
       : `<div class="empty"><b>No catalog brand in these ${p.videos} videos</b>We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don't track yet, tell us in the sidebar and we'll add it.</div>`}
-    ${free && locked && !ro ? `<div class="upsell"><div><b>${locked} more brand${locked === 1 ? '' : 's'} hidden</b><span>Pro shows every brand and receipt, checks who's paying, and drafts the pitch.</span></div><button class="btn btn-primary" id="upsell">Go Pro, $${S.billing.price}/mo</button></div>` : ''}`;
+    ${free && locked && !ro && S.offer.plan ? `<div class="upsell"><div><b>${locked} more brand${locked === 1 ? '' : 's'} hidden</b><span>${S.offer.arm === 'c'
+      ? 'Weekly leads shows every brand and receipt, checks who’s paying, and emails you the brands paying creators every Monday.'
+      : 'Pro shows every brand and receipt, checks who’s paying, and drafts the pitch.'}</span></div><button class="btn btn-primary" id="upsell">${S.offer.arm === 'a' ? 'Go Pro' : esc(S.offer.name)}, $${S.offer.price}/mo</button></div>` : ''}`;
   $('#cta') && ($('#cta').onclick = () => { showLanding(); $('#handle').focus(); });
   $('#rate').hidden = $('#share-box').hidden = ro; $('#new-scan').textContent = ro ? 'Scan my own handle' : 'New scan';
   $('#share-url').hidden = true;
@@ -439,7 +477,7 @@ function brandCard(b, i) {
     ${open ? `<div class="brand-body">
       ${b.receipts.map(receipt).join('')}
       ${S.scan.shared ? '' : `<div class="actions">
-        <button class="btn btn-quiet btn-sm" data-act="activity" data-i="${i}">Who's paying for ${esc(b.brand)} right now?</button>
+        ${S.offer.arm === 'b' ? '' : `<button class="btn btn-quiet btn-sm" data-act="activity" data-i="${i}">Who's paying for ${esc(b.brand)} right now?</button>`}
         <button class="btn btn-primary btn-sm" data-act="pitch" data-i="${i}">Draft my pitch</button>
       </div>`}
       ${P.activity ? activityPanel(P.activity) : ''}${P.pitch ? pitchPanel(P.pitch, i) : ''}</div>` : ''}</article>`;
@@ -468,7 +506,7 @@ async function action(act, i, btn) {
   try {
     const out = await api(`/scans/${S.scan.id}/brands/${encodeURIComponent(b.brand)}/${act}`, {});
     S.panels[i] = { ...(S.panels[i] || {}), [act]: out }; render();
-  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `Pro checks which brands are paying creators right now.` : `Pro drafts pitches that quote your own videos.`))) toast(e.message); }
+  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message); }
   btn.disabled = false;
 }
 $('#share').onclick = async () => {
@@ -490,6 +528,10 @@ $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#repor
   const me = await api('/me').catch(() => ({ user: null, billing: { enabled: false, price: 29 } }));
   S.user = me.user; S.billing = me.billing;
   for (const el of document.querySelectorAll('[data-price]')) el.textContent = S.billing.price;
+  const from = new URLSearchParams(location.search);       // ?arm=b previews an offer (not counted); ?from=feed: a Weekly leads click
+  const v = await api('/visit', { arm: from.get('arm') || undefined, from: from.get('from') || undefined }).catch(() => null);
+  if (v) { S.offer = v.offer; applyOffer(); }
+  if (from.get('from') === 'feed') history.replaceState({}, '', '/creators/');
   if (S.billing.demo) $('#fine').insertAdjacentHTML('beforeend', ` <span>Demo mode, try:</span> <button class="chip" type="button" data-demo="maya.eats">@maya.eats</button> <button class="chip" type="button" data-demo="sami.lifts">@sami.lifts</button>`);
   for (const c of document.querySelectorAll('[data-demo]')) c.onclick = () => { $('#handle').value = '@' + c.dataset.demo; startScan(S.platform, c.dataset.demo); };
   renderAccount(); loadHistory();
@@ -497,7 +539,7 @@ $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#repor
   if (shared) openShared('/shared/' + shared[1]);
   const q = new URLSearchParams(location.search);
   if (q.get('sample') === '1') openShared('/sample');
-  if (q.get('upgraded') === '1') { toast(S.user?.plan === 'pro' ? "You're on Pro" : 'Payment received, your plan updates in a moment'); history.replaceState({}, '', '/creators/'); }
+  if (q.get('upgraded') === '1') { toast(S.user && S.user.plan !== 'free' ? `You're on ${PLAN_NAME[S.user.plan] || 'Pro'}` : 'Payment received, your plan updates in a moment'); history.replaceState({}, '', '/creators/'); }
 })();
 </script>
 </body>

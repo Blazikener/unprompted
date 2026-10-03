@@ -647,6 +647,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: seeding.admin_route(self))
         elif path == "/api/admin/eval" or path.startswith("/api/admin/eval/"):
             self.api(lambda: eval_mentions.admin_route(self))
+        elif path == "/api/admin/packaging":
+            self.api(lambda: packaging.admin_route(self))
         elif path == "/api/brands/arabic":
             self.api(lambda: {"brands": brands.arabic_spellings()})
         elif path.startswith("/api/admin/"):
@@ -759,6 +761,7 @@ import rosters  # noqa: E402
 import seeding  # noqa: E402
 import brands  # noqa: E402
 import eval_mentions  # noqa: E402
+import packaging  # noqa: E402
 
 
 def init_db():
@@ -775,6 +778,7 @@ def init_db():
         db.execute(rosters.SCHEMA)
         db.execute(seeding.SCHEMA)
         db.execute(eval_mentions.SCHEMA)
+        db.execute(packaging.SCHEMA)
 
 
 if __name__ == "__main__":

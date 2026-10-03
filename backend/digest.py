@@ -517,10 +517,11 @@ def run_route(handler, body):
     out = run_due(digest_id if isinstance(digest_id, int) else None, bool(body.get("force")))
     if not isinstance(digest_id, int):             # the same cron runs the other weekly jobs, each on its own
         import licenses
+        import packaging
         import payments
         import rosters
         for key, job in (("summaries", lambda: licenses.run_summaries(bool(body.get("forceSummaries")))),
-                         ("licenses", payments.run_reminders), ("rosters", rosters.run_rosters)):
+                         ("licenses", payments.run_reminders), ("rosters", rosters.run_rosters), ("feeds", packaging.run_feeds)):
             try:
                 out[key] = job()
             except Exception as e:
@@ -530,11 +531,13 @@ def run_route(handler, body):
 
 
 def jobs():
-    """The background jobs the scheduler runs every pass: brand reports, creator summaries, licence reminders, rosters."""
+    """The background jobs the scheduler runs every pass: brand reports, creator summaries, licence reminders, rosters
+    and the Weekly leads emails (packaging.py)."""
     import licenses
+    import packaging
     import payments
     import rosters
-    return (run_due, licenses.run_summaries, payments.run_reminders, rosters.run_rosters)
+    return (run_due, licenses.run_summaries, payments.run_reminders, rosters.run_rosters, packaging.run_feeds)
 
 
 def resend_last(digest_id):
