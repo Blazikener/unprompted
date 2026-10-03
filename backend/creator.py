@@ -118,6 +118,9 @@ def brand_re(terms):
 CATALOG = catalog()
 for _b in CATALOG:
     _b["rx"] = brand_re(_b["terms"])
+    _b["rx_everyday"] = brand_re(_b["everyday"]) if _b["everyday"] else None   # Arabic spellings that are ordinary words
+    _b["context"] = [server.fold(w) for w in _b["context"]]
+    _b["everydayContext"] = [server.fold(w) for w in _b["everydayContext"]]
 
 
 class Reply:
@@ -134,7 +137,8 @@ def brand_mentions(raw):
     kind: sponsored (disclosed video that tags the brand, co-authored with it, or a disclosure said in the same
     breath: "so excited to partner with X"), tagged (caption, hashtag or
     @mention), spoken (only said on camera). Ambiguous names (Apple, Target, Jumeirah) need a context word in the
-    quote or caption unless the brand's own account is tagged.
+    quote or caption unless the brand's own account is tagged; so does an Arabic spelling that is also an everyday
+    word (طلبات, "orders") when nothing else matched.
     """
     caption = " ".join([raw.get("caption") or "", *(raw.get("hashtags") or [])])
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
@@ -146,12 +150,19 @@ def brand_mentions(raw):
     for b in CATALOG:
         handles = set(b["handles"])
         in_handles = bool(handles & (mentioned | co_authors))
-        in_caption = bool(b["rx"].search(caption))
-        q = find_quote(raw, b["rx"])
+        rx = b["rx"]
+        in_caption = bool(rx.search(caption))
+        q = find_quote(raw, rx)
+        if not (in_handles or in_caption or q) and b["rx_everyday"]:
+            rx = b["rx_everyday"]
+            in_caption, q = bool(rx.search(caption)), find_quote(raw, rx)
+            hay = server.fold((q["text"] if q else "") + " " + (caption if in_caption else ""))
+            if not any(w in hay for w in b["everydayContext"]):
+                continue
         if not (in_handles or in_caption or q):
             continue
         if b["context"] and not in_handles:
-            hay = ((q["text"] if q else "") + " " + (caption if in_caption else "")).lower()
+            hay = server.fold((q["text"] if q else "") + " " + (caption if in_caption else ""))
             if not any(w in hay for w in b["context"]):
                 continue
         own_tag = any(b["rx"].search(t) or t.startswith(b["name"].split()[0].lower()) for t in branded)
@@ -165,7 +176,7 @@ def brand_mentions(raw):
             kind = "spoken"
         if not q:
             if in_caption:
-                q = text_quote(caption, b["rx"], thumb)
+                q = text_quote(caption, rx, thumb)
             else:
                 tagged_as = "@" + next(iter(handles & (mentioned | co_authors)))
                 plain = (raw.get("caption") or "").strip()[:200] or tagged_as

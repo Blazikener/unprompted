@@ -427,7 +427,123 @@ AMBIGUOUS = {
 }
 
 
+# Arabic-script spellings, for Arabic transcripts and captions (speech-to-text writes loanword brands in Arabic script).
+# One spelling covers the usual variants: أ/ا, ة/ه, ى/ي, short vowels and a glued-on و/ب/ل (see server.term_pattern).
+ARABIC = {
+    # Beauty and skincare
+    "Sephora": ["سيفورا"], "Huda Beauty": ["هدى بيوتي"], "Fenty Beauty": ["فنتي بيوتي"], "Charlotte Tilbury": ["شارلوت تلبري"],
+    "Maybelline": ["ميبيلين"], "L'Oreal": ["لوريال"], "Dior Beauty": ["ديور"], "Bath & Body Works": ["باث اند بودي وركس"],
+    "Dyson": ["دايسون"], "Olaplex": ["اولابلكس"], "Moroccanoil": ["موروكان اويل"], "CeraVe": ["سيرافي"],
+    "The Ordinary": ["ذا اوردينري"], "La Roche-Posay": ["لاروش بوزيه"], "Cetaphil": ["سيتافيل"], "Bioderma": ["بيوديرما"],
+    "Kiehl's": ["كيلز"], "Nivea": ["نيفيا"], "Vaseline": ["فازلين"],
+    # Fashion, footwear and accessories
+    "Nike": ["نايك", "نايكي"], "Adidas": ["اديداس"], "New Balance": ["نيو بالانس"], "Puma": ["بوما"], "Zara": ["زارا"],
+    "H&M": ["اتش اند ام"], "Shein": ["شي ان", "شين"], "Lululemon": ["لولوليمون"], "Gymshark": ["جيم شارك"], "Skims": ["سكيمز"],
+    "Namshi": ["نمشي"], "Ounass": ["اوناس"], "Farfetch": ["فارفيتش"], "Louis Vuitton": ["لويس فيتون", "لوي فيتون"],
+    "Gucci": ["قوتشي", "غوتشي", "جوتشي"], "Prada": ["برادا"], "Chanel": ["شانيل"], "Hermes": ["هيرمس"],
+    "Balenciaga": ["بالنسياغا", "بالنسياجا"], "Crocs": ["كروكس"], "Pandora": ["باندورا"], "Swarovski": ["سواروفسكي"],
+    # Food, snacks and grocery
+    "Tim Hortons": ["تيم هورتنز", "تيم هورتونز"], "Starbucks": ["ستاربكس", "ستار بكس"], "Dunkin": ["دانكن"],
+    "Costa Coffee": ["كوستا"], "Nespresso": ["نسبريسو", "نسبرسو"], "McDonald's": ["ماكدونالدز", "ماكدونالد", "ماك دونالدز"],
+    "KFC": ["كنتاكي"], "Burger King": ["برجر كنج", "برغر كنغ", "برقر كنق"], "Shake Shack": ["شيك شاك"],
+    "Five Guys": ["فايف قايز", "فايف غايز", "فايف جايز"], "Domino's": ["دومينوز"], "Papa John's": ["بابا جونز"],
+    "Subway": ["صب واي", "سب واي"], "Popeyes": ["بوبايز"], "Nando's": ["ناندوز"], "Al Baik": ["البيك"], "Kinder": ["كيندر"],
+    "Nutella": ["نوتيلا"], "Oreo": ["اوريو"], "KitKat": ["كيت كات"], "Pringles": ["برينجلز", "برنجلز"], "Doritos": ["دوريتوس"],
+    "Cheetos": ["شيتوس"], "Magnum": ["ماقنوم", "ماجنوم", "ماغنوم"], "Haagen-Dazs": ["هاغن داز", "هاجن داز"],
+    "Lindt": ["لينت", "ليندت"], "Ferrero Rocher": ["فيريرو روشيه"], "Galaxy Chocolate": ["جالكسي", "جالاكسي"],
+    "Cadbury": ["كادبوري"], "Almarai": ["المراعي"], "Al Rawabi": ["الروابي"], "Puck": ["بوك"], "Lurpak": ["لورباك"],
+    "Kellogg's": ["كيلوجز", "كلوقز"], "Quaker": ["كويكر"],
+    # Beverages
+    "Coca-Cola": ["كوكا كولا", "كوكاكولا"], "Pepsi": ["بيبسي"], "Red Bull": ["ريد بول"], "Monster Energy": ["مونستر"],
+    "Al Ain Water": ["مياه العين", "ماي العين"], "Masafi": ["مسافي"], "Vimto": ["فيمتو"], "Lipton": ["ليبتون"],
+    "Barbican": ["باربيكان"], "Ahmad Tea": ["شاي احمد"],
+    # Delivery, mobility and marketplaces
+    "Talabat": ["طلبات"], "Deliveroo": ["ديليفرو", "دليفرو"], "Careem": ["كريم"], "Uber": ["اوبر"], "Noon": ["نون"],
+    "Amazon": ["امازون"], "Temu": ["تيمو"], "Instashop": ["انستاشوب", "انستا شوب"], "Carrefour": ["كارفور"],
+    "Lulu Hypermarket": ["لولو"], "IKEA": ["ايكيا"], "Home Centre": ["هوم سنتر"], "Spinneys": ["سبينيز"],
+    # Tech, devices and software
+    "Apple": ["ابل"], "Samsung": ["سامسونج", "سامسونغ", "سامسونق"], "Sony": ["سوني"], "Canon": ["كانون"],
+    "Philips": ["فيليبس"], "Stanley": ["ستانلي"], "Canva": ["كانفا"], "CapCut": ["كاب كات"], "Netflix": ["نتفلكس", "نتفليكس"],
+    "Spotify": ["سبوتيفاي"], "Duolingo": ["دولينجو"], "Anghami": ["انغامي"], "Shahid": ["شاهد"], "OSN": ["او اس ان"],
+    "PlayStation": ["بلايستيشن", "بلاي ستيشن"], "Xbox": ["اكس بوكس"], "Nintendo": ["نينتندو"], "Roblox": ["روبلوكس"],
+    "Fortnite": ["فورتنايت"],
+    # Finance and fintech
+    "Tabby": ["تابي"], "Tamara": ["تمارا"], "Binance": ["بينانس", "باينانس"], "Emirates NBD": ["الامارات دبي الوطني"],
+    # Travel and hospitality
+    "Emirates": ["طيران الامارات"], "Etihad": ["طيران الاتحاد"], "Qatar Airways": ["الخطوط القطرية"],
+    "flydubai": ["فلاي دبي"], "Air Arabia": ["العربية للطيران", "طيران العربية"], "Booking.com": ["بوكينج"],
+    "Airbnb": ["اير بي ان بي"], "Marriott": ["ماريوت"], "Hilton": ["هيلتون"], "Atlantis The Palm": ["اتلانتس"],
+    "Jumeirah": ["جميرا"],
+    # Fitness, telecom and automotive
+    "Fitness First": ["فتنس فيرست"], "MyProtein": ["ماي بروتين"], "Etisalat": ["اتصالات"], "STC": ["اس تي سي"],
+    "Tesla": ["تسلا"], "Toyota": ["تويوتا"], "Lexus": ["لكزس"], "Nissan": ["نيسان"], "Hyundai": ["هيونداي"], "Kia": ["كيا"],
+    "Mercedes-Benz": ["مرسيدس"], "BMW": ["بي ام دبليو"], "Porsche": ["بورش"], "Land Rover": ["لاند روفر", "رنج روفر"],
+}
+
+# Spellings that are also everyday Arabic words (طلبات "orders", كريم "cream", نمشي "let's go", شين "ugly", نيسان
+# "April"): they count only with one of the brand's ARABIC_CONTEXT words in the same quote or caption.
+ARABIC_AMBIGUOUS = {"طلبات", "كريم", "نون", "نمشي", "شين", "اتصالات", "الروابي", "بوك", "شاهد", "نيسان", "كانون"}
+
+# Arabic context words: for ARABIC_AMBIGUOUS spellings, and for brands in AMBIGUOUS when they're said in Arabic.
+ARABIC_CONTEXT = {
+    "Talabat": ["توصيل", "تطبيق", "طلبت", "اوردر", "مندوب", "مطعم", "عرض", "خصم", "كود"],
+    "Careem": ["كابتن", "مشوار", "توصيل", "تطبيق", "سيارة", "تاكسي", "سواق", "رحلة"],
+    "Noon": ["طلبت", "تطبيق", "موقع", "توصيل", "خصم", "عروض", "الجمعة الصفراء", "اشتريت", "كود", "شحنة"],
+    "Namshi": ["طلبت", "تطبيق", "موقع", "كود", "خصم", "ملابس", "شوز", "طلبية", "توصيل", "اشتريت"],
+    "Shein": ["طلبت", "طلبية", "تطبيق", "ملابس", "كود", "خصم", "قطع", "اشتريت", "فستان", "شحنة"],
+    "Etisalat": ["شريحة", "باقة", "انترنت", "فاتورة", "رصيد", "شبكة"],
+    "Al Rawabi": ["حليب", "لبن", "عصير", "زبادي", "روب", "قشطة"],
+    "Puck": ["جبنة", "جبن", "قشطة", "كريمة", "لبنة"],
+    "Shahid": ["مسلسل", "اشتراك", "منصة", "حلقة", "حلقات", "فيلم"],
+    "Nissan": ["سيارة", "سيارتي", "باترول", "موديل", "دفع رباعي"],
+    "Canon": ["كاميرا", "عدسة", "تصوير"],
+    "Apple": ["ايفون", "ماك بوك", "ايباد", "ساعة", "ايربودز", "تحديث", "متجر"],
+    "Amazon": ["طلبت", "اشتريت", "توصيل", "برايم", "موقع", "تطبيق", "شحنة"],
+    "Uber": ["مشوار", "سواق", "سائق", "تاكسي", "توصيل", "تطبيق", "رحلة"],
+    "Emirates": ["طيران", "رحلة", "طيارة"], "Etihad": ["طيران", "رحلة", "طيارة"],
+    "Costa Coffee": ["قهوة", "لاتيه", "كابتشينو", "كوب", "ايس"],
+    "Five Guys": ["برجر", "برغر", "بطاطس", "ميلك شيك", "اكل", "مطعم"],
+    "Subway": ["ساندويش", "ساندويتش", "سندويش", "اكل", "مطعم", "سلطة"],
+    "Kinder": ["شوكولاتة", "بوينو", "حلاو", "سناك"],
+    "Magnum": ["ايسكريم", "ايس كريم", "مثلجات"], "Galaxy Chocolate": ["شوكولاتة"],
+    "Quaker": ["شوفان", "فطور"], "Monster Energy": ["طاقة", "مشروب", "علبة"], "Barbican": ["مشروب", "شعير", "علبة"],
+    "Lulu Hypermarket": ["هايبر", "سوبرماركت", "تسوق", "مقاضي", "عروض"],
+    "Sony": ["كاميرا", "سماعة", "سماعات", "بلايستيشن", "شاشة", "تلفزيون"], "Stanley": ["كوب", "مطارة", "قارورة", "ترمس"],
+    "Tabby": ["تقسيط", "اقساط", "دفعات", "الدفع", "تقسيم"], "Tamara": ["تقسيط", "اقساط", "دفعات", "الدفع", "تقسيم"],
+    "Booking.com": ["فندق", "حجز", "حجزت"], "Marriott": ["فندق", "غرفة", "منتجع", "حجز", "اقامة"],
+    "Hilton": ["فندق", "غرفة", "منتجع", "حجز", "اقامة"], "Jumeirah": ["فندق", "منتجع", "غرفة", "برج العرب"],
+    "Puma": ["حذاء", "جزمة", "شوز", "سنيكرز", "ملابس"], "Pandora": ["سوار", "اسوارة", "خاتم", "قلادة", "تشارم"],
+    "The Ordinary": ["سيروم", "بشرة", "روتين", "نياسيناميد"], "Kia": ["سيارة", "سبورتاج"],
+    "Fitness First": ["نادي", "جيم", "تمرين", "اشتراك", "مدرب"],
+}
+
+
 def catalog():
-    """Dictionary entries as {name, category, terms, handles, context} rows (terms = name + aliases)."""
-    return [{"name": n, "category": c, "terms": [n, *a], "handles": [h.lower() for h in hs],
-             "context": [w.lower() for w in AMBIGUOUS.get(n, [])]} for n, c, a, hs in BRANDS]
+    """Dictionary entries as {name, category, terms, everyday, handles, context, everydayContext} rows. terms = name,
+    aliases and Arabic spellings; everyday = Arabic spellings that are also ordinary words (they need everydayContext);
+    context = what any match needs nearby when the brand itself is ambiguous (English and Arabic words)."""
+    rows = []
+    for n, c, a, hs in BRANDS:
+        ar = ARABIC.get(n, [])
+        words = [w.lower() for w in AMBIGUOUS.get(n, [])] + ARABIC_CONTEXT.get(n, [])
+        rows.append({"name": n, "category": c, "terms": [n, *a, *(t for t in ar if t not in ARABIC_AMBIGUOUS)],
+                     "everyday": [t for t in ar if t in ARABIC_AMBIGUOUS], "handles": [h.lower() for h in hs],
+                     "context": words if n in AMBIGUOUS else [], "everydayContext": words})
+    return rows
+
+
+def arabic_everyday():
+    """{Arabic spelling that is also an everyday word: the context words it needs}, for brand searches."""
+    return {t: [w.lower() for w in AMBIGUOUS.get(n, [])] + ARABIC_CONTEXT.get(n, [])
+            for n, spellings in ARABIC.items() for t in spellings if t in ARABIC_AMBIGUOUS}
+
+
+def arabic_spellings():
+    """{lowercased name or alias: {name, spellings, everyday}} for the dashboard's "Also listen for" suggestion."""
+    out = {}
+    for n, _, a, _ in BRANDS:
+        if n in ARABIC:
+            row = {"name": n, "spellings": ARABIC[n], "everyday": [t for t in ARABIC[n] if t in ARABIC_AMBIGUOUS]}
+            for key in (n, *a):
+                out.setdefault(key.lower(), row)
+    return out

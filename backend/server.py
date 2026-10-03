@@ -13,6 +13,7 @@ import sys
 import time
 import traceback
 from collections import Counter
+from functools import cache
 
 if __name__ == "__main__":  # `python3 backend/server.py`: the other modules' `import server` must get this module, not a
     sys.modules["server"] = sys.modules[__name__]  # second copy whose ApiError the handler here wouldn't catch
@@ -130,13 +131,50 @@ class ApiError(Exception):
         self.extra = extra
 
 
+# Arabic: one spelling has to match the ways people and speech-to-text write it. Letters that are often swapped share
+# a class, short vowels and tatweel may sit between letters, and و/ف plus a preposition or "ال" can be glued on the
+# front (وستاربكس، بستاربكس، للمراعي). A term can't start or end inside another word (نون in قانون).
+ARABIC_RE = re.compile("[\u0600-\u06ff]")
+AR_MARKS = "\u0610-\u061a\u064b-\u065f\u0670\u0640"
+AR_FOLD = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ة": "ه", "ى": "ي", "ی": "ي", "ئ": "ي", "ک": "ك", "ؤ": "و"})
+AR_CLASS = {"ا": "اأإآٱ", "ه": "هة", "ي": "يىیئ", "ك": "كک", "و": "وؤ"}
+
+
+def fold(text):
+    """Lowercased, with Arabic letter variants, short vowels and tatweel folded: for comparing words, not for display."""
+    return re.sub("[%s]" % AR_MARKS, "", text).translate(AR_FOLD).lower()
+
+
+def arabic_pattern(term):
+    def word(w):
+        return ("[%s]*" % AR_MARKS).join("[%s]" % AR_CLASS[c] if c in AR_CLASS else re.escape(c) for c in w)
+    words = re.findall(r"[^\W_]+", fold(term))
+    first = words[0]
+    if first.startswith("ال") and len(first) > 3:      # المراعي: والمراعي، بالمراعي، للمراعي
+        head = "[وف]?(?:[بك]?%s|لل)%s" % (word("ال"), word(first[2:]))
+    elif len(first) > 3:                                 # ستاربكس: وستاربكس، بستاربكس، الستاربكس، للستاربكس
+        head = "[وف]?(?:لل|[بك]?%s|[بلك])?%s" % (word("ال"), word(first))
+    else:                                                # short words don't take "ال": النون isn't Noon
+        head = "[وف]?[بلك]?" + word(first)
+    body = head + "".join(r"[\W_]*" + word(w) for w in words[1:])
+    return "(?<![^\\W_])(?<![%s])%s[%s]*(?![^\\W_])" % (AR_MARKS, body, AR_MARKS)
+
+
 def term_pattern(term):
-    """Regex for one brand term, tolerant of spacing and punctuation: "TimHortons", "Tim Horton's"."""
+    """Regex for one brand term, tolerant of spacing and punctuation: "TimHortons", "Tim Horton's"; Arabic terms go
+    through arabic_pattern. Latin terms get a leading word boundary (accented ones, as before, don't)."""
+    if ARABIC_RE.search(term):
+        return arabic_pattern(term)
     words = re.findall(r"[^\W_]+", term.lower().replace("'", "").replace("’", ""))
     words = [re.escape(w[:-1]) + ("(?:['’]?s)?" if len(w) >= 6 else "['’]?s") if w.endswith("s") and len(w) > 3
              else re.escape(w) for w in words]
-    # Arabic glues prepositions onto words (بستاربكس), so only Latin terms get a leading boundary.
     return ("(?<![^\\W_])" if term.isascii() else "") + r"[\W_]*".join(words)
+
+
+@cache
+def everyday_spellings():
+    """{folded Arabic brand spelling that is also an everyday word: its folded context words} (brands.py)."""
+    return {fold(t): [fold(w) for w in ws] for t, ws in brands.arabic_everyday().items()}
 
 
 def mention_re(terms):
@@ -181,27 +219,43 @@ def find_quote(raw, rx):
 def classify(raw, brand, variants):
     """(kind, hits, quote) for one Oriane result.
 
-    kind, first match wins: owned (brand's own account), sponsored (disclosed or co-authored with the
-    brand), tagged (brand in caption, hashtags or @mentions), spoken (only said on camera: invisible to
-    caption-based social listening).
+    kind, first match wins: owned (brand's own account), sponsored (co-authored with the brand, or disclosed and
+    the brand is in it), tagged (brand in caption, hashtags or @mentions), spoken (only said on camera: invisible to
+    caption-based social listening), unverified (Oriane matched it, but the brand isn't in the transcript or caption).
+    An Arabic variant that is also an everyday word (طلبات, "orders") counts only with one of its context words in
+    the same quote or caption.
     """
-    rx = mention_re([brand, *variants])
+    everyday = {v: everyday_spellings().get(" ".join(fold(v).split())) for v in variants}
+    context = [w for v in variants for w in everyday[v] or []]
+    rx = mention_re([brand, *(v for v in variants if not everyday[v])])
+    rx_everyday = mention_re([v for v in variants if everyday[v]]) if context else None
+
+    def in_context(text):
+        return any(w in fold(text) for w in context)
     caption = " ".join([raw.get("caption") or "", *(raw.get("hashtags") or [])])
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
     co_authors = " ".join(c["profileHandle"] for c in raw.get("coAuthors") or [])
     mentioned = " ".join(m["profileHandle"] for m in raw.get("mentions") or [])
+    in_caption = bool(rx.search(caption + " " + mentioned)) or bool(rx_everyday and rx_everyday.search(caption) and in_context(caption))
+    q = find_quote(raw, rx)
+    if not q and rx_everyday:
+        q = find_quote(raw, rx_everyday)
+        q = q if q and in_context(q["text"]) else None
     if mention_re([brand]).search(raw.get("profileHandle") or ""):
         kind = "owned"
-    elif tags & DISCLOSURE_TAGS or any(p in caption.lower() for p in DISCLOSURE_PHRASES) or rx.search(co_authors):
+    elif rx.search(co_authors):
         kind = "sponsored"
-    elif rx.search(caption + " " + mentioned):
+    elif not (in_caption or q):
+        kind = "unverified"  # a fuzzy match, or someone else's ad: the brand isn't in what was said or written
+    elif tags & DISCLOSURE_TAGS or any(p in caption.lower() for p in DISCLOSURE_PHRASES):
+        kind = "sponsored"
+    elif in_caption:
         kind = "tagged"
     else:
         kind = "spoken"
-    q = find_quote(raw, rx)
-    if kind == "spoken" and not q:
-        kind = "unverified"  # Oriane matched it, but the brand isn't actually in the transcript
-    return kind, len(rx.findall(raw.get("transcript") or "")), q
+    transcript = raw.get("transcript") or ""
+    hits = len(rx.findall(transcript)) + (len(rx_everyday.findall(transcript)) if rx_everyday and in_context(transcript) else 0)
+    return kind, hits, q
 
 
 def score(organic, spoken, views, er):
@@ -591,6 +645,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: rosters.dispatch(self))
         elif path == "/api/admin/seeding":
             self.api(lambda: seeding.admin_route(self))
+        elif path == "/api/admin/eval" or path.startswith("/api/admin/eval/"):
+            self.api(lambda: eval_mentions.admin_route(self))
+        elif path == "/api/brands/arabic":
+            self.api(lambda: {"brands": brands.arabic_spellings()})
         elif path.startswith("/api/admin/"):
             self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
@@ -632,6 +690,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: licenses.dispatch(self))
         if self.path.startswith("/api/rosters/") or self.path == "/api/admin/rosters":
             return self.api(lambda: rosters.dispatch(self))
+        if self.path.startswith("/api/admin/eval/"):
+            return self.api(lambda: eval_mentions.admin_route(self))
         if self.path.startswith("/api/admin/"):
             return self.api(lambda: digest.admin(self))
         if not route:
@@ -697,6 +757,8 @@ import licenses  # noqa: E402
 import payments  # noqa: E402
 import rosters  # noqa: E402
 import seeding  # noqa: E402
+import brands  # noqa: E402
+import eval_mentions  # noqa: E402
 
 
 def init_db():
@@ -712,6 +774,7 @@ def init_db():
         db.execute(payments.SCHEMA)
         db.execute(rosters.SCHEMA)
         db.execute(seeding.SCHEMA)
+        db.execute(eval_mentions.SCHEMA)
 
 
 if __name__ == "__main__":

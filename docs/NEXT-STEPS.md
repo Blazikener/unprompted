@@ -15,9 +15,10 @@ Tags: **[Ops]** is founder work (outreach, brokering, reviews). **[Code]** is a 
 | 0 | Funnel events, `/admin/` console | Yes | Render: `LICENSE_NOTIFY_EMAIL`, reliable weekly runs; the production smoke test |
 | 1 | `prospect_brands.py`, console helpers, `docs/CONCIERGE.md` | Yes | Shortlist, outreach, brokering (Gate 1) |
 | 2 | `licenses.py`: offer links, handle claims, inbox, rules, weekly creator summary | Yes | Instagram verifications, the reuse sample (Gate 2) |
-| 3 | `payments.py`: Stripe Checkout, Connect payouts, refunds, renewals, creator rates | Branch `phase-3-payments` | Merge; Stripe Connect setup and one test-mode licence |
-| 4 | Roster seat for talent managers (`rosters.py`) | Branch `phase-4-rosters` | Manager interviews (4.1), the 6-week pilot (4.3) |
-| 5 | Seeding report on the weekly watch (`seeding.py`) | Branch `phase-5-seeding` | The pilot with 5 Shopify brands and their tracking numbers (Gate 5) |
+| 3 | `payments.py`: Stripe Checkout, Connect payouts, refunds, renewals, creator rates | Yes (Stripe off until `LICENSE_PAYMENTS=1`) | Stripe Connect setup and one test-mode licence |
+| 4 | Roster seat for talent managers (`rosters.py`) | Yes | Manager interviews (4.1), the 6-week pilot (4.3) |
+| 5 | Seeding report on the weekly watch (`seeding.py`) | Yes | The pilot with 5 Shopify brands and their tracking numbers (Gate 5) |
+| 6 | Arabic matching, Arabic brand spellings, the Arabic check (`eval_mentions.py`) | Branch `phase-6-arabic` | Collect and label 100 videos in `/admin/` (Gate 6), agency outreach (6.2), legal advice (6.4) |
 
 `backend/test_workflow.py` runs the whole licence workflow over HTTP in the order `docs/CONCIERGE.md` describes, and runs
 the Monday funnel SQL from `docs/LAUNCH.md` as written.
@@ -39,6 +40,13 @@ Where the build differs from the plan below:
   search (free), then up to 15 TikTok public pages and at most 5 Oriane lookups (Instagram, or an unreadable TikTok
   page), looking for the first post about the brand in the 90 days after it shipped. A week with only gifted posts
   still sends a report.
+- 6.1's labelled set lives in the database, labelled in `/admin/` → **Arabic check** (Oriane's key is only on
+  production), not in the repository: it holds creators' transcripts. The console's download is the fixture for
+  `python3 backend/eval_mentions.py file.jsonl`. Arabic spellings for 147 catalog brands are in `brands.ARABIC`; the
+  dashboard offers them under "Also listen for", and the creator scan uses them.
+- Building 6.1 turned up a precision bug for every language: a disclosed post (#ad, إعلان) counted as sponsored for the
+  searched brand even when the brand wasn't in it. It now needs the brand in what was said or written.
+- 6.3's licensed-creator flag isn't built: it waits for an agency to ask.
 
 ## The plan at a glance
 

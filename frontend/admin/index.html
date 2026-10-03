@@ -44,6 +44,16 @@
   .pill.declined { background: var(--coral-soft); color: var(--coral); }
   .saved { color: var(--moss); font-size: 0.75rem; }
   .err { color: var(--coral); }
+  #arabic { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  #arabic summary { font-weight: 600; cursor: pointer; }
+  #arabic table { min-width: 0; margin: 8px 0; }
+  #arabic .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  #arabic .card { margin: 10px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  #arabic .card p { margin: 6px 0; }
+  #arabic .said { font-size: 1rem; line-height: 1.7; }
+  #arabic mark { background: var(--lime); padding: 0 2px; border-radius: 3px; }
+  #arabic .errors { margin: 6px 0 0; padding-left: 18px; }
+  #arabic .errors li { margin: 6px 0; }
 </style>
 </head>
 <body>
@@ -71,6 +81,24 @@
       <input id="grant-weeks" type="number" min="1" max="52" value="6" class="num" aria-label="Pilot weeks"><button class="primary">Grant pilot</button><span id="grant-msg" class="saved" role="status"></span></form>
     <table><thead><tr><th>Manager</th><th>Access</th><th>Creators</th><th>Reports</th><th>Deals</th><th>Committed</th><th>Last report</th></tr></thead><tbody id="roster-rows"></tbody></table>
   </section>
+  <details id="arabic" hidden>
+    <summary id="arabic-sum">Arabic check (Gate 6)</summary>
+    <p class="muted" style="margin:6px 0">Gate 6: 80%+ precision on Arabic videos with the brands' Arabic spellings, over 100+ videos labelled by hand.
+      Each brand collected is one Oriane search (40 credits) for Arabic videos from the last year; a random sample is kept to label.</p>
+    <table><thead><tr><th>Matching</th><th>Labelled</th><th>Precision</th><th>Recall</th><th>Found, right</th><th>Found, wrong</th><th>Missed</th></tr></thead>
+      <tbody id="arabic-numbers"></tbody></table>
+    <form id="arabic-collect" class="row">
+      <input id="arabic-brands" style="flex:1 1 320px" aria-label="Brands to collect, comma-separated">
+      <input id="arabic-per" type="number" min="1" max="50" class="num" aria-label="Videos per brand">
+      <button class="primary">Collect</button><span id="arabic-credits" class="muted"></span>
+    </form>
+    <p id="arabic-msg" class="saved" role="status"></p>
+    <div id="arabic-card"></div>
+    <div id="arabic-brand-table"></div>
+    <div id="arabic-errors"></div>
+    <div class="row"><button type="button" id="arabic-export">Download labelled set (JSONL)</button>
+      <span class="muted">The offline fixture for <code>python3 backend/eval_mentions.py file.jsonl</code>. It holds creators' transcripts: keep it out of the repo.</span></div>
+  </details>
   <div class="wrap" id="wrap" hidden>
     <table>
       <thead><tr><th>Age</th><th>Brand</th><th>Creator and video</th><th>Ask</th><th>Status</th><th>Creator / final $</th><th>Done</th><th>Notes</th><th></th></tr></thead>
@@ -210,6 +238,92 @@
       msg.textContent = 'Granted: they were emailed.';
     } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
   });
+  // Arabic check (eval_mentions.py, Gate 6): collect Arabic videos, label them by hand, read precision both ways.
+  let evalData = null;
+  const skipped = new Set();
+  const pctf = (x) => (x == null ? '—' : `${Math.round(x * 100)}%`);
+  const said = (sn) => h('p', { class: 'said', dir: 'auto' }, sn.text.slice(0, sn.hit[0]), h('mark', {}, sn.text.slice(sn.hit[0], sn.hit[1])), sn.text.slice(sn.hit[1]));
+  async function setLabel(id, label) {
+    await call(`/api/admin/eval/${id}`, { label });
+    evalData = await call('/api/admin/eval');
+    evalRender();
+  }
+  function labelCard() {
+    const left = evalData.queue.filter((x) => !skipped.has(x.id));
+    const item = left[0];
+    if (!item) {
+      return h('p', { class: 'muted' }, evalData.collected ? 'Nothing waiting to label. Collect more brands, or reload for skipped videos.' : 'Collect a few brands to start labelling.');
+    }
+    const msg = h('span', { class: 'err', role: 'status' });
+    const answer = (label) => async () => { try { await setLabel(item.id, label); } catch (ex) { msg.textContent = ex.message; } };
+    return h('div', { class: 'card' },
+      h('p', {}, h('b', {}, `Does this video really mention ${item.brand}?`), ` ${evalData.labelled} of ${evalData.gate.n} labelled.`),
+      h('p', { class: 'muted' }, `@${item.handle} · ${item.platform} `, item.url ? h('a', { href: item.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null,
+        ` · spellings: ${item.spellings.join(', ')}`),
+      ...(item.snippets.length ? item.snippets.map(said) : [h('p', { class: 'muted' }, 'No spelling of the brand in the transcript. It opens:'), h('p', { class: 'said', dir: 'auto' }, item.opening || '(no transcript)')]),
+      item.caption ? h('p', { dir: 'auto' }, h('span', { class: 'muted' }, 'Caption: '), item.caption) : null,
+      h('div', { class: 'row' }, h('button', { class: 'primary', type: 'button', onclick: answer('yes') }, `Yes, it's about ${item.brand} (y)`),
+        h('button', { type: 'button', onclick: answer('no') }, 'No (n)'),
+        h('button', { type: 'button', onclick: () => { skipped.add(item.id); evalRender(); } }, 'Not sure, skip (s)'), msg));
+  }
+  function evalRender() {
+    const d = evalData;
+    $('#arabic').hidden = false;
+    $('#arabic-sum').textContent = `Arabic check (Gate 6): ${d.labelled} of ${d.gate.n} labelled · precision ${pctf(d.arabic.precision)} with Arabic spellings`
+      + (d.gate.passed ? ' · passed' : '');
+    $('#arabic-numbers').replaceChildren(...[['Latin name only', d.latin], ['With Arabic spellings', d.arabic]].map(([title, m]) => h('tr', {},
+      h('td', {}, title), h('td', {}, String(m.n)), h('td', {}, pctf(m.precision)), h('td', {}, pctf(m.recall)), h('td', {}, String(m.tp)),
+      h('td', {}, String(m.fp)), h('td', {}, String(m.fn)))));
+    if (!$('#arabic-brands').value) $('#arabic-brands').value = d.defaults.brands.filter((b) => !d.brands.some((x) => x.brand === b)).join(', ');
+    if (!$('#arabic-per').value) $('#arabic-per').value = d.defaults.perBrand;
+    $('#arabic-credits').textContent = `${d.defaults.creditsPerBrand} credits a brand · ${d.credits.usedToday} of ${d.credits.dailyBudget} used today`;
+    $('#arabic-card').replaceChildren(labelCard());
+    const byBrand = new Map(d.arabic.brands.map((b) => [b.brand, b]));
+    $('#arabic-brand-table').replaceChildren(d.brands.length ? h('table', {},
+      h('thead', {}, h('tr', {}, ...['Brand', 'Collected', 'Labelled', 'Precision', 'Recall'].map((t) => h('th', {}, t)))),
+      h('tbody', {}, ...d.brands.map((b) => h('tr', {}, h('td', {}, b.brand), h('td', {}, String(b.collected)), h('td', {}, String(b.labelled)),
+        h('td', {}, pctf(byBrand.get(b.brand)?.precision)), h('td', {}, pctf(byBrand.get(b.brand)?.recall)))))) : '');
+    const errors = d.arabic.errors;
+    $('#arabic-errors').replaceChildren(errors.length ? h('div', {}, h('b', {}, `Where it's wrong, with Arabic spellings (${errors.length})`),
+      h('ul', { class: 'errors' }, ...errors.map((x) => h('li', {},
+        h('b', {}, x.brand), x.error === 'fp' ? ` · counted as ${x.kind}, labelled not about the brand · ` : ' · labelled about the brand, missed · ',
+        x.url ? h('a', { href: x.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null, ' ',
+        h('button', { class: 'copy', type: 'button', onclick: () => setLabel(x.id, x.label === 'yes' ? 'no' : 'yes') }, `Change label to ${x.label === 'yes' ? 'no' : 'yes'}`),
+        x.quote ? h('p', { class: 'said', dir: 'auto', style: 'margin:4px 0' }, x.quote) : null)))) : '');
+  }
+  async function loadEval() {
+    try { evalData = await call('/api/admin/eval'); evalRender(); } catch {}
+  }
+  $('#arabic-collect').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('#arabic-msg'), btn = $('#arabic-collect button');
+    const brands = $('#arabic-brands').value.split(',').map((b) => b.trim()).filter(Boolean);
+    msg.className = 'saved'; msg.textContent = `Collecting ${brands.length} brand${brands.length === 1 ? '' : 's'}…`; btn.disabled = true;
+    try {
+      const out = await call('/api/admin/eval/collect', { brands, perBrand: Number($('#arabic-per').value) });
+      evalData = out.report;
+      const got = Object.entries(out.collected).map(([b, n]) => `${b} ${n}`).join(', ');
+      msg.className = out.stopped ? 'err' : 'saved';
+      msg.textContent = (got ? `Collected: ${got}.` : 'Nothing new collected.') + (out.skipped.length ? ` Already had: ${out.skipped.join(', ')}.` : '')
+        + (out.stopped ? ` Stopped: ${out.stopped}` : '');
+      $('#arabic-brands').value = '';
+      evalRender();
+    } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
+    btn.disabled = false;
+  });
+  $('#arabic-export').addEventListener('click', async () => {
+    const { items } = await call('/api/admin/eval/export');
+    const url = URL.createObjectURL(new Blob([items.map((x) => JSON.stringify(x)).join('\n') + '\n'], { type: 'application/x-ndjson' }));
+    h('a', { href: url, download: 'arabic-check.jsonl' }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!$('#arabic').open || e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
+    const item = evalData && evalData.queue.find((x) => !skipped.has(x.id));
+    if (!item) return;
+    if (e.key === 'y' || e.key === 'n') setLabel(item.id, e.key === 'y' ? 'yes' : 'no').catch(() => {});
+    else if (e.key === 's') { skipped.add(item.id); evalRender(); }
+  });
   async function loadClaims() {
     try {
       const { handles } = await call('/api/admin/handles');
@@ -237,6 +351,7 @@
       loadClaims();
       loadRosters();
       loadSeeding();
+      loadEval();
     } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
   }
   $('#auth').addEventListener('submit', (e) => {
