@@ -17,6 +17,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 - `backend/licenses.py`: the creator side of "License for ads": `/offer/<token>` answers one request without an account; `/creators/licenses` (Receipts login) claims handles, lists offers, sets rules and the weekly summary. `docs/CONCIERGE.md` is the operator playbook; `/admin/` is the console.
 - `backend/payments.py`: licence money and renewals: Stripe Checkout for brands, Connect transfers to creators, refunds, expiry and renewal reminders, creator rates; Stripe parts only with `LICENSE_PAYMENTS=1`.
 - `backend/seeding.py`: the seeding report: a brand's gifting list on its watch page (`/digest/<token>`), checked on upload (TikTok) and in each weekly run for the first post after shipping; the report's "Gifted creators" block and the `/admin/` seeding table.
+- `backend/eval_mentions.py`: the Arabic check (Gate 6): collects Arabic videos per brand from Oriane in `/admin/`, the operator labels them, and it reports `classify`'s precision and recall with and without the brands' Arabic spellings. The console's download reruns offline: `python3 backend/eval_mentions.py file.jsonl`.
 - `backend/rosters.py`: the talent-manager roster seat: `/creators/roster` (Receipts login), a Monday report per roster (unpaid brands per creator, paying signal, pitch drafts), deals and the `roster` plan; pilots are granted in `/admin/`.
 - `PRODUCT.md`: design context (users, personality, principles).
 
@@ -28,7 +29,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 
 ## Receipts (creator product)
 
-`frontend/creators/index.html` + `backend/creator.py` reuse the Oriane fetch, `term_pattern` and `find_quote` from `server.py` to scan one creator's own videos against the brand dictionary in `backend/brands.py`. `backend/demo.py` supplies fixture creators when `ORIANE_API_KEY` is missing or `DEMO_MODE=1`. Auth, plans (free/pro), Stripe and event logging live in `creator.py`; its tables are created by `server.init_db()`.
+`frontend/creators/index.html` + `backend/creator.py` reuse the Oriane fetch, `term_pattern` and `find_quote` from `server.py` to scan one creator's own videos against the brand dictionary in `backend/brands.py` (with Arabic spellings in `ARABIC`; ones that are also everyday words, in `ARABIC_AMBIGUOUS`, need an `ARABIC_CONTEXT` word nearby). `server.term_pattern` matches Arabic across letter variants, short vowels and glued-on prefixes. `backend/demo.py` supplies fixture creators when `ORIANE_API_KEY` is missing or `DEMO_MODE=1`. Auth, plans (free/pro), Stripe and event logging live in `creator.py`; its tables are created by `server.init_db()`.
 
 - Tests: `DATABASE_URL=postgresql:///unprompted_test python3 -m pytest backend`
 - Lint: `ruff check backend` (config in `pyproject.toml`)

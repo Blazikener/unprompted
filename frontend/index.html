@@ -131,6 +131,9 @@
   .seg-opts label:has(input:focus-visible) { outline: 2px solid var(--lime); outline-offset: 2px; }
   .hint { flex-basis: 100%; margin: 0; font-size: 0.8125rem; color: var(--on-forest-2); }
   .hint b { color: var(--lime); font-weight: 600; }
+  .hint-add { margin-left: 6px; padding: 2px 10px; border: 1px solid var(--lime); border-radius: 999px; background: transparent; color: var(--lime); font: inherit; font-weight: 600; cursor: pointer; }
+  .hint-add:hover { background: var(--lime); color: var(--ink); }
+  .hint-add:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
   .scan { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; overflow: hidden; }
   .scan span { display: block; height: 100%; background: var(--lime); box-shadow: 0 0 14px var(--lime); transform-origin: left; transform: scaleX(0); transition: transform 0.5s var(--ease-expo); }
   .scan.waiting span { width: 30%; transform: none; animation: seek-bar 1.1s var(--ease) infinite alternate; }
@@ -1889,8 +1892,31 @@
   setFx(initialFx, false);
 
   // ---------- Filters re-run the search, so changing one always changes the results ----------
+  // Known brands' Arabic spellings (brands.py), offered for "Also listen for": Arabic transcripts write them in Arabic script.
+  let arabicNames = null;
+  async function loadArabic() {
+    if (arabicNames) return;
+    arabicNames = {};
+    try { arabicNames = (await (await fetch('/api/brands/arabic')).json()).brands || {}; } catch {}
+    updateHint();
+  }
   function updateHint() {
-    $('#hint').hidden = !(form.elements.lang.value === 'ar' && !ARABIC.test(brandEl.value + variantsEl.value));
+    if (!arabicNames && brandEl.value.trim()) loadArabic();
+    const hint = $('#hint');
+    const typed = variantsEl.value.split(',').map((v) => v.trim()).filter(Boolean);
+    const known = arabicNames && arabicNames[brandEl.value.trim().toLowerCase()];
+    const missing = known && form.elements.lang.value !== 'en' ? known.spellings.filter((sp) => !typed.includes(sp)) : [];
+    if (missing.length && typed.length < 5) {
+      const everyday = missing.filter((sp) => known.everyday.includes(sp));
+      hint.replaceChildren('Arabic videos write ', h('b', {}, known.name), ' as ', h('b', { lang: 'ar', dir: 'rtl' }, missing.join('، ')), '.',
+        everyday.length ? ` ${everyday.length > 1 ? 'Some are' : 'It’s'} also an everyday word, so it only counts when words about the brand are nearby.` : '',
+        h('button', { type: 'button', class: 'hint-add', onclick: () => { variantsEl.value = [...typed, ...missing].slice(0, 5).join(', '); updateHint(); } },
+          'Add to Also listen for'));
+      hint.hidden = false;
+      return;
+    }
+    hint.replaceChildren('Arabic transcripts spell brands in Arabic script. Add it under ', h('b', {}, 'Also listen for'), ', for example ستاربكس for Starbucks.');
+    hint.hidden = !(form.elements.lang.value === 'ar' && !ARABIC.test(brandEl.value + variantsEl.value));
   }
   for (const el of [...form.elements.platform, form.elements.days, form.elements.lang]) {
     el.addEventListener('change', () => {

@@ -74,6 +74,11 @@ last run) and the emails and pages credit Oriane.
 - Roster seat for talent managers (`backend/rosters.py`, `/creators/roster`): up to 25 creators per manager, a Monday
   report of the brands each mentioned unpaid in new videos (receipt, paying signal, pitch draft), deals marked from
   reports, pilots granted in `/admin/`, and a `roster` plan (`STRIPE_PRICE_ROSTER`). The digest cron runs it on Mondays.
+- Arabic (`backend/server.py`, `backend/brands.py`): Arabic brand spellings match across letter variants (أ/ا, ة/ه,
+  ى/ي), short vowels and glued-on prefixes (بستاربكس), never inside another word. 147 catalog brands have Arabic
+  spellings: the dashboard offers them under "Also listen for" and the creator scan uses them; spellings that are also
+  everyday words (طلبات, كريم) only count with a context word nearby. The Arabic check in `/admin/`
+  (`backend/eval_mentions.py`) measures precision and recall on hand-labelled Arabic videos.
 - Seeding report (`backend/seeding.py`): a brand pastes its gifting list (handle, platform, ship date, tracked) on its
   watch page; TikTok creators are checked on upload and everyone in each weekly run, and the report shows posted X of Y,
   how many only on camera, versus the brand's own tracking, with licence buttons. Totals in `/admin/`.

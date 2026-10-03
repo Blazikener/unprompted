@@ -66,7 +66,7 @@ def scan_brand(b, days, platform="all"):
         if kind not in LICENSABLE:
             continue
         caption = r.get("caption") or ""
-        if b["context"] and not any(w in ((q or {}).get("text", "") + " " + caption).lower() for w in b["context"]):
+        if b["context"] and not any(w in server.fold((q or {}).get("text", "") + " " + caption) for w in b["context"]):
             continue                                    # ambiguous name ("Coach", "Dove") with nothing around it
         views = r.get("viewsCount") or 0
         clips.append({"handle": handle, "platform": r.get("platform"), "followers": followers, "views": views,

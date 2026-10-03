@@ -244,3 +244,35 @@ weekly watch. Ask each for last quarter's gifting list (handle, ship date) and h
 
 **Gate 5:** for 3 of the 5 brands, posters found ≥ 2× what their own tracking had (the console's ×). Vendors claim 3-4×;
 below 2× the add-on isn't worth selling separately.
+
+---
+
+## Phase 6: the Arabic check and GCC agencies
+
+GCC agencies will only pay if the Arabic results are right. Measure that before pitching anyone (research test 6).
+
+**The Arabic check (in `/admin/` → Arabic check):**
+1. **Collect.** Each brand is one Oriane search for Arabic videos from the last year that say its Latin name or one of
+   its Arabic spellings (40 credits); 10 of the results are kept at random. The default list mixes spellings that are
+   also everyday words (Talabat طلبات, Noon نون, Careem كريم, Namshi نمشي, Shein شين) with plain ones. Ten brands is
+   400 credits: do 5 a day to leave the weekly reports room under `ORIANE_DAILY_BUDGET`.
+2. **Label** each video: **Yes** only if it's really about the brand (the company, its app, its product), not the
+   everyday word, a place or a person with the same name. Keys: `y`, `n`, `s` to skip. Watch the video when the
+   transcript isn't clear.
+3. **Read the numbers.** Precision and recall, with the Latin name only and with the Arabic spellings on, overall and
+   per brand. "Where it's wrong" lists each mistake: fix a wrong label there, or fix the matching (next step).
+4. **Fix and re-measure.** A missed video usually means a missing spelling (add it to `brands.ARABIC`); a wrong find,
+   a spelling that is an everyday word (add it to `brands.ARABIC_AMBIGUOUS` with context words in
+   `brands.ARABIC_CONTEXT`). Download the labelled set and rerun offline: `python3 backend/eval_mentions.py
+   arabic-check.jsonl`. Keep that file out of the repository: it holds creators' transcripts.
+
+**Gate 6, part one:** 80%+ precision with the Arabic spellings on 100+ labelled videos (the console says "passed").
+
+**Agencies (only after part one passes):**
+1. Confirm the current list of agencies accredited by the UAE Media Council on the Council's own site (the research's
+   list came from search snippets), and contact 3-5 of them, plus Saudi agencies working under Mawthooq.
+2. Pitch the weekly watch in Arabic and English: spoken mentions, with the quote and the licence button.
+3. Get legal advice before selling any compliance angle (an unpaid mention as a disclosure or licence flag).
+4. Build the "licensed creator" flag on roster creators only if an agency asks for it.
+
+**Gate 6, part two:** one paid agency pilot.
