@@ -420,7 +420,14 @@ function showMiss(e) {
   }
   box.hidden = false; box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
-function showLanding() { $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (!['/', '/creators/'].includes(location.pathname)) history.replaceState({}, '', '/creators/'); }
+// The pricing test's visit (packaging.py). Brands opening a shared receipt page aren't prospects: they join only if they
+// go on to the landing.
+async function visit(body) {
+  S.visited = true;
+  const v = await api('/visit', body || {}).catch(() => null);
+  if (v) { S.offer = v.offer; applyOffer(); if (S.user) renderAccount(); }
+}
+function showLanding() { if (!S.visited) visit(); document.title = 'Receipts by Unprompted'; $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (!['/', '/creators/'].includes(location.pathname)) history.replaceState({}, '', '/creators/'); }
 
 function showScan(scan) {
   S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {};
@@ -529,8 +536,7 @@ $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#repor
   S.user = me.user; S.billing = me.billing;
   for (const el of document.querySelectorAll('[data-price]')) el.textContent = S.billing.price;
   const from = new URLSearchParams(location.search);       // ?arm=b previews an offer (not counted); ?from=feed: a Weekly leads click
-  const v = await api('/visit', { arm: from.get('arm') || undefined, from: from.get('from') || undefined }).catch(() => null);
-  if (v) { S.offer = v.offer; applyOffer(); }
+  if (!/^\/creators\/r\//.test(location.pathname)) await visit({ arm: from.get('arm') || undefined, from: from.get('from') || undefined });
   if (from.get('from') === 'feed') history.replaceState({}, '', '/creators/');
   if (S.billing.demo) $('#fine').insertAdjacentHTML('beforeend', ` <span>Demo mode, try:</span> <button class="chip" type="button" data-demo="maya.eats">@maya.eats</button> <button class="chip" type="button" data-demo="sami.lifts">@sami.lifts</button>`);
   for (const c of document.querySelectorAll('[data-demo]')) c.onclick = () => { $('#handle').value = '@' + c.dataset.demo; startScan(S.platform, c.dataset.demo); };

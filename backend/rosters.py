@@ -171,7 +171,7 @@ def deal(user, body):
 
 
 def request_pilot(user, body):
-    creator.track(user["id"], "roster_pilot_request", {})
+    creator.track(user["id"], "roster_pilot_request", {"note": str(body.get("note") or "")[:300]})   # listed in /admin/ until granted
     licenses.notify("Roster pilot request: %s" % user["email"], "Grant it in /admin/ (Roster pilots) if they manage creators.",
                     [("Account", user["email"]), ("Note", str(body.get("note") or "-")[:300])])
     return {"requested": True}

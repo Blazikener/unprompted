@@ -733,7 +733,9 @@ def checkout(user, plan="pro"):
     back = app_url() + ("/creators/roster?subscribed=" if plan == "roster" else "/creators/?upgraded=")
     params = {"mode": "subscription", "line_items[0][price]": price, "line_items[0][quantity]": 1,
               "success_url": back + "1", "cancel_url": back + "0", "client_reference_id": user["id"], "metadata[user_id]": user["id"],
-              "metadata[plan]": plan, "allow_promotion_codes": "true"}
+              "metadata[plan]": plan, "allow_promotion_codes": "true",
+              # On the subscription too, so its later updates know which plan it is (Pro, Weekly leads or roster).
+              "subscription_data[metadata][plan]": plan, "subscription_data[metadata][user_id]": user["id"]}
     if user["stripe_customer"]:
         params["customer"] = user["stripe_customer"]
     else:
@@ -784,10 +786,13 @@ def webhook(payload, headers):
                 track(int(uid), "subscribed", {"subscription": obj.get("subscription"), "plan": plan if plan in PLANS else "pro"})
         elif kind in ("customer.subscription.updated", "customer.subscription.deleted"):
             active = kind.endswith("updated") and obj.get("status") in ("active", "trialing", "past_due")
-            # Still active keeps whichever paid plan they bought (Pro or roster); ended drops to free.
-            db.execute("UPDATE users SET plan = CASE WHEN %s THEN (CASE WHEN plan = 'free' THEN 'pro' ELSE plan END) ELSE 'free' END,"
+            plan = (obj.get("metadata") or {}).get("plan")
+            plan = plan if plan in PLANS and plan not in ("free", "open") else None
+            # Still active: the plan the subscription was bought for (older ones without it keep their paid plan, or
+            # Pro); ended drops to free.
+            db.execute("UPDATE users SET plan = CASE WHEN %s THEN coalesce(%s, CASE WHEN plan = 'free' THEN 'pro' ELSE plan END) ELSE 'free' END,"
                        " stripe_subscription = coalesce(%s, stripe_subscription) WHERE stripe_customer = %s",
-                       (active, obj.get("id"), obj.get("customer")))
+                       (active, plan, obj.get("id"), obj.get("customer")))
     import payments  # licence payments and creator payout accounts share this endpoint
     payments.on_event(event)
     return {"received": True}
