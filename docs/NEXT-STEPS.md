@@ -18,7 +18,8 @@ Tags: **[Ops]** is founder work (outreach, brokering, reviews). **[Code]** is a 
 | 3 | `payments.py`: Stripe Checkout, Connect payouts, refunds, renewals, creator rates | Yes (Stripe off until `LICENSE_PAYMENTS=1`) | Stripe Connect setup and one test-mode licence |
 | 4 | Roster seat for talent managers (`rosters.py`) | Yes | Manager interviews (4.1), the 6-week pilot (4.3) |
 | 5 | Seeding report on the weekly watch (`seeding.py`) | Yes | The pilot with 5 Shopify brands and their tracking numbers (Gate 5) |
-| 6 | Arabic matching, Arabic brand spellings, the Arabic check (`eval_mentions.py`) | Branch `phase-6-arabic` | Collect and label 100 videos in `/admin/` (Gate 6), agency outreach (6.2), legal advice (6.4) |
+| 6 | Arabic matching, Arabic brand spellings, the Arabic check (`eval_mentions.py`) | Yes | Collect and label 100 videos in `/admin/` (Gate 6), agency outreach (6.2), legal advice (6.4) |
+| 7 | Receipts packaging test: three offers by cookie, Weekly leads at $9/month (`packaging.py`) | Branch `phase-7-packaging` | `STRIPE_PRICE_LEADS`; ~300 visitors per offer through `docs/LAUNCH.md`'s outreach; read the result and set `RECEIPTS_ARMS` |
 
 `backend/test_workflow.py` runs the whole licence workflow over HTTP in the order `docs/CONCIERGE.md` describes, and runs
 the Monday funnel SQL from `docs/LAUNCH.md` as written.
@@ -47,6 +48,11 @@ Where the build differs from the plan below:
 - Building 6.1 turned up a precision bug for every language: a disclosed post (#ad, إعلان) counted as sponsored for the
   searched brand even when the brand wasn't in it. It now needs the brand in what was said or written.
 - 6.3's licensed-creator flag isn't built: it waits for an agency to ask.
+- 7.1's arms are drawn when the Receipts page first loads (a cookie) and an account keeps the offer it signed up
+  under. Offer B's free plan shows every brand and pitch draft but not the sponsor check (each costs Oriane credits).
+  Weekly leads re-reads the creator's last scanned handle every Monday and lists the unpaid brands that are paying
+  creators now, plus everything Pro unlocks in the app. Week-4 active means any visit, scan, sponsor check, pitch,
+  share or licence answer in days 21-28 after signup; paid means a subscription or a licence a brand paid for.
 
 ## The plan at a glance
 

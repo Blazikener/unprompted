@@ -276,3 +276,31 @@ GCC agencies will only pay if the Arabic results are right. Measure that before 
 4. Build the "licensed creator" flag on roster creators only if an agency asks for it.
 
 **Gate 6, part two:** one paid agency pilot.
+
+---
+
+## Phase 7: the Receipts pricing test
+
+Three ways to charge creators, shown side by side to new visitors of `/creators/` (each browser gets one, by cookie,
+and an account keeps the one it signed up under):
+- **(a) Pro, $29/month:** today's offer. Free shows the top 3 brands; Pro unlocks every brand, the sponsor check and pitch drafts.
+- **(b) Free, paid by licences:** every brand and pitch draft free (no sponsor check); creators earn when brands license
+  their videos, and we keep 15%.
+- **(c) Weekly leads, $9/month:** free as in (a); the paid plan emails, every Monday, the brands the creator mentions
+  that are paying creators that week, with the receipt, and unlocks what Pro does in the app.
+
+**Before you drive traffic:**
+1. In Stripe, create a $9/month price and set `STRIPE_PRICE_LEADS` on Render (until then (c)'s button records a
+   reservation, like Pro's did). Check `STRIPE_PRICE_PRO` is set too.
+2. Look at each offer as a visitor sees it: `/creators/?arm=a`, `?arm=b`, `?arm=c` (previews aren't counted).
+3. The Weekly leads email goes out Mondays (UTC) from the same digest cron (`POST /api/digests/run` returns `feeds`).
+
+**Running it:** drive about 300 visitors to each offer through the outreach in `docs/LAUNCH.md` (900 in all; the split
+is random, so just send people to `/creators/`). `/admin/` → **Receipts pricing test** shows, per offer: visitors,
+signups, scans, week-4 active (of accounts at least 28 days old), paid (a subscription, or a licence a brand paid for),
+subscriptions, licence fees kept and checkout clicks.
+
+**Reading it (about 4 weeks after the last visitor batch):** keep the offer with the best week-4 active rate and paid
+conversion; when they disagree, prefer the one that brings creators back, since the licence money depends on them
+being there. Then set `RECEIPTS_ARMS` on Render to the winner's letter: every visitor and account gets that offer
+(accounts keep their history in the numbers). Paying subscribers on a dropped plan keep it until they cancel.

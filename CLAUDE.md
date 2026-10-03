@@ -18,6 +18,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 - `backend/payments.py`: licence money and renewals: Stripe Checkout for brands, Connect transfers to creators, refunds, expiry and renewal reminders, creator rates; Stripe parts only with `LICENSE_PAYMENTS=1`.
 - `backend/seeding.py`: the seeding report: a brand's gifting list on its watch page (`/digest/<token>`), checked on upload (TikTok) and in each weekly run for the first post after shipping; the report's "Gifted creators" block and the `/admin/` seeding table.
 - `backend/eval_mentions.py`: the Arabic check (Gate 6): collects Arabic videos per brand from Oriane in `/admin/`, the operator labels them, and it reports `classify`'s precision and recall with and without the brands' Arabic spellings. The console's download reruns offline: `python3 backend/eval_mentions.py file.jsonl`.
+- `backend/packaging.py`: the Receipts pricing test (Phase 7): each `/creators/` visitor gets one of three offers by cookie (a: Pro $29/month, b: free with licence payouts, the "open" plan, c: Weekly leads $9/month with a Monday email), accounts keep theirs, `RECEIPTS_ARMS` picks the live ones; the numbers are in `/admin/`.
 - `backend/rosters.py`: the talent-manager roster seat: `/creators/roster` (Receipts login), a Monday report per roster (unpaid brands per creator, paying signal, pitch drafts), deals and the `roster` plan; pilots are granted in `/admin/`.
 - `PRODUCT.md`: design context (users, personality, principles).
 

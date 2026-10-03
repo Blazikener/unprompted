@@ -99,8 +99,14 @@ PLANS = {
     # Talent managers (rosters.py): Pro, plus a Monday report on up to 25 creators.
     "roster": {"scansPerWeek": 50, "brands": None, "activity": True, "pitch": True,
                "brandSearchesPerWeek": 30, "checksPerWeek": 50, "rosterCreators": 25},
+    # The packaging test (packaging.py). Arm (b)'s free plan: every brand and pitch draft; the sponsor check stays off
+    # (Oriane credits). Arm (c)'s Weekly leads, $9/month: the Monday email, plus what Pro unlocks in the app.
+    "open": {"scansPerWeek": 1, "brands": None, "activity": False, "pitch": True,
+             "brandSearchesPerWeek": 2, "checksPerWeek": 3},
+    "leads": {"scansPerWeek": 3, "brands": None, "activity": True, "pitch": True,
+              "brandSearchesPerWeek": 2, "checksPerWeek": 3},
 }
-PLAN_PRICE_ENV = {"pro": "STRIPE_PRICE_PRO", "roster": "STRIPE_PRICE_ROSTER"}
+PLAN_PRICE_ENV = {"pro": "STRIPE_PRICE_PRO", "roster": "STRIPE_PRICE_ROSTER", "leads": "STRIPE_PRICE_LEADS"}
 SESSION_DAYS = 30
 COOKIE = "receipts_session"
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -449,8 +455,16 @@ def check_password(pw, stored):
     return hmac.compare_digest(hash_password(pw, salt), stored)
 
 
+def plan_of(user):
+    """The plan whose limits apply (packaging.py: arm (b)'s free plan is "open")."""
+    import packaging
+    return packaging.plan_of(user)
+
+
 def public_user(u):
-    return {"id": u["id"], "email": u["email"], "plan": u["plan"], "limits": PLANS[u["plan"]], "billing": bool(u.get("stripe_customer"))}
+    import packaging
+    return {"id": u["id"], "email": u["email"], "plan": u["plan"], "limits": PLANS[plan_of(u)], "billing": bool(u.get("stripe_customer")),
+            "arm": packaging.user_arm(u)}
 
 
 def start_session(db, user_id):
@@ -503,14 +517,19 @@ def credentials(body):
     return email, pw
 
 
-def signup(body):
+def signup(body, headers=None):
+    import packaging
     email, pw = credentials(body)
+    arm, forced = packaging.signup_arm(headers or {})       # the offer this browser was shown on /creators/
     with connect() as db:
         if db.execute("SELECT 1 FROM users WHERE email = %s", (email,)).fetchone():
             raise ApiError(409, "That email already has an account. Sign in instead.")
-        u = db.execute("INSERT INTO users (email, password) VALUES (%s, %s) RETURNING *", (email, hash_password(pw))).fetchone()
+        u = db.execute("INSERT INTO users (email, password, arm, arm_forced) VALUES (%s, %s, %s, %s) RETURNING *",
+                       (email, hash_password(pw), arm, forced)).fetchone()
         cookie = start_session(db, u["id"])
-    track(u["id"], "signup")
+    if headers:
+        packaging.link_visitor(headers, u["id"])
+    track(u["id"], "signup", {"arm": arm} if arm else None)
     return Reply({"user": public_user(u)}, 201, [cookie])
 
 
@@ -566,14 +585,14 @@ def run_scan(user, body):
         recent = db.execute("SELECT * FROM scans WHERE user_id = %s AND platform = %s AND handle = %s AND created_at > now() - interval '1 day'"
                             " ORDER BY id DESC LIMIT 1", (user["id"], platform, handle)).fetchone()
         if recent and not body.get("fresh"):
-            return scan_view(recent, user["plan"])
+            return scan_view(recent, plan_of(user))
         used = db.execute("SELECT count(*) AS n FROM scans WHERE user_id = %s AND created_at > now() - interval '7 days'",
                           (user["id"],)).fetchone()["n"]
-    limit = PLANS[user["plan"]]["scansPerWeek"]
+    limit = PLANS[plan_of(user)]["scansPerWeek"]
     if used >= limit:
-        track(user["id"], "paywall", {"reason": "scan_quota", "plan": user["plan"]})
-        raise ApiError(402, "You've used your %d free scan this week. Pro gets %d." % (limit, PLANS["pro"]["scansPerWeek"]) if user["plan"] == "free"
-                       else "Scan limit reached (%d per week)." % limit)
+        import packaging
+        track(user["id"], "paywall", {"reason": "scan_quota", "plan": plan_of(user)})
+        raise ApiError(402, packaging.quota_message(user, limit))
     try:
         videos, source = fetch_videos(platform, handle, user["plan"])
     except ApiError as e:
@@ -589,7 +608,7 @@ def run_scan(user, body):
         row = db.execute("INSERT INTO scans (user_id, platform, handle, source, profile, brands) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *",
                          (user["id"], platform, handle, source, Jsonb(prof), Jsonb(rows))).fetchone()
     track(user["id"], "scan", {"platform": platform, "handle": handle, "brands": len(rows), "source": source, "videos": len(videos)})
-    return scan_view(row, user["plan"])
+    return scan_view(row, plan_of(user))
 
 
 def load_scan(user, sid):
@@ -614,10 +633,11 @@ def share_scan(user, sid):
 
 def shared_view(token):
     with connect() as db:
-        row = db.execute("SELECT s.*, u.plan FROM scans s JOIN users u ON u.id = s.user_id WHERE s.share_token = %s", (token,)).fetchone()
+        row = db.execute("SELECT s.*, u.plan, u.arm FROM scans s JOIN users u ON u.id = s.user_id WHERE s.share_token = %s",
+                         (token,)).fetchone()
     if not row:
         raise ApiError(404, "This receipt page doesn't exist or was taken down.")
-    return {**scan_view(row, row["plan"]), "shared": True}
+    return {**scan_view(row, plan_of(row)), "shared": True}
 
 
 def sample_view():
@@ -638,9 +658,12 @@ def list_scans(user):
 def unlocked_brand(user, sid, name, feature):
     row = load_scan(user, sid)
     b = brand_entry(name)
-    if not PLANS[user["plan"]][feature]:
+    if not PLANS[plan_of(user)][feature]:
+        import packaging
         track(user["id"], "paywall", {"reason": feature, "brand": b["name"]})
-        raise ApiError(402, "Pro unlocks %s." % ("the sponsor check" if feature == "activity" else "pitch drafts"))
+        what = "the sponsor check" if feature == "activity" else "pitch drafts"
+        name = packaging.paid_name(user)
+        raise ApiError(402, "%s unlocks %s." % (name, what) if name else "Your plan doesn't include %s." % what)
     brand_row = next((r for r in row["brands"] if r["brand"] == b["name"]), None)
     if not brand_row:
         raise ApiError(404, "That brand isn't in this scan.")
@@ -706,7 +729,7 @@ def checkout(user, plan="pro"):
     if not (stripe_config()["STRIPE_SECRET_KEY"] and price):
         raise ApiError(503, "Billing isn't configured on this server yet.")
     if user["plan"] == plan:
-        raise ApiError(400, "You're already on %s." % ("Pro" if plan == "pro" else "the roster plan"))
+        raise ApiError(400, "You're already on %s." % {"pro": "Pro", "roster": "the roster plan", "leads": "Weekly leads"}[plan])
     back = app_url() + ("/creators/roster?subscribed=" if plan == "roster" else "/creators/?upgraded=")
     params = {"mode": "subscription", "line_items[0][price]": price, "line_items[0][quantity]": 1,
               "success_url": back + "1", "cancel_url": back + "0", "client_reference_id": user["id"], "metadata[user_id]": user["id"],
@@ -716,12 +739,12 @@ def checkout(user, plan="pro"):
     else:
         params["customer_email"] = user["email"]
     session = stripe("checkout/sessions", params)
-    track(user["id"], "checkout_started")
+    track(user["id"], "checkout_started", {"plan": plan})
     return {"url": session["url"]}
 
 
 def portal(user):
-    if not billing_enabled() or not user["stripe_customer"]:
+    if not stripe_config()["STRIPE_SECRET_KEY"] or not user["stripe_customer"]:   # Pro, Weekly leads or the roster plan
         raise ApiError(400, "No billing account yet.")
     session = stripe("billing_portal/sessions", {"customer": user["stripe_customer"], "return_url": app_url() + "/creators/"})
     return {"url": session["url"]}
@@ -758,7 +781,7 @@ def webhook(payload, headers):
                 plan = (obj.get("metadata") or {}).get("plan")
                 set_plan(db, "id = %s", (int(uid),), plan if plan in PLANS and plan != "free" else "pro",
                          obj.get("customer"), obj.get("subscription"))
-                track(int(uid), "subscribed", {"subscription": obj.get("subscription")})
+                track(int(uid), "subscribed", {"subscription": obj.get("subscription"), "plan": plan if plan in PLANS else "pro"})
         elif kind in ("customer.subscription.updated", "customer.subscription.deleted"):
             active = kind.endswith("updated") and obj.get("status") in ("active", "trialing", "past_due")
             # Still active keeps whichever paid plan they bought (Pro or roster); ended drops to free.
@@ -815,7 +838,7 @@ def dispatch(handler):
         m = re.fullmatch(r"/scans/(\d+)", path)
         if m:
             u = require_user(headers)
-            return scan_view(load_scan(u, int(m.group(1))), u["plan"])
+            return scan_view(load_scan(u, int(m.group(1))), plan_of(u))
         raise ApiError(404, "Not found.")
     if method != "POST":
         raise ApiError(405, "Method not allowed.")
@@ -826,7 +849,10 @@ def dispatch(handler):
     if not isinstance(body, dict):
         raise ApiError(400, "Invalid request.")
     if path == "/signup":
-        return signup(body)
+        return signup(body, headers)
+    if path == "/visit":                    # the Receipts page's packaging-test arm (packaging.py)
+        import packaging
+        return packaging.visit(headers, body)
     if path == "/login":
         return login(body)
     if path == "/logout":
@@ -842,13 +868,16 @@ def dispatch(handler):
         sid, name, feature = int(m.group(1)), unquote(m.group(2)), m.group(3)
         return activity_route(u, sid, name) if feature == "activity" else pitch_route(u, sid, name)
     if path == "/billing/checkout":
-        return checkout(u)
+        import packaging
+        return checkout(u, packaging.offer_plan(u))
     if path == "/billing/portal":
         return portal(u)
     if path == "/billing/dev":
         return dev_switch(u, body)
     if path == "/billing/interest":  # checkout not live yet: the click is the signal the validation gate counts
-        track(u["id"], "checkout_intent", {"plan": "pro", "price": PRO_PRICE_USD, "scan": body.get("scan")})
+        import packaging
+        plan = packaging.offer_plan(u)
+        track(u["id"], "checkout_intent", {"plan": plan, "price": packaging.offers()[packaging.user_arm(u)]["price"], "scan": body.get("scan")})
         return {"ok": True}
     if path == "/report":
         track(u["id"], "report", {"text": str(body.get("text", ""))[:500], "scan": body.get("scan")})

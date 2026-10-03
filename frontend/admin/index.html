@@ -54,6 +54,8 @@
   #arabic mark { background: var(--lime); padding: 0 2px; border-radius: 3px; }
   #arabic .errors { margin: 6px 0 0; padding-left: 18px; }
   #arabic .errors li { margin: 6px 0; }
+  #packaging { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow-x: auto; }
+  #packaging table { min-width: 760px; margin: 8px 0; }
 </style>
 </head>
 <body>
@@ -80,6 +82,14 @@
     <form id="grant" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px"><input id="grant-email" type="email" placeholder="manager@agency.com" aria-label="Manager's account email" required>
       <input id="grant-weeks" type="number" min="1" max="52" value="6" class="num" aria-label="Pilot weeks"><button class="primary">Grant pilot</button><span id="grant-msg" class="saved" role="status"></span></form>
     <table><thead><tr><th>Manager</th><th>Access</th><th>Creators</th><th>Reports</th><th>Deals</th><th>Committed</th><th>Last report</th></tr></thead><tbody id="roster-rows"></tbody></table>
+  </section>
+  <section id="packaging" hidden>
+    <b>Receipts pricing test (Phase 7)</b>
+    <p class="muted" style="margin:2px 0 6px">Each visitor to /creators/ sees one offer: (a) Pro at $29/month, (b) free, paid by licences,
+      (c) Weekly leads at $9/month. Read it at about 300 visitors per offer: keep the offer with the best week-4 active rate and paid conversion.</p>
+    <table><thead><tr><th>Offer</th><th>Visitors</th><th>Signed up</th><th>Scanned</th><th>Week-4 active</th><th>Paid</th><th>Subscriptions</th>
+      <th>Licence fees kept</th><th>Checkout clicks</th></tr></thead><tbody id="packaging-rows"></tbody></table>
+    <p class="muted" id="packaging-note" style="margin:0"></p>
   </section>
   <details id="arabic" hidden>
     <summary id="arabic-sum">Arabic check (Gate 6)</summary>
@@ -291,6 +301,21 @@
         h('button', { class: 'copy', type: 'button', onclick: () => setLabel(x.id, x.label === 'yes' ? 'no' : 'yes') }, `Change label to ${x.label === 'yes' ? 'no' : 'yes'}`),
         x.quote ? h('p', { class: 'said', dir: 'auto', style: 'margin:4px 0' }, x.quote) : null)))) : '');
   }
+  // Receipts pricing test (packaging.py, Phase 7): the three offers side by side.
+  async function loadPackaging() {
+    try {
+      const d = await call('/api/admin/packaging');
+      const rate = (n, of) => (of ? `${n} (${Math.round(n / of * 100)}%)` : String(n));
+      $('#packaging').hidden = false;
+      $('#packaging-rows').replaceChildren(...d.arms.map((a) => h('tr', {},
+        h('td', {}, h('b', {}, `(${a.arm}) `), a.offer, a.price ? ` $${a.price}/mo` : '', a.live ? '' : h('span', { class: 'muted' }, ' · off')),
+        h('td', {}, `${a.visitors} of ${d.targetVisitors}`), h('td', {}, rate(a.signups, a.visitors)), h('td', {}, rate(a.scanned, a.signups)),
+        h('td', {}, a.eligible ? rate(a.week4, a.eligible) : '—'), h('td', {}, rate(a.paid, a.signups)),
+        h('td', {}, a.subscribed ? `${a.subscribed} · $${a.mrrUsd}/mo` : '0'), h('td', {}, `$${a.licenceKeptUsd}`), h('td', {}, String(a.intent)))));
+      $('#packaging-note').textContent = `Live offers: ${d.live.join(', ')}. Week-4 active counts accounts at least 28 days old. Preview one without being counted: /creators/?arm=a, ?arm=b or ?arm=c. `
+        + 'When one wins, set RECEIPTS_ARMS on Render to its letter and every visitor gets it.';
+    } catch {}
+  }
   async function loadEval() {
     try { evalData = await call('/api/admin/eval'); evalRender(); } catch {}
   }
@@ -352,6 +377,7 @@
       loadRosters();
       loadSeeding();
       loadEval();
+      loadPackaging();
     } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
   }
   $('#auth').addEventListener('submit', (e) => {
