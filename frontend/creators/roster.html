@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roster · Unprompted for managers</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
+    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
+    --amber-soft: oklch(0.96 0.05 80);
+    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  main { max-width: 820px; margin: 0 auto; padding: 36px 20px 60px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .top a { color: var(--ink); text-decoration: none; font-weight: 700; }
+  .top .who { font-size: 0.8125rem; color: var(--ink-2); }
+  .top .who a { font-weight: 500; color: var(--moss); margin-left: 8px; }
+  h1 { margin: 0 0 6px; font: italic 500 1.875rem/1.2 var(--serif); letter-spacing: -0.01em; }
+  .lede { margin: 0 0 24px; color: var(--ink-2); max-width: 64ch; }
+  section { margin: 0 0 18px; padding: 20px 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+  h2 { margin: 0 0 12px; font-size: 1rem; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  h2 small { font-weight: 500; color: var(--ink-2); font-size: 0.8125rem; }
+  .muted { color: var(--ink-2); font-size: 0.875rem; }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  ul.list li:first-child { border-top: 0; padding-top: 0; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 600 0.6875rem var(--mono); text-transform: uppercase; letter-spacing: 0.03em; background: var(--moss-soft); color: var(--moss); }
+  .pill.wait { background: var(--amber-soft); color: oklch(0.45 0.1 70); }
+  .pill.quiet { background: var(--line); color: var(--ink-2); }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  label { display: grid; gap: 4px; font-size: 0.8125rem; font-weight: 600; }
+  input, select, textarea { font: inherit; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+  textarea { height: auto; min-height: 150px; width: 100%; padding: 10px 12px; font-size: 0.875rem; resize: vertical; }
+  .btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.875rem var(--sans); cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; }
+  .btn.primary { background: var(--lime); border-color: transparent; }
+  .btn.small { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  .err { color: var(--coral); margin: 8px 0 0; font-size: 0.875rem; }
+  .ok { color: var(--moss); margin: 8px 0 0; font-size: 0.875rem; }
+  .creator { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .creator:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .creator h3 { margin: 0 0 8px; font-size: 0.9375rem; }
+  .brand { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--moss-soft); }
+  .brand .head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .brand blockquote { margin: 6px 0; font: italic 400 1.0625rem/1.45 var(--serif); }
+  .brand a { color: var(--moss); font-size: 0.8125rem; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  @media (max-width: 560px) { section { padding: 18px 16px; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a href="/creators/">Unprompted for managers</a><span class="who" id="who"></span></div>
+  <h1>Your roster</h1>
+  <p class="lede">Every Monday, the brands your creators mentioned on camera without a deal, with the receipt, whether that brand is paying creators right now, and a pitch draft that leads with the mention.</p>
+  <div id="app"><p class="muted">Loading…</p></div>
+</main>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const PAYING = { active: ['Paying creators now', ''], some: ['Some paid posts', 'wait'], quiet: ['No paid posts seen', 'quiet'] };
+  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+  const fmt = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K` : String(n ?? 0);
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
+    el.append(...kids.filter((k) => k != null && k !== false));
+    return el;
+  }
+  async function call(path, body) {
+    const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    return data;
+  }
+  // A button that posts, then re-renders with the answer (or shows the error next to it).
+  function act(label, path, body, cls, after) {
+    const err = h('span', { class: 'err', role: 'alert' });
+    const b = h('button', { class: `btn ${cls || ''}`, type: 'button', onclick: async () => {
+      b.disabled = true; err.textContent = '';
+      try { const out = await call(path, typeof body === 'function' ? body() : body); if (after) after(out); else render(out); }
+      catch (ex) { err.textContent = ' ' + ex.message; b.disabled = false; }
+    } }, label);
+    return h('span', {}, b, err);
+  }
+
+  function signIn() {
+    let signup = true;
+    const email = h('input', { type: 'email', required: true, autocomplete: 'email', id: 'email' });
+    const pw = h('input', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password', id: 'pw' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const submit = h('button', { class: 'btn primary' }, 'Create account');
+    const toggle = h('button', { class: 'btn', type: 'button', onclick: () => {
+      signup = !signup; submit.textContent = signup ? 'Create account' : 'Sign in';
+      toggle.textContent = signup ? 'I already have an account' : 'Create an account';
+    } }, 'I already have an account');
+    $('#app').replaceChildren(h('section', {}, h('h2', {}, 'Sign in'),
+      h('form', { onsubmit: async (e) => {
+        e.preventDefault(); err.textContent = ''; submit.disabled = true;
+        try { await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value }); load(); }
+        catch (ex) { err.textContent = ex.message; submit.disabled = false; }
+      } }, h('label', { for: 'email' }, 'Email', email), h('label', { for: 'pw' }, 'Password', pw), submit, toggle), err));
+  }
+
+  function plan(d) {
+    const msg = h('p', { class: 'ok', role: 'status' });
+    const subscribe = act(`Keep it: $${d.priceUsd}/month for up to ${d.maxCreators} creators`, '/api/rosters/subscribe', {}, d.access ? '' : 'primary',
+      (out) => { if (out.url) location.href = out.url; else msg.textContent = 'Thanks: we’ll be in touch to set it up.'; });
+    if (d.access === 'paid') return h('section', {}, h('h2', {}, 'Plan'), h('p', { class: 'muted', style: 'margin:0' }, h('span', { class: 'pill' }, 'Roster plan'), ' Reports every Monday.'));
+    if (d.access === 'pilot') return h('section', {}, h('h2', {}, 'Pilot', h('small', {}, `free until ${when(d.pilotUntil)}`)),
+      h('p', { class: 'muted', style: 'margin:0 0 10px' }, 'Reports arrive every Monday. If one leads to a deal, tell us with “We closed a deal” under that brand.'),
+      subscribe, msg);
+    const asked = h('p', { class: 'ok', role: 'status' });
+    return h('section', {}, h('h2', {}, d.hasRoster ? 'Your pilot has ended' : 'Start with a free pilot'),
+      h('p', { class: 'muted', style: 'margin:0 0 10px' }, `${d.hasRoster ? 'Subscribe to keep your Monday reports.' : 'Six free weeks for managers with 5 to 25 creators. We turn it on within a day.'}`),
+      h('div', { class: 'row' }, d.hasRoster ? null : act('Ask for a pilot', '/api/rosters/request', {}, 'primary', () => { asked.textContent = 'Asked: we’ll email you when it’s on.'; }), subscribe), asked, msg);
+  }
+
+  function creators(d) {
+    const platform = h('select', { id: 'platform' }, h('option', { value: 'tiktok' }, 'TikTok'), h('option', { value: 'instagram' }, 'Instagram'));
+    const handle = h('input', { id: 'handle', placeholder: 'creatorhandle', autocomplete: 'off' });
+    const name = h('input', { id: 'cname', placeholder: 'optional' });
+    const err = h('p', { class: 'err', role: 'alert' });
+    const form = h('form', { onsubmit: async (e) => {
+      e.preventDefault(); err.textContent = '';
+      try { render(await call('/api/rosters/creators', { platform: platform.value, handle: handle.value, name: name.value })); }
+      catch (ex) { err.textContent = ex.message; }
+    } }, h('label', { for: 'platform' }, 'Platform', platform), h('label', { for: 'handle' }, 'Handle', handle), h('label', { for: 'cname' }, 'Name', name),
+      h('button', { class: 'btn primary' }, 'Add'));
+    return h('section', {}, h('h2', {}, 'Creators', h('small', {}, `${d.creators.length} of ${d.maxCreators}`)),
+      d.creators.length ? h('ul', { class: 'list' }, ...d.creators.map((c) => h('li', {},
+        h('span', {}, h('b', {}, `@${c.handle}`), h('span', { class: 'muted' }, ` · ${c.platform === 'tiktok' ? 'TikTok' : 'Instagram'}${c.name ? ' · ' + c.name : ''}`)),
+        act('Remove', '/api/rosters/creators/remove', { id: c.id }, 'small')))) : h('p', { class: 'muted', style: 'margin:0 0 10px' }, 'Add the creators you represent.'),
+      h('div', { style: 'margin-top:12px' }, form, err));
+  }
+
+  function report(d) {
+    const run = d.canRunNow && d.creators.length ? act(d.report ? 'Run again now' : 'Run the first report now', '/api/rosters/run', {}, 'primary') : null;
+    if (!d.report) return h('section', {}, h('h2', {}, 'Reports'),
+      h('p', { class: 'muted', style: 'margin:0 0 10px' }, d.creators.length ? 'Your first report covers each creator’s recent videos; after that, only what’s new each week.' : 'Add creators, then run your first report.'), run);
+    const r = d.report, hits = r.items.filter((i) => i.brands.length);
+    return h('section', {}, h('h2', {}, 'Latest report', h('small', {}, `${when(r.createdAt)}${r.sent ? ' · emailed' : ''}`)),
+      hits.length ? null : h('p', { class: 'muted' }, 'No new unpaid brand mentions this week.'),
+      ...hits.map((i) => h('div', { class: 'creator' }, h('h3', {}, `@${i.handle} `, h('span', { class: 'muted' },
+        `· ${i.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · ${fmt(i.followers)} followers${i.first ? ' · first report' : ''}`)),
+        ...i.brands.map((b) => {
+          const [label, cls] = PAYING[b.paying] || ['Paying status unknown', 'quiet'];
+          const body = h('textarea', { 'aria-label': `Pitch to ${b.brand}` }, b.pitch.body);
+          const copied = h('span', { class: 'ok' });
+          return h('div', { class: 'brand' }, h('div', { class: 'head' }, h('b', {}, b.brand),
+            h('span', { class: 'muted' }, `${b.spoken ? `said on camera ×${b.spoken}` : `tagged ×${b.tagged}`} · ${fmt(b.views)} views`), h('span', { class: `pill ${cls}` }, label)),
+            b.quote ? h('blockquote', { dir: 'auto' }, `“${b.quote}”`) : null, h('a', { href: b.url, target: '_blank', rel: 'noopener' }, `Watch${b.at ? ' at ' + b.at : ''} ↗`),
+            h('details', {}, h('summary', {}, `Pitch draft: ${b.pitch.subject}`), body,
+              h('div', { class: 'row' }, h('button', { class: 'btn small', type: 'button', onclick: async () => {
+                try { await navigator.clipboard.writeText(`Subject: ${b.pitch.subject}\n\n${body.value}`); copied.textContent = 'Copied'; } catch { body.select(); }
+              } }, 'Copy pitch'), copied)),
+            h('div', { class: 'row' }, act('We closed a deal', '/api/rosters/deal', () => {
+              const amount = window.prompt(`Deal with ${b.brand} for @${i.handle}: amount in $ (optional)`, '');
+              return { reportId: r.id, handle: i.handle, brand: b.brand, amountUsd: amount ? Number(amount.replace(/[^0-9]/g, '')) || null : null };
+            }, 'small')));
+        }))),
+      ...r.items.filter((i) => i.error).map((i) => h('p', { class: 'err' }, `@${i.handle}: ${i.error}`)), run ? h('div', { class: 'row' }, run) : null);
+  }
+
+  function deals(d) {
+    if (!d.deals.length) return null;
+    return h('section', {}, h('h2', {}, 'Deals from reports'), h('ul', { class: 'list' }, ...d.deals.map((x) => h('li', {},
+      h('span', {}, h('b', {}, x.brand), ` × @${x.handle}${x.amountUsd ? ` · $${x.amountUsd}` : ''}`), h('span', { class: 'muted' }, when(x.createdAt))))));
+  }
+
+  function render(d) {
+    $('#app').replaceChildren(...[plan(d), d.access ? creators(d) : null, d.access ? report(d) : null, deals(d)].filter(Boolean));
+  }
+
+  async function load() {
+    try {
+      const me = await call('/api/creators/me');
+      if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
+      $('#who').replaceChildren(me.user.email, h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      render(await call('/api/rosters/mine'));
+    } catch (ex) { $('#app').replaceChildren(h('p', { class: 'err' }, ex.message)); }
+  }
+  load();
+</script>
+</body>
+</html>

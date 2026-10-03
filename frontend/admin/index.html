@@ -29,6 +29,7 @@
   .stats b { display: block; font-size: 1.125rem; }
   .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  #rosters, #seeding { overflow-x: auto; }   /* their tables scroll inside the card, not the page */
   th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
   th { font: 600 0.75rem var(--sans); letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-2); background: var(--bg); }
   tr.late td:first-child { box-shadow: inset 3px 0 0 var(--coral); }
@@ -58,6 +59,18 @@
     <ul id="claim-list" style="margin:0;padding-left:18px"></ul>
   </section>
   <ul class="stats" id="stats"></ul>
+  <section id="seeding" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
+    <b>Seeding reports (gifted creators)</b>
+    <p class="muted" style="margin:2px 0 8px">Gate 5: posters found at least 2× what the brand's own tag and code tracking had.</p>
+    <table><thead><tr><th>Brand</th><th>Contact</th><th>Gifted</th><th>Posted</th><th>On camera only</th><th>Their tracking</th><th>Multiple</th></tr></thead><tbody id="seeding-rows"></tbody></table>
+  </section>
+  <section id="rosters" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
+    <b>Roster pilots (talent managers)</b>
+    <p class="muted" style="margin:2px 0 8px">Gate 4: 1+ deal from a Monday report across the cohort, and 3+ managers committing at $99/month.</p>
+    <form id="grant" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px"><input id="grant-email" type="email" placeholder="manager@agency.com" aria-label="Manager's account email" required>
+      <input id="grant-weeks" type="number" min="1" max="52" value="6" class="num" aria-label="Pilot weeks"><button class="primary">Grant pilot</button><span id="grant-msg" class="saved" role="status"></span></form>
+    <table><thead><tr><th>Manager</th><th>Access</th><th>Creators</th><th>Reports</th><th>Deals</th><th>Committed</th><th>Last report</th></tr></thead><tbody id="roster-rows"></tbody></table>
+  </section>
   <div class="wrap" id="wrap" hidden>
     <table>
       <thead><tr><th>Age</th><th>Brand</th><th>Creator and video</th><th>Ask</th><th>Status</th><th>Creator / final $</th><th>Done</th><th>Notes</th><th></th></tr></thead>
@@ -67,7 +80,7 @@
 </main>
 <script>
   const $ = (s) => document.querySelector(s);
-  const STATUSES = ['requested', 'contacted', 'accepted', 'declined', 'live'];
+  const STATUSES = ['requested', 'contacted', 'accepted', 'declined', 'live', 'ended'];
   let token = '', list = [];
   try { token = sessionStorage.getItem('opToken') || ''; } catch {}
   function h(tag, attrs, ...kids) {
@@ -152,20 +165,51 @@
     const copyRenewal = renewalDue(r) ? h('button', { class: 'copy', type: 'button', onclick: (e) => copy(renewalMessage(r), e.currentTarget) }, 'Copy renewal note to brand') : null;
     const tr = h('tr', { class: late ? 'late' : renewalDue(r) ? 'renew' : null },
       h('td', {}, age(r.ageHours), late ? h('div', { class: 'err' }, 'over 24h') : null),
-      h('td', {}, h('b', {}, r.brand), h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
+      h('td', {}, h('b', {}, r.brand), r.renewalOf ? h('div', { class: 'saved' }, `Renewal of #${r.renewalOf}`) : null, h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
       h('td', {}, h('a', { href: r.profileUrl, target: '_blank', rel: 'noopener' }, `@${r.handle}`), ` · ${r.platform} · ${r.views.toLocaleString()} views`,
         r.claimed ? h('div', { class: 'saved' }, 'Handle claimed: they get offers by email') : null,
         h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null,
         ['requested', 'contacted'].includes(r.status) ? copyCreator : null),
       h('td', {}, `${r.days} days`, h('div', { class: 'muted' }, `~$${r.priceUsd} shown`),
+        r.brandPriceUsd !== r.priceUsd ? h('div', {}, `brand pays $${r.brandPriceUsd}`) : null, h('div', { class: 'muted' }, `creator gets $${r.creatorShareUsd}`),
         r.expiresAt ? h('div', {}, `until ${day(r.expiresAt)}`, renewalDue(r) ? h('b', {}, ` (${daysLeft(r)}d left)`) : null) : null, copyRenewal),
       h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), r.respondedVia ? h('div', { class: 'muted' }, `via ${r.respondedVia}`) : null,
         r.declineReason ? h('div', { class: 'muted' }, r.declineReason) : null, h('div', { style: 'margin-top:6px' }, status)),
       h('td', {}, creatorPrice, ' ', finalPrice),
-      h('td', {}, flags, r.adCode ? h('div', { style: 'margin-top:6px' }, 'Code: ', h('code', {}, r.adCode)) : null),
+      h('td', {}, flags, r.adCode ? h('div', { style: 'margin-top:6px' }, 'Code: ', h('code', {}, r.adCode)) : null,
+        r.paidOnline ? h('div', { class: 'saved' }, 'Paid through Stripe') : null,
+        r.transfer && r.transfer !== 'pending' ? h('div', { class: 'saved' }, `Creator paid by Stripe (${r.transfer})`) : null,
+        r.refundedAt ? h('div', { class: 'err' }, `Refunded ${day(r.refundedAt)}`) : null),
       h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
     return tr;
   }
+  function rosterRows(list) {
+    $('#rosters').hidden = false;
+    $('#roster-rows').replaceChildren(...list.map((x) => h('tr', {}, h('td', {}, x.email),
+      h('td', {}, x.access ? `${x.access}${x.access === 'pilot' ? ' until ' + day(x.pilotUntil) : ''}` : 'ended'),
+      h('td', {}, String(x.creators)), h('td', {}, String(x.reports)), h('td', {}, String(x.deals)), h('td', {}, x.committed ? 'yes' : '—'),
+      h('td', {}, day(x.lastSentAt) || '—'))));
+  }
+  async function loadSeeding() {
+    try {
+      const { watches } = await call('/api/admin/seeding');
+      $('#seeding').hidden = !watches.length;
+      $('#seeding-rows').replaceChildren(...watches.map((w) => h('tr', {}, h('td', {}, w.brand), h('td', {}, w.email), h('td', {}, String(w.gifted)),
+        h('td', {}, String(w.posted)), h('td', {}, String(w.spokenOnly)), h('td', {}, String(w.tracked)), h('td', {}, w.multiple ? `${w.multiple}×` : '—'))));
+    } catch {}
+  }
+  async function loadRosters() {
+    try { rosterRows((await call('/api/admin/rosters')).rosters); } catch {}
+  }
+  $('#grant').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('#grant-msg');
+    msg.className = 'saved'; msg.textContent = '';
+    try {
+      rosterRows((await call('/api/admin/rosters', { email: $('#grant-email').value, weeks: Number($('#grant-weeks').value) })).rosters);
+      msg.textContent = 'Granted: they were emailed.';
+    } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
+  });
   async function loadClaims() {
     try {
       const { handles } = await call('/api/admin/handles');
@@ -191,6 +235,8 @@
       $('#wrap').hidden = !requests.length;
       $('#msg').textContent = requests.length ? '' : 'No license requests yet.';
       loadClaims();
+      loadRosters();
+      loadSeeding();
     } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
   }
   $('#auth').addEventListener('submit', (e) => {

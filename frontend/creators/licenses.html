@@ -61,7 +61,8 @@
 </main>
 <script>
   const $ = (s) => document.querySelector(s);
-  const STATUS = { requested: ['Waiting for you', 'wait'], contacted: ['Waiting for you', 'wait'], accepted: ['Accepted', ''], live: ['Live', ''], declined: ['Declined', 'declined'] };
+  const STATUS = { requested: ['Waiting for you', 'wait'], contacted: ['Waiting for you', 'wait'], accepted: ['Accepted', ''], live: ['Live', ''],
+    declined: ['Declined', 'declined'], ended: ['Ended', ''] };
   const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -143,6 +144,7 @@
 
   function rules(d) {
     const min = h('input', { id: 'min', type: 'number', min: 0, step: 1, value: d.prefs.minPriceUsd ?? '', placeholder: 'none' });
+    const rate = h('input', { id: 'rate', type: 'number', min: 0, step: 1, value: d.prefs.rate30dUsd ?? '', placeholder: 'suggested' });
     const approve = h('input', { id: 'approve', class: 'wide', value: d.prefs.approveBrands.join(', '), placeholder: 'e.g. Rhode, Glossier' });
     const block = h('input', { id: 'block', class: 'wide', value: d.prefs.blockBrands.join(', '), placeholder: 'brands you never want to run ads for' });
     const weekly = h('input', { id: 'weekly', type: 'checkbox', checked: d.prefs.weeklySummary, style: 'height:auto' });
@@ -150,16 +152,34 @@
     const form = h('form', { onsubmit: async (e) => {
       e.preventDefault(); msg.textContent = ''; msg.className = 'ok';
       try {
-        render(await call('/api/licenses/prefs', { minPriceUsd: min.value === '' ? null : Number(min.value), approveBrands: brands(approve.value), blockBrands: brands(block.value), weeklySummary: weekly.checked }));
+        render(await call('/api/licenses/prefs', { minPriceUsd: min.value === '' ? null : Number(min.value), rate30dUsd: rate.value === '' ? null : Number(rate.value),
+          approveBrands: brands(approve.value), blockBrands: brands(block.value), weeklySummary: weekly.checked }));
         $('#rules-msg').textContent = 'Saved';
       } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
-    } }, h('label', { for: 'min' }, 'Minimum you’ll take ($)', min), h('label', { for: 'approve' }, 'Say yes automatically to', approve),
+    } }, h('label', { for: 'rate' }, 'Your rate for 30 days ($)', rate), h('label', { for: 'min' }, 'Minimum you’ll take ($)', min), h('label', { for: 'approve' }, 'Say yes automatically to', approve),
       h('label', { for: 'block' }, 'Always decline', block),
       h('label', { for: 'weekly', style: 'display:flex;align-items:center;gap:8px;height:40px' }, weekly, 'Weekly summary email'),
       h('button', { class: 'btn primary' }, 'Save rules'));
     return h('section', {}, h('h2', {}, 'Rules'),
-      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Optional. Offers below your minimum or from blocked brands are declined for you; brands on your yes list are accepted, and you just send the code.'),
+      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Optional. Your rate sets the price brands see for your videos (what you receive per 30 days). Offers below your minimum or from blocked brands are declined for you; brands on your yes list are accepted, and you just send the code.'),
       form, h('p', { class: 'ok', role: 'status', id: 'rules-msg' }), msg);
+  }
+
+  function payouts(d) {
+    const p = d.payouts, err = h('p', { class: 'err', role: 'alert' });
+    if (!p.online) return h('section', {}, h('h2', {}, 'Getting paid'),
+      h('p', { class: 'muted', style: 'margin:0' }, 'For now we pay your share by bank transfer or PayPal within 3 days of an ad going live. Reply to any offer email with your details.'));
+    if (p.payoutsEnabled) return h('section', {}, h('h2', {}, 'Getting paid'),
+      h('p', { class: 'muted', style: 'margin:0' }, h('span', { class: 'pill' }, 'Payouts on'), ' Your share goes to your Stripe account as soon as an ad goes live.'));
+    const country = h('select', { id: 'country' }, ...p.countries.map((c) => h('option', { value: c }, c)));
+    const go = h('button', { class: 'btn primary', type: 'button', onclick: async () => {
+      go.disabled = true; err.textContent = '';
+      try { location.href = (await call('/api/licenses/payouts/connect', { country: country.value })).url; }
+      catch (ex) { err.textContent = ex.message; go.disabled = false; }
+    } }, p.connected ? 'Finish setting up payouts' : 'Set up payouts');
+    return h('section', {}, h('h2', {}, 'Getting paid'),
+      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Get your share automatically when an ad goes live. Stripe handles your bank details; we never see them.'),
+      h('form', { onsubmit: (e) => e.preventDefault() }, p.connected ? null : h('label', { for: 'country' }, 'Bank account country', country), go), err);
   }
 
   function render(d) {
@@ -167,7 +187,7 @@
     $('#app').replaceChildren(
       h('section', {}, h('div', { class: 'money' }, h('div', {}, h('b', {}, `$${m.paidUsd}`), h('span', { class: 'muted' }, 'Paid to you')),
         h('div', {}, h('b', {}, `$${m.owedUsd}`), h('span', { class: 'muted' }, 'On its way')), h('div', {}, h('b', {}, String(m.live)), h('span', { class: 'muted' }, 'Ads live now')))),
-      offers(d), handles(d), rules(d));
+      offers(d), payouts(d), handles(d), rules(d));
   }
 
   async function load() {
@@ -175,6 +195,10 @@
       const me = await call('/api/creators/me');
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
       $('#who').replaceChildren(me.user.email, h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      if (new URLSearchParams(location.search).get('connect') === 'done') {   // back from Stripe onboarding
+        await call('/api/licenses/payouts/refresh', {}).catch(() => {});
+        history.replaceState(null, '', location.pathname);
+      }
       render(await call('/api/licenses/mine'));
     } catch (ex) { $('#app').replaceChildren(h('p', { class: 'err' }, ex.message)); }
   }

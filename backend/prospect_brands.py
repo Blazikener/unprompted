@@ -72,7 +72,7 @@ def scan_brand(b, days, platform="all"):
         clips.append({"handle": handle, "platform": r.get("platform"), "followers": followers, "views": views,
                       "kind": kind, "url": server.post_url(r), "publishedAt": (r.get("publishedAt") or "")[:10],
                       "quote": snippet(q) if q else caption[:140], "at": int(q["start"]) if q and q.get("start") is not None else None,
-                      "price": digest.license_price(views)})
+                      "price": digest.quote({"platform": r.get("platform"), "handle": handle, "views": views}, 30)})
     clips.sort(key=lambda c: (c["kind"] != "spoken", -c["views"]))
     total = (data["metadata"].get("pagination") or {}).get("totalCount", len(data["data"]["results"]))
     return {"brand": brand, "days": days, "matched": total, "clips": clips,

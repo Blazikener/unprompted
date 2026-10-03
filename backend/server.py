@@ -13,6 +13,9 @@ import sys
 import time
 import traceback
 from collections import Counter
+
+if __name__ == "__main__":  # `python3 backend/server.py`: the other modules' `import server` must get this module, not a
+    sys.modules["server"] = sys.modules[__name__]  # second copy whose ApiError the handler here wouldn't catch
 from datetime import date, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -584,6 +587,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: digest.dispatch(self))
         elif path.startswith("/api/licenses/") or path.startswith("/api/admin/handles"):
             self.api(lambda: licenses.dispatch(self))
+        elif path.startswith("/api/rosters/") or path == "/api/admin/rosters":
+            self.api(lambda: rosters.dispatch(self))
+        elif path == "/api/admin/seeding":
+            self.api(lambda: seeding.admin_route(self))
         elif path.startswith("/api/admin/"):
             self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
@@ -609,6 +616,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/offer/index.html"
             elif path in ("/creators/licenses", "/creators/licenses/"):
                 self.path = "/creators/licenses.html"
+            elif path in ("/creators/roster", "/creators/roster/"):
+                self.path = "/creators/roster.html"
             super().do_GET()
 
     def do_POST(self):
@@ -621,6 +630,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: digest.dispatch(self))
         if self.path.startswith("/api/licenses/") or self.path.startswith("/api/admin/handles"):
             return self.api(lambda: licenses.dispatch(self))
+        if self.path.startswith("/api/rosters/") or self.path == "/api/admin/rosters":
+            return self.api(lambda: rosters.dispatch(self))
         if self.path.startswith("/api/admin/"):
             return self.api(lambda: digest.admin(self))
         if not route:
@@ -683,6 +694,9 @@ sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us ba
 import creator  # noqa: E402
 import digest  # noqa: E402
 import licenses  # noqa: E402
+import payments  # noqa: E402
+import rosters  # noqa: E402
+import seeding  # noqa: E402
 
 
 def init_db():
@@ -695,6 +709,9 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS checks_user ON checks (user_id, created_at DESC)")
         db.execute(digest.SCHEMA)
         db.execute(licenses.SCHEMA)
+        db.execute(payments.SCHEMA)
+        db.execute(rosters.SCHEMA)
+        db.execute(seeding.SCHEMA)
 
 
 if __name__ == "__main__":

@@ -33,6 +33,7 @@ def clean():
         db.execute("DELETE FROM digests")
         db.execute("DELETE FROM mentions WHERE search_id IN (SELECT id FROM searches WHERE brand = 'Tim Hortons')")
         db.execute("DELETE FROM searches WHERE brand = 'Tim Hortons'")
+        db.execute("DELETE FROM creator_handles WHERE handle = 'ali'")   # verified (with rules) in the licence tests
 
 
 def video(vid, transcript, days_ago=1, caption="", handle="fan"):

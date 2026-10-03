@@ -85,7 +85,19 @@ def offer_view(r):
             "days": r["days"], "status": r["status"], "shareUsd": creator_share(r), "brandPriceUsd": brand_price(r),
             "counterUsd": r["creator_price_usd"], "adCode": r["ad_code"], "declineReason": r["decline_reason"],
             "respondedVia": r["responded_via"], "claimed": r["owner_id"] is not None, "createdAt": r["created_at"],
-            "startsAt": r["starts_at"], "expiresAt": r["expires_at"], "creatorPaidAt": r["creator_paid_at"]}
+            "startsAt": r["starts_at"], "expiresAt": r["expires_at"], "creatorPaidAt": r["creator_paid_at"],
+            "brandPaid": r["brand_paid_at"] is not None, "refunded": r["refunded_at"] is not None, "renewal": r["renewal_of"] is not None}
+
+
+def brand_quote(platform, handle, views, days):
+    """What a brand is shown for `days`: the creator's own 30-day rate grossed up by our cut when their verified handle
+    has one, else digest.license_price's rule of thumb."""
+    with connect() as db:
+        rate = db.execute("SELECT p.rate_30d_usd FROM creator_handles h JOIN creator_prefs p ON p.user_id = h.user_id"
+                          " WHERE h.platform = %s AND h.handle = lower(%s) AND h.verified_at IS NOT NULL", (platform, handle)).fetchone()
+    if rate and rate["rate_30d_usd"]:
+        return math.ceil(rate["rate_30d_usd"] * days / 30 / CREATOR_SHARE)
+    return digest.license_price(views, days)
 
 
 def load_offer(token):
@@ -129,6 +141,11 @@ def answer(token, body, via="app"):
         sql, args = "ad_code = %s, code_received_at = coalesce(code_received_at, now())", (code,)
     with connect() as db:
         db.execute("UPDATE license_requests SET " + sql + " WHERE id = %s", (*args, r["id"]))
+    import payments                             # a code on a paid licence makes it live; a decline after payment refunds
+    if action in ("accept", "counter", "decline"):
+        payments.tell_brand(r["id"], {"accept": "accepted", "counter": "countered", "decline": "declined"}[action])
+    payments.maybe_go_live(r["id"])
+    payments.refund_if_paid(r["id"])
     r = load_offer(token)
     creator.track(r["owner_id"], "offer_" + action, {"request": r["id"], "via": via})
     tell_operator(r, action)
@@ -174,6 +191,9 @@ def on_request(request_id):
         r = rule(r, "decline", "Declined by your rule: below your $%d minimum." % owner["min_price_usd"])
     elif brand in [b.lower() for b in owner["approve_brands"] or []]:
         r = rule(r, "accept", None)
+    if r["responded_via"] == "auto":
+        import payments
+        payments.tell_brand(r["id"], r["status"])
     if r["status"] != "declined":
         accepted = r["status"] == "accepted"
         notify("%s %s your video as an ad: $%d to you" % (r["brand"], "will run" if accepted else "wants to run", creator_share(r)),
@@ -266,16 +286,17 @@ def brand_list(v):
 
 
 def set_prefs(user, body):
-    m = body.get("minPriceUsd")
-    if m is not None and (not isinstance(m, int) or isinstance(m, bool) or not 0 <= m <= 1_000_000):
-        raise ApiError(400, "Minimum is whole dollars.")
+    m, rate = body.get("minPriceUsd"), body.get("rate30dUsd")
+    for v in (m, rate):
+        if v is not None and (not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= 1_000_000):
+            raise ApiError(400, "Amounts are whole dollars.")
     with connect() as db:
-        db.execute("INSERT INTO creator_prefs (user_id, min_price_usd, approve_brands, block_brands, weekly_summary)"
-                   " VALUES (%s, %s, %s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET min_price_usd = excluded.min_price_usd,"
+        db.execute("INSERT INTO creator_prefs (user_id, min_price_usd, approve_brands, block_brands, weekly_summary, rate_30d_usd)"
+                   " VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET min_price_usd = excluded.min_price_usd,"
                    " approve_brands = excluded.approve_brands, block_brands = excluded.block_brands,"
-                   " weekly_summary = excluded.weekly_summary",
+                   " weekly_summary = excluded.weekly_summary, rate_30d_usd = excluded.rate_30d_usd",
                    (user["id"], m or None, brand_list(body.get("approveBrands")), brand_list(body.get("blockBrands")),
-                    body.get("weeklySummary") is not False))
+                    body.get("weeklySummary") is not False, rate or None))
     return mine(user)
 
 
@@ -291,7 +312,8 @@ def mine(user):
     return {"handles": [handle_view(h) for h in handles], "offers": offers,
             "prefs": {"minPriceUsd": prefs["min_price_usd"] if prefs else None,
                       "approveBrands": prefs["approve_brands"] if prefs else [], "blockBrands": prefs["block_brands"] if prefs else [],
-                      "weeklySummary": prefs["weekly_summary"] if prefs else True},
+                      "weeklySummary": prefs["weekly_summary"] if prefs else True, "rate30dUsd": prefs["rate_30d_usd"] if prefs else None},
+            "payouts": payments_view(user),
             "money": {"paidUsd": paid, "owedUsd": owed, "live": sum(r["status"] == "live" for r in rows)}}
 
 
@@ -340,6 +362,11 @@ def summary(user):
                         for t, rows in sections),
                 font, e(inbox_url()), e(inbox_url())))
     return subject, body
+
+
+def payments_view(user):
+    import payments
+    return payments.connect_view(user)
 
 
 def inbox_url():
@@ -412,7 +439,9 @@ def dispatch(handler):
     if m:
         return answer(m.group(1), body)
     user = creator.require_user(handler.headers)
-    route = {"/handles": claim, "/verify": verify, "/remove": remove, "/prefs": set_prefs}.get(path)
+    import payments
+    route = {"/handles": claim, "/verify": verify, "/remove": remove, "/prefs": set_prefs, "/payouts/connect": payments.connect_onboard,
+             "/payouts/refresh": lambda u, _: payments.connect_refresh(u)}.get(path)
     if not route:
         raise ApiError(404, "Not found.")
     return route(user, body)

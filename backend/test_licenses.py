@@ -38,6 +38,7 @@ def clean(monkeypatch):
         db.execute("DELETE FROM mentions WHERE search_id IN (SELECT id FROM searches WHERE brand = 'Tim Hortons')")
         db.execute("DELETE FROM searches WHERE brand = 'Tim Hortons'")
         db.execute("DELETE FROM users WHERE email = ANY(%s)", (list(EMAILS),))
+        db.execute("DELETE FROM creator_handles WHERE handle = 'ali'")   # verified in the other licence tests
     monkeypatch.setenv("LICENSE_NOTIFY_EMAIL", "ops@u.test")
 
 
@@ -87,7 +88,8 @@ def test_offer_link_answers_without_an_account(monkeypatch, mail):
     n = len(mail)
     countered = licenses.answer(token, {"action": "counter", "price": 60})
     assert countered["status"] == "contacted" and countered["shareUsd"] == 60 and countered["brandPriceUsd"] == 71
-    assert countered["respondedVia"] == "app" and "countered: wants $60" in mail[n][1]
+    assert countered["respondedVia"] == "app" and any(to == "ops@u.test" and "countered: wants $60" in s for to, s, _ in mail[n:])
+    assert any(to == "brand@example.com" and "asked for $60 instead (you'd pay $71)" in s for to, s, _ in mail[n:])   # the brand too
     assert licenses.answer(token, {"action": "accept"})["status"] == "accepted"
     coded = licenses.answer(token, {"action": "code", "code": " SPARK-123 "})
     assert coded["adCode"] == "SPARK-123" and "sent the ad code" in mail[-1][1]
