@@ -1213,7 +1213,11 @@
       setMode(landing);
     };
     // The hero form morphs into the top bar (and back) when the screen changes.
-    if (booted && landing !== onLanding() && document.startViewTransition && !isReduced()) return document.startViewTransition(apply).updateCallbackDone;
+    if (booted && landing !== onLanding() && document.startViewTransition && !isReduced()) {
+      const vt = document.startViewTransition(apply);
+      vt.ready.catch(() => {}); vt.finished.catch(() => {});
+      return vt.updateCallbackDone;
+    }
     apply();
     return Promise.resolve();
   }
@@ -2090,7 +2094,9 @@
       };
       if (thumb && document.startViewTransition && !isReduced()) {
         thumb.style.viewTransitionName = 'evidence';
-        await document.startViewTransition(reveal).finished.catch(() => {});
+        const vt = document.startViewTransition(reveal);
+        vt.ready.catch(() => {});
+        await vt.finished.catch(() => {});
       } else reveal();
       P.frameBox.style.viewTransitionName = '';
       P.thumb = thumb;
@@ -2249,7 +2255,9 @@
     };
     if (thumb && document.startViewTransition && !isReduced()) {
       P.frameBox.style.viewTransitionName = 'evidence';
-      document.startViewTransition(hide).finished.finally(() => { thumb.style.viewTransitionName = ''; });
+      const vt = document.startViewTransition(hide);
+      vt.ready.catch(() => {});
+      vt.finished.catch(() => {}).finally(() => { thumb.style.viewTransitionName = ''; });
     } else hide();
   }
 

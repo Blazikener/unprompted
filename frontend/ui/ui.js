@@ -74,7 +74,9 @@
   // U.transition(update): animate a DOM change where supported. Never for keyboard moves.
   function transition(update) {
     if (reduced() || !document.startViewTransition) { update(); return Promise.resolve(); }
-    return document.startViewTransition(update).finished.catch(() => {});
+    const vt = document.startViewTransition(update);
+    vt.ready.catch(() => {});
+    return vt.finished.catch(() => {});
   }
 
   // ---------------------------------------------------------------- toasts

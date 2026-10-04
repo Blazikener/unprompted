@@ -99,6 +99,7 @@
   // ---- pointer: magnetic buttons, tilt cards, the trailing square cursor (Altitude)
   let cursor = null, cx = -100, cy = -100, tx = -100, ty = -100, craf = 0;
   function cursorLoop() {
+    if (!cursor) { craf = 0; return; }
     cx += (tx - cx) * 0.2; cy += (ty - cy) * 0.2;
     cursor.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0)`;
     craf = Math.abs(tx - cx) + Math.abs(ty - cy) > 0.3 ? requestAnimationFrame(cursorLoop) : 0;
@@ -111,7 +112,7 @@
       cursor.setAttribute('aria-hidden', 'true');
       document.body.append(cursor);
     }
-    if (!want && cursor) { cursor.remove(); cursor = null; }
+    if (!want && cursor) { cancelAnimationFrame(craf); craf = 0; cursor.remove(); cursor = null; }
   }
   addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return;

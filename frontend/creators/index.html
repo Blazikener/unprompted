@@ -679,7 +679,7 @@ $('#upgrade-go').onclick = async () => {
   go.setAttribute('aria-busy', 'true');
   try {
     if (S.offer.checkout) { location.href = (await api('/billing/checkout', {})).url; return; }
-    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: S.offer.plan })).user; $('#upgrade').close(); renderAccount(); toast(`You're on ${S.offer.name}`, 'ok'); if (S.scan) await openScan(S.scan.id); return; }
+    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: S.offer.plan })).user; $('#upgrade').close(); renderAccount(); toast(`You're on ${S.offer.name}`, 'ok'); if (S.scan?.id) await openScan(S.scan.id); else if (S.scan) showScan(S.scan, true); return; }
     await api('/billing/interest', { scan: S.scan ? S.scan.id : null });
     S.reserved = true; go.disabled = true; go.textContent = 'Reserved';
     upgradeMsg(reservedCopy());
