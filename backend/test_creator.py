@@ -13,6 +13,7 @@ import threading
 import time
 import urllib.request
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -410,3 +411,33 @@ def test_http_flow(base):
     with psycopg.connect(server.DB_URL) as db:
         names = [r[0] for r in db.execute("SELECT DISTINCT name FROM events").fetchall()]
     assert {"signup", "scan", "paywall", "activity", "pitch", "checkout_intent"} <= set(names)
+
+
+def test_sample_photos_use_local_static_files(base):
+    status, sample = Client(base).call("GET", "/api/creators/sample")
+    assert status == 200 and sample["sample"] and sample["source"] == "demo"
+
+    api_urls = {sample["profile"]["pfp"]}
+    api_urls.update(receipt["quote"]["frame"] for brand in sample["brands"] for receipt in brand["receipts"]
+                    if receipt.get("quote") and receipt["quote"].get("frame"))
+    assert api_urls and all(url.startswith("/demo/thumbs/") for url in api_urls)
+
+    for handle in ("maya.eats", "sami.lifts"):
+        short = handle.split(".")[0]
+        avatar = "/demo/thumbs/%s-avatar.jpg" % short
+        assert (Path(server.ROOT) / "frontend" / avatar.lstrip("/")).is_file()
+        for i, video in enumerate(demo.creator_videos("tiktok", handle)):
+            thumbnail = "/demo/thumbs/%s-%02d.jpg" % (short, i)
+            assert video["profilePictureUrl"] == avatar
+            assert video["thumbnailMediaUrl"] == thumbnail
+            assert video["frames"] and all(frame["url"] == thumbnail for frame in video["frames"])
+            assert (Path(server.ROOT) / "frontend" / thumbnail.lstrip("/")).is_file()
+
+    for url in api_urls:
+        assert (Path(server.ROOT) / "frontend" / url.lstrip("/")).is_file()
+
+    for route in ("/demo/credits.html", "/demo/credits", "/demo/credits/"):
+        with urllib.request.urlopen(base + route) as response:
+            assert response.status == 200 and b"Photo credits for the sample data" in response.read()
+    with urllib.request.urlopen(base + "/demo/thumbs/maya-00.jpg") as response:
+        assert response.status == 200 and response.headers.get_content_type() == "image/jpeg"

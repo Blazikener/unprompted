@@ -7,7 +7,6 @@ payload carries source="demo" and the UI labels it.
 import hashlib
 import os
 from datetime import date, timedelta
-from urllib.parse import quote
 
 from server import ApiError
 
@@ -16,15 +15,6 @@ HANDLES = {"maya.eats", "sami.lifts"}
 
 def active():
     return os.environ.get("DEMO_MODE") == "1" or not os.environ.get("ORIANE_API_KEY")
-
-
-def frame(label, hue):
-    svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="360" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
-           '<stop offset="0" stop-color="hsl(%d 60%% 30%%)"/><stop offset="1" stop-color="hsl(%d 70%% 12%%)"/></linearGradient></defs>'
-           '<rect width="360" height="640" fill="url(#g)"/>'
-           '<text x="24" y="600" font-family="sans-serif" font-size="26" fill="#fff" opacity=".85">%s</text></svg>'
-           % (hue, (hue + 40) % 360, label))
-    return "data:image/svg+xml;charset=utf-8," + quote(svg)
 
 
 # (days_ago, views, er%, caption, hashtags, @mentions, transcript sentences)
@@ -120,24 +110,25 @@ def creator_videos(platform, handle):
     spec = CREATORS.get(handle.lower())
     if not spec:
         raise ApiError(404, "Demo mode only knows the fixture creators: try @maya.eats or @sami.lifts.")
+    short = handle.split(".")[0]
     out = []
     for i, (days, views, er, caption, tags, mentions, sentences) in enumerate(spec["videos"]):
         vid = "demo-%s-%s-%02d" % (platform, handle, i)
         pid = str(7300000000000000000 + i * 1234567) if platform == "tiktok" else "C%s%02d" % (handle[:3].upper(), i)
+        thumbnail = "/demo/thumbs/%s-%02d.jpg" % (short, i)
         t, chunks = 0.0, []
         for s in sentences:
             chunks.append({"startSeconds": round(t, 1), "endSeconds": round(t + 2.4 + len(s) / 18, 1), "text": s})
             t += 2.4 + len(s) / 18
         out.append({
             "id": vid, "platform": platform, "platformId": pid, "profileHandle": handle, "profileDisplayName": spec["name"],
-            "profilePictureUrl": frame(spec["name"][0], spec["hue"]), "profileFollowersCount": spec["followers"],
+            "profilePictureUrl": "/demo/thumbs/%s-avatar.jpg" % short, "profileFollowersCount": spec["followers"],
             "profileVerified": spec["verified"], "publishedAt": (date.today() - timedelta(days=days)).isoformat() + "T12:00:00Z",
             "viewsCount": views, "likesCount": round(views * er / 100 * 0.9), "commentsCount": round(views * er / 100 * 0.1),
             "engagementRatePerViews": er, "caption": caption, "hashtags": tags, "mentions": [{"profileHandle": m} for m in mentions],
             "coAuthors": [], "transcript": " ".join(sentences), "transcriptChunks": chunks, "transcriptLanguage": "en",
-            "duration": round(t, 1), "thumbnailMediaUrl": frame(caption[:28], (spec["hue"] + i * 17) % 360),
-            "frames": [{"timestampSeconds": c["startSeconds"], "url": frame(caption[:28], (spec["hue"] + i * 17 + k * 9) % 360)}
-                       for k, c in enumerate(chunks)],
+            "duration": round(t, 1), "thumbnailMediaUrl": thumbnail,
+            "frames": [{"timestampSeconds": c["startSeconds"], "url": thumbnail} for c in chunks],
         })
     return out
 

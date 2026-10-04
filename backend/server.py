@@ -719,6 +719,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/creators/licenses.html"
             elif path in ("/creators/roster", "/creators/roster/"):
                 self.path = "/creators/roster.html"
+            elif path in ("/demo/credits", "/demo/credits/"):
+                self.path = "/demo/credits.html"
             super().do_GET()
 
     def do_POST(self):
