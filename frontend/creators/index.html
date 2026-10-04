@@ -7,9 +7,10 @@
 <meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with the brands that will pay: pitch them, or answer licence requests for your best videos.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
-<link rel="stylesheet" href="/ui/ui.css?v=1">
-<script src="/ui/ui.js?v=1"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=2">
+<script src="/ui/ui.js?v=2"></script>
+<script src="/ui/motion.js?v=1" defer></script>
 <style>
 @layer page {
   /* ---- top bar: on a phone the bar scrolls sideways, never the page */
@@ -24,17 +25,40 @@
 
   .avatar { width: var(--size, 40px); height: var(--size, 40px); border-radius: 50%; object-fit: cover; background: var(--surface-3); flex: none; display: block; }
 
-  /* ---- hero: one thumb, the receipt inside the first mobile screen */
-  .hero { background: var(--surface); border-bottom: 1px solid var(--border); }
-  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); grid-template-areas: "head preview" "lead preview" "form preview" "fine preview";
-               column-gap: var(--s-7); row-gap: var(--s-4); align-items: start; padding-block: var(--s-7); }
-  .hero-head { grid-area: head; display: grid; gap: var(--s-2); }
-  .hero-head h1 em { font: italic 500 1.04em/1 var(--serif); color: var(--accent); letter-spacing: -0.01em; }
-  .hero-lead { grid-area: lead; }
-  .hero-form { grid-area: form; display: grid; gap: var(--s-3); }
-  .hero-fine { grid-area: fine; }
-  .preview { grid-area: preview; }
-
+  /* ---- hero: cinema black whatever the theme (Palomino), poster type, the glass lens behind (ui/glass3d.js) */
+  .hero { position: relative; isolation: isolate; color-scheme: dark; background: #060708; color: var(--text); overflow: clip;
+          min-height: min(100svh - 64px, 1000px); display: grid; align-content: end; }
+  .glass-stage { position: absolute; inset: 0 0 0 38%; z-index: -1; margin: 0; background: #060708;
+                 -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); }
+  .glass-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+                        background: linear-gradient(90deg, #060708, transparent 30%), linear-gradient(transparent 70%, #060708); }
+  .glass-3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1200ms var(--ease-out); }
+  .glass-stage.has-3d .glass-3d { opacity: 1; }
+  .glass-stage.has-3d .glass-poster { opacity: 0; }
+  .glass-poster { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 1200ms var(--ease-out); }
+  .glass-poster i { width: min(42vh, 360px); aspect-ratio: 0.72; border-radius: 50%; opacity: 0.7; filter: blur(0.5px);
+                    background: conic-gradient(from 200deg, oklch(0.86 0.11 225), oklch(0.7 0.16 285), oklch(0.86 0.1 340), oklch(0.92 0.1 130), oklch(0.86 0.11 225));
+                    -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%); mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%);
+                    rotate: -14deg; }
+  .glass-pause { position: absolute; z-index: 2; inset-inline-end: 20px; inset-block-end: 20px; background: oklch(0 0 0 / 0.4); color: var(--text); border-color: oklch(1 0 0 / 0.24); backdrop-filter: blur(8px); }
+  .glass-pause:hover { background: oklch(0 0 0 / 0.7); border-color: oklch(1 0 0 / 0.5); }
+  .hero-in { display: grid; gap: var(--s-6); padding-block: var(--s-7) var(--s-8); }
+  .hero-top { display: flex; justify-content: space-between; gap: var(--s-4); padding-bottom: var(--s-3); border-bottom: 1px solid var(--border);
+              font: 500 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); }
+  .hero-h { font: 600 clamp(2.9rem, 0.9rem + 8.2vw, 9.6rem)/0.86 var(--display); letter-spacing: -0.055em; text-transform: uppercase; max-width: 11ch; text-wrap: balance; }
+  .hero-h .u-voice { display: block; text-transform: none; font-size: 0.86em; line-height: 0.95; letter-spacing: -0.03em; --split-delay: 250ms; }
+  .hero-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--s-6) var(--s-8); align-items: end; }
+  .hero-lead { max-width: 46ch; color: var(--text-2); }
+  .hero-form { display: grid; gap: var(--s-3); max-width: 620px; padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border);
+               background: oklch(0.14 0.005 160 / 0.62); backdrop-filter: blur(18px) saturate(1.4); box-shadow: 0 30px 80px -30px oklch(0 0 0 / 0.8), inset 0 1px 0 oklch(1 0 0 / 0.07); }
+  .hero-fine { padding-top: var(--s-2); }
+  .hero-scroll { position: absolute; inset-inline-start: 50%; bottom: 14px; translate: -50% 0; display: grid; justify-items: center; gap: 6px;
+                 font: 500 0.625rem/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3); }
+  .hero-scroll i { width: 1px; height: 28px; background: linear-gradient(var(--text-2), transparent); transform-origin: top; animation: scroll-cue 2.4s var(--ease-expo) infinite; }
+  @keyframes scroll-cue { 0% { scale: 1 0; } 45% { scale: 1 1; transform-origin: top; } 55% { transform-origin: bottom; } 100% { scale: 1 0; transform-origin: bottom; } }
+  @media (prefers-reduced-motion: reduce) { .hero-scroll i { animation: none; } }
+  :root[data-motion="reduce"] .hero-scroll i { animation: none; }
+  .preview { padding: var(--s-5); display: grid; gap: var(--s-3); }
   .scan-form { display: grid; gap: var(--s-2); }
   .scan-controls { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: stretch; }
   .scan-form .u-seg > label { height: 44px; padding: 0 18px; font-size: var(--fs-md); justify-content: center; }
@@ -57,49 +81,162 @@
   .r-chip.locked .blur { filter: blur(4px); user-select: none; }
   .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
-  .preview { padding: var(--s-4); display: grid; gap: var(--s-3); }
   .preview-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
   .preview-who { display: flex; align-items: center; gap: var(--s-3); font-size: var(--fs-sm); }
   .preview-who small { display: block; color: var(--text-2); }
   .preview-receipts { display: grid; gap: var(--s-2); }
   .preview .skel-line { display: block; height: 14px; }
 
-  @media (max-width: 860px) {
-    .hero-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "form" "preview" "fine" "lead"; padding-block: var(--s-5) var(--s-6); }
+  @media (max-width: 960px) {
+    .hero { min-height: 0; align-content: start; }
+    .glass-stage { inset: 0 0 auto 0; height: 480px; opacity: 0.85; -webkit-mask-image: none; mask-image: none; }
+    .glass-stage::after { background: linear-gradient(transparent 45%, #060708); }
+    .hero-in { padding-block: 150px var(--s-7); gap: var(--s-5); }
+    .hero-row { grid-template-columns: minmax(0, 1fr); }
+    .hero-form { order: -1; padding: var(--s-4); }
+    .hero-scroll { display: none; }
+    .glass-pause { inset-block: 16px auto; }
     .scan-form .u-seg { display: flex; width: 100%; }
     .scan-form .u-seg > label { flex: 1; }
     #scan-btn { flex-basis: 100%; }
   }
+  @media (max-width: 600px) { .hero-top .no-narrow { display: none; } }
 
-  /* ---- landing sections */
-  .band { padding-block: var(--s-7); }
-  .band + .band { border-top: 1px solid var(--border); }
-  .section-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin-bottom: var(--s-3); }
+  /* ---- landing sections: editorial grid, numbered chapters, poster headings */
+  .band { padding-block: clamp(72px, 10vw, 160px); }
+  .band .u-eyebrow { display: block; margin-bottom: var(--s-4); }
+  .band .u-mega-2 { max-width: 16ch; margin-bottom: var(--s-7); }
+  .band .u-mega-2 .u-voice { color: var(--text-2); }
+  .section-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin-bottom: var(--s-4); }
   .section-h small { color: var(--text-2); }
-  .scan-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s-3); }
-  .scan-card { display: flex; gap: var(--s-3); align-items: center; min-height: 64px; padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-3);
-               background: var(--surface); color: var(--text); text-align: start; cursor: pointer; }
-  .scan-card:hover { border-color: var(--border-strong); background: var(--surface-2); }
+  .scan-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s-3); }
+  .scan-card { display: flex; gap: var(--s-3); align-items: center; min-height: 72px; padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-4);
+               background: var(--surface); color: var(--text); text-align: start; cursor: pointer; transition: border-color var(--dur-quick) var(--ease-out), translate var(--dur-base) var(--ease-out); }
+  .scan-card:hover { border-color: var(--border-strong); translate: 0 -2px; }
   .scan-card b { display: block; }
   .scan-card small { color: var(--text-2); }
-  .how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); }
-  .how h3 { font-size: var(--fs-lg); margin-block: var(--s-2) var(--s-1); }
-  .how p { color: var(--text-2); }
-  .sides h2 { max-width: 30ch; margin-block: var(--s-2) var(--s-5); }
-  .sides h2 em { font: italic 500 1.04em/1.1 var(--serif); color: var(--accent); }
+
+  .belt { padding-block: var(--s-6); border-block: 1px solid var(--border); display: grid; gap: var(--s-4); overflow: hidden; }
+  .belt-h { text-align: center; padding-inline: var(--s-4); }
+  .belt-track ul { margin: 0; padding: 0; list-style: none; --marquee-gap: 36px; }
+  .belt-track li { font: 600 clamp(1.6rem, 1rem + 2.6vw, 3.25rem)/1 var(--display); letter-spacing: -0.04em; text-transform: uppercase; white-space: nowrap; color: var(--text); }
+  .belt-track li.star { font-size: clamp(1rem, 0.8rem + 1vw, 1.6rem); color: var(--highlight); }
+  .belt-track li:nth-child(4n+3) { font-family: var(--voice); font-style: italic; font-weight: 400; text-transform: none; color: var(--text-2); letter-spacing: -0.02em; }
+
+  .proof-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-8); align-items: center; }
+  .proof-copy .u-mega-2 { margin-bottom: var(--s-5); }
+  .proof-copy .u-lead { max-width: 44ch; color: var(--text-2); }
+  .proof-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: var(--s-7) 0 0; border-top: 1px solid var(--border); }
+  .proof-stats > div { padding: var(--s-4) var(--s-4) 0 0; display: grid; gap: var(--s-2); align-content: start; }
+  .proof-stats > div + div { padding-inline-start: var(--s-4); border-inline-start: 1px solid var(--border); }
+  .proof-stats dt { font: 500 0.6875rem/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+  .proof-stats dd { margin: 0; font: 600 var(--fs-2xl)/1 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .proof-stats > div:last-child dd { font-size: var(--fs-lg); letter-spacing: -0.02em; line-height: 1.3; }
+  .proof-card { position: relative; }
+  .proof-card::before { content: ""; position: absolute; inset: 8% 0 -6% 10%; z-index: -1; border-radius: 40px; filter: blur(60px); opacity: 0.35; background: var(--iris); }
+  :root[data-theme="light"] .proof-card::before { opacity: 0.18; }
+  .proof-card .preview { box-shadow: 0 40px 100px -40px oklch(0 0 0 / 0.7); }
+
+  /* the scroll story: a sticky stage, three steps; motion.js sets data-step and --p */
+  .story { position: relative; height: 320vh; border-top: 1px solid var(--border); }
+  .story-stage { position: sticky; top: 64px; height: calc(100svh - 64px); display: grid; align-items: center; overflow: hidden; }
+  .story-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--s-8); align-items: center; }
+  .story-steps { position: relative; margin: 0; padding: 0; list-style: none; display: grid; min-height: 22rem; }
+  .story-steps li { grid-area: 1 / 1; display: grid; align-content: start; gap: var(--s-3); opacity: 0; translate: 0 30px; pointer-events: none;
+                    transition: opacity 600ms var(--ease-out), translate 900ms var(--ease-soft); }
+  .story[data-step="0"] li:nth-child(1), .story[data-step="1"] li:nth-child(2), .story[data-step="2"] li:nth-child(3), .story:not([data-step]) li:nth-child(1) { opacity: 1; translate: 0 0; pointer-events: auto; }
+  .story-n { font: 600 clamp(5rem, 3rem + 9vw, 12rem)/0.8 var(--display); letter-spacing: -0.06em; -webkit-text-stroke: 1px var(--border-strong); color: transparent; }
+  .story-steps h3 { font: 600 var(--fs-3xl)/1 var(--display); letter-spacing: -0.04em; max-width: 14ch; }
+  .story-steps p { color: var(--text-2); font-size: var(--fs-lg); max-width: 40ch; }
+  .story-meter { margin-top: var(--s-6); height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+  .story-meter i { display: block; height: 100%; width: 100%; background: var(--text); transform-origin: left; scale: var(--p, 0) 1; }
+  .story-visual { position: relative; height: min(72vh, 620px); display: grid; place-items: center; perspective: 1400px; }
+  .sv-phone { position: absolute; width: min(270px, 52%); aspect-ratio: 9 / 18; border-radius: 34px; padding: 10px; background: #0d0f10; border: 1px solid var(--border-strong);
+              box-shadow: 0 50px 120px -40px oklch(0 0 0 / 0.9), inset 0 0 0 1px oklch(1 0 0 / 0.05); display: grid; grid-template-rows: 1fr auto; gap: 10px;
+              transition: translate 900ms var(--ease-soft), rotate 900ms var(--ease-soft), scale 900ms var(--ease-soft), opacity 600ms var(--ease-out); }
+  .sv-video { border-radius: 26px; position: relative; overflow: hidden; display: grid; align-content: end; gap: 4px; padding: 16px; color: oklch(0.97 0 0);
+              background: radial-gradient(120% 80% at 30% 20%, oklch(0.55 0.12 160), transparent 60%), radial-gradient(90% 70% at 80% 90%, oklch(0.45 0.16 290), transparent 60%), #12161a; }
+  .sv-handle { font: 600 0.8125rem var(--sans); } .sv-cap { font-size: 0.75rem; opacity: 0.75; }
+  .sv-wave { display: flex; align-items: center; justify-content: center; gap: 3px; height: 54px; }
+  .sv-wave i { width: 4px; height: calc(var(--h) * 0.5px); border-radius: 2px; background: oklch(1 0 0 / 0.25); transition: background-color 400ms var(--ease-out), scale 600ms var(--ease-soft); }
+  .story[data-step="1"] .sv-wave i:nth-child(n+12):nth-child(-n+16), .story[data-step="2"] .sv-wave i:nth-child(n+12):nth-child(-n+16) { background: var(--highlight); }
+  .story[data-step="0"] .sv-wave i { animation: sv-listen 1.1s var(--ease-in-out) infinite alternate; animation-delay: calc(var(--h) * -23ms); }
+  @keyframes sv-listen { to { scale: 1 0.45; } }
+  .sv-receipt, .sv-pitch { position: absolute; width: min(380px, 78%); display: grid; gap: 10px; padding: var(--s-5); border-radius: var(--r-4); border: 1px solid var(--border-strong);
+                           background: oklch(0.16 0.006 160 / 0.82); backdrop-filter: blur(16px); color: oklch(0.96 0.008 110); box-shadow: 0 40px 100px -40px oklch(0 0 0 / 0.9);
+                           opacity: 0; translate: 40% 10%; rotate: 6deg; transition: opacity 600ms var(--ease-out), translate 900ms var(--ease-soft), rotate 900ms var(--ease-soft); }
+  .sv-receipt q { font: italic 400 1.5rem/1.3 var(--voice); quotes: "\201C" "\201D"; }
+  .sv-receipt mark { background: var(--highlight); color: var(--on-highlight); font: normal 600 0.8em var(--sans); padding: 0 4px; border-radius: 4px; }
+  .sv-pitch p { color: oklch(0.8 0.01 160); line-height: 1.5; }
+  .sv-kind { justify-self: start; font: 600 0.6875rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 10px; border-radius: var(--r-pill); background: var(--highlight); color: var(--on-highlight); }
+  .sv-pitch .sv-kind { background: oklch(1 0 0 / 0.1); color: oklch(0.96 0 0); }
+  .sv-meta { font: 500 0.75rem/1.3 var(--mono); color: oklch(0.72 0.01 160); } .sv-meta b { color: var(--highlight); font-weight: 500; }
+  .story[data-step="1"] .sv-phone { translate: -38% 0; rotate: -6deg; scale: 0.9; }
+  .story[data-step="1"] .sv-receipt { opacity: 1; translate: 14% 4%; rotate: 2deg; }
+  .story[data-step="2"] .sv-phone { translate: -52% -6%; rotate: -10deg; scale: 0.8; opacity: 0.55; }
+  .story[data-step="2"] .sv-receipt { opacity: 1; translate: 6% -30%; rotate: -3deg; scale: 0.9; }
+  .story[data-step="2"] .sv-pitch { opacity: 1; translate: 18% 28%; rotate: 2deg; }
+  @media (max-width: 960px) {
+    .story { height: auto; }
+    .story-stage { position: static; height: auto; padding-block: clamp(72px, 10vw, 160px); }
+    .story-grid { grid-template-columns: minmax(0, 1fr); }
+    .story-steps { min-height: 0; gap: var(--s-7); }
+    .story-steps li { grid-area: auto; opacity: 1; translate: none; pointer-events: auto; }
+    .story-n { font-size: 4.5rem; }
+    .story-meter, .story-visual { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .story { height: auto; } .story-stage { position: static; height: auto; padding-block: 96px; }
+    .story-steps { min-height: 0; gap: var(--s-7); } .story-steps li { grid-area: auto; opacity: 1; translate: none; pointer-events: auto; }
+    .story-meter, .story-visual { display: none; }
+  }
+  :root[data-motion="reduce"] .story { height: auto; }
+  :root[data-motion="reduce"] .story-stage { position: static; height: auto; padding-block: 96px; }
+  :root[data-motion="reduce"] .story-steps { min-height: 0; gap: var(--s-7); }
+  :root[data-motion="reduce"] .story-steps li { grid-area: auto; opacity: 1; translate: none; pointer-events: auto; }
+  :root[data-motion="reduce"] .story-meter, :root[data-motion="reduce"] .story-visual { display: none; }
+
+  .sides { border-top: 1px solid var(--border); }
   .sides-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
-  .side { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
-  .side ul { margin: 0; padding: 0; list-style: none; color: var(--text-2); flex: 1; display: grid; gap: var(--s-2); }
+  .side { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-4); padding: var(--s-6); min-height: 100%; }
+  .side h3 { font: 600 var(--fs-2xl)/1 var(--display); letter-spacing: -0.04em; }
+  .side ul { margin: 0; padding: 0; list-style: none; color: var(--text-2); flex: 1; display: grid; gap: var(--s-3); }
+  .side li { padding-top: var(--s-3); border-top: 1px solid var(--border); }
   .side li b { color: var(--text); font-weight: 600; }
-  .sides-foot { margin-top: var(--s-4); color: var(--text-2); font-size: var(--fs-sm); }
+  .sides-foot { margin-top: var(--s-5); color: var(--text-2); font-size: var(--fs-sm); }
+  .pricing-band { border-top: 1px solid var(--border); }
   .pricing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
-  .price h3 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); font-size: var(--fs-lg); }
-  .price h3 > span { font: 600 var(--fs-xl) var(--sans); font-variant-numeric: tabular-nums; }
-  .price.pro { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
-  .price ul, .ticks { margin: var(--s-3) 0 0; padding: 0; list-style: none; color: var(--text-2); display: grid; gap: 6px; }
-  .price li, .ticks li { padding-inline-start: 18px; position: relative; }
-  .price li::before, .ticks li::before { content: ""; position: absolute; inset-inline-start: 2px; top: 0.6em; width: 8px; height: 2px; background: var(--accent); }
-  @media (max-width: 860px) { .how, .sides-grid, .pricing { grid-template-columns: minmax(0, 1fr); } .band { padding-block: var(--s-6); } }
+  .price { padding: var(--s-6); }
+  .price h3 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); font: 600 var(--fs-xl)/1 var(--display); letter-spacing: -0.03em; }
+  .price h3 > span { font: 600 var(--fs-4xl)/1 var(--display); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .price.pro { position: relative; border-color: transparent; box-shadow: none;
+               background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--iris) border-box; border: 1px solid transparent; }
+  :root[data-theme="light"] .price.pro { background: var(--surface); border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+  .price ul, .ticks { margin: var(--s-4) 0 0; padding: 0; list-style: none; color: var(--text-2); display: grid; gap: 8px; }
+  .price li, .ticks li { padding-inline-start: 20px; position: relative; }
+  .price li::before, .ticks li::before { content: ""; position: absolute; inset-inline-start: 2px; top: 0.62em; width: 9px; height: 2px; background: var(--highlight); }
+  :root[data-theme="light"] .price li::before, :root[data-theme="light"] .ticks li::before { background: var(--accent); }
+
+  /* the end card and the oversized wordmark footer (Palomino) */
+  .end { color-scheme: dark; background: #060708; color: var(--text); border-top: 1px solid var(--border); overflow: clip; padding-top: clamp(80px, 12vw, 180px); }
+  .end-in { display: grid; gap: var(--s-6); }
+  .end-h { font: 600 var(--fs-5xl)/0.9 var(--display); letter-spacing: -0.05em; text-transform: uppercase; max-width: 13ch; }
+  .end-h .u-voice { display: block; text-transform: none; }
+  .end-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-5); }
+  .end-links { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
+  .end-links a { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); } .end-links a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+  .end-word { margin: clamp(48px, 8vw, 120px) 0 0; font: 700 clamp(4rem, 23vw, 24rem)/0.74 var(--display); letter-spacing: -0.075em; text-transform: uppercase; text-align: center;
+              background: linear-gradient(oklch(0.96 0.008 110), oklch(0.96 0.008 110 / 0.06)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+  .end-fine { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); padding-block: var(--s-4); border-top: 1px solid var(--border);
+              font: 500 0.6875rem/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+
+  @media (max-width: 960px) {
+    .proof-grid, .sides-grid, .pricing { grid-template-columns: minmax(0, 1fr); }
+    .proof-grid { gap: var(--s-7); }
+    .proof-stats { grid-template-columns: minmax(0, 1fr); }
+    .proof-stats > div, .proof-stats > div + div { padding: var(--s-3) 0; border-inline-start: 0; border-bottom: 1px solid var(--border); grid-template-columns: 1fr auto; align-items: baseline; }
+    .side, .price { padding: var(--s-5); }
+  }
 
   /* ---- the report */
   .app { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--s-6); align-items: start; padding-block: var(--s-5) var(--s-8); }
@@ -192,6 +329,7 @@
 </style>
 </head>
 <body>
+<div class="m-ruler no-present" data-progress aria-hidden="true"><span data-progress-pct>000%</span></div>
 <header class="u-bar">
   <a class="u-logo" href="/creators/"><mark>Receipts</mark><small>by Unprompted</small></a>
   <span class="grow"></span>
@@ -205,14 +343,18 @@
 </header>
 
 <main id="landing">
-  <section class="hero">
-    <div class="u-container hero-grid">
-      <div class="hero-head">
-        <span class="u-eyebrow">For TikTok and Instagram creators</span>
-        <h1 class="u-h1">The brands you already talk about <em>should be paying you.</em></h1>
-      </div>
-      <p class="u-lead hero-lead">Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer the brands that want to pay to run your videos as ads.</p>
-      <div class="hero-form">
+  <section class="hero" aria-labelledby="hero-h">
+    <figure class="glass-stage" aria-label="Illustration: creator quotes drifting through a glass lens; the brand lights up as it passes">
+      <div class="glass-poster" aria-hidden="true"><i></i></div>
+      <canvas class="glass-3d" aria-hidden="true"></canvas>
+      <button class="u-btn u-btn-sm glass-pause no-present" id="glass-pause" type="button" hidden>Pause animation</button>
+    </figure>
+    <div class="u-wide hero-in">
+      <div class="hero-top" aria-hidden="true"><span>Receipts</span><span>TikTok / Instagram</span><span class="no-narrow">Brand mentions, proven</span></div>
+      <h1 class="hero-h" id="hero-h" data-split>The brands you talk about <span class="u-voice u-iris">should be paying you.</span></h1>
+      <div class="hero-row">
+        <p class="u-lead hero-lead" data-reveal>Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer the brands that want to pay to run your videos as ads.</p>
+        <div class="hero-form" data-reveal>
         <form class="scan-form" id="scan-form">
           <label class="u-label" for="handle">Your handle or profile link</label>
           <input class="u-input u-input-lg" id="handle" placeholder="@yourhandle or paste your profile link" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="go" required aria-describedby="handle-hint">
@@ -231,36 +373,85 @@
           <span class="u-progress-text" id="scan-stage" role="status" aria-live="polite"></span>
         </div>
         <div class="miss u-well" id="miss" role="status" hidden></div>
+          <div class="fine hero-fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="u-btn u-btn-ghost u-btn-sm linkish" type="button" id="sample">See a sample report</button></div>
+        </div>
       </div>
-      <div class="fine hero-fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="u-btn u-btn-ghost u-btn-sm linkish" type="button" id="sample">See a sample report</button></div>
-      <section class="preview u-card" id="preview" aria-labelledby="preview-h" aria-busy="true">
-        <div class="preview-head"><span class="u-eyebrow" id="preview-h">Sample report</span><span class="u-pill u-pill-warn">Fixture data, made up to show the format</span></div>
-        <div class="u-stack" id="preview-body" style="--gap: var(--s-3)"></div>
-      </section>
+    </div>
+    <div class="hero-scroll" aria-hidden="true"><span>Scroll</span><i></i></div>
+  </section>
+
+  <section class="belt" aria-labelledby="belt-h">
+    <h2 class="u-eyebrow belt-h" id="belt-h">Listening for 300+ brands creators get paid by, including</h2>
+    <div class="m-marquee belt-track"><ul><li>Sephora</li><li aria-hidden="true" class="star">✳</li><li>Tim Hortons</li><li aria-hidden="true" class="star">✳</li><li>Gymshark</li><li aria-hidden="true" class="star">✳</li><li>Huda Beauty</li><li aria-hidden="true" class="star">✳</li><li>Starbucks</li><li aria-hidden="true" class="star">✳</li><li>Dyson</li><li aria-hidden="true" class="star">✳</li><li>Vimto</li><li aria-hidden="true" class="star">✳</li><li>Glossier</li><li aria-hidden="true" class="star">✳</li><li>Talabat</li><li aria-hidden="true" class="star">✳</li><li>Red Bull</li><li aria-hidden="true" class="star">✳</li><li>Rare Beauty</li><li aria-hidden="true" class="star">✳</li><li>Almarai</li><li aria-hidden="true" class="star">✳</li><li>Shein</li><li aria-hidden="true" class="star">✳</li><li>Alo Yoga</li><li aria-hidden="true" class="star">✳</li><li>Chipotle</li><li aria-hidden="true" class="star">✳</li><li>Stanley</li><li aria-hidden="true" class="star">✳</li><li>Netflix</li><li aria-hidden="true" class="star">✳</li><li>Garmin</li><li aria-hidden="true" class="star">✳</li></ul><ul aria-hidden="true"><li>Sephora</li><li aria-hidden="true" class="star">✳</li><li>Tim Hortons</li><li aria-hidden="true" class="star">✳</li><li>Gymshark</li><li aria-hidden="true" class="star">✳</li><li>Huda Beauty</li><li aria-hidden="true" class="star">✳</li><li>Starbucks</li><li aria-hidden="true" class="star">✳</li><li>Dyson</li><li aria-hidden="true" class="star">✳</li><li>Vimto</li><li aria-hidden="true" class="star">✳</li><li>Glossier</li><li aria-hidden="true" class="star">✳</li><li>Talabat</li><li aria-hidden="true" class="star">✳</li><li>Red Bull</li><li aria-hidden="true" class="star">✳</li><li>Rare Beauty</li><li aria-hidden="true" class="star">✳</li><li>Almarai</li><li aria-hidden="true" class="star">✳</li><li>Shein</li><li aria-hidden="true" class="star">✳</li><li>Alo Yoga</li><li aria-hidden="true" class="star">✳</li><li>Chipotle</li><li aria-hidden="true" class="star">✳</li><li>Stanley</li><li aria-hidden="true" class="star">✳</li><li>Netflix</li><li aria-hidden="true" class="star">✳</li><li>Garmin</li><li aria-hidden="true" class="star">✳</li></ul></div>
+  </section>
+
+  <section class="band proof u-gridlines" aria-labelledby="proof-h">
+    <div class="u-wide proof-grid">
+      <div class="proof-copy">
+        <span class="u-eyebrow">001 / The receipt</span>
+        <h2 class="u-mega-2" id="proof-h" data-split>One handle in. <span class="u-voice">Proof</span> out.</h2>
+        <p class="u-lead" data-reveal>Every brand you said, tagged or featured, with the exact words, the second you said them, the frame and the views. Disclosed ads kept apart.</p>
+        <dl class="proof-stats" data-reveal="2">
+          <div><dt>Videos read per scan</dt><dd><span data-u-count="100">100</span></dd></div>
+          <div><dt>Brands we listen for</dt><dd><span data-u-count="300">300</span>+</dd></div>
+          <div><dt>Ways a brand shows up</dt><dd>Said · Tagged · Paid</dd></div>
+        </dl>
+      </div>
+      <div class="proof-card" data-reveal>
+        <section class="preview u-card" id="preview" aria-labelledby="preview-h" aria-busy="true" data-tilt>
+          <div class="preview-head"><span class="u-eyebrow" id="preview-h">Sample report</span><span class="u-pill u-pill-warn">Fixture data, made up to show the format</span></div>
+          <div class="u-stack" id="preview-body" style="--gap: var(--s-3)"></div>
+        </section>
+      </div>
     </div>
   </section>
 
   <section class="band" id="recent" hidden aria-labelledby="recent-h">
-    <div class="u-container">
-      <div class="section-h"><h2 class="u-h3" id="recent-h">Your scans</h2><small>pick up where you left off</small></div>
+    <div class="u-wide">
+      <div class="section-h"><h2 class="u-h2" id="recent-h">Your scans</h2><small>pick up where you left off</small></div>
       <div class="scan-cards" id="recent-list"></div>
     </div>
   </section>
 
-  <section class="band" aria-label="How it works">
-    <div class="u-container how">
-      <div><span class="u-eyebrow">01</span><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></div>
-      <div><span class="u-eyebrow">02</span><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></div>
-      <div><span class="u-eyebrow">03</span><h3>Get paid, two ways</h3><p>Pitch the brands paying creators now with a draft that quotes your own words, or accept a licence request when a brand wants to run one of your videos as an ad.</p></div>
+  <section class="story" data-story="3" aria-labelledby="story-h">
+    <div class="story-stage">
+      <div class="u-wide story-grid">
+        <div class="story-copy">
+          <span class="u-eyebrow">002 / How it works</span>
+          <h2 class="sr-only" id="story-h">How it works</h2>
+          <ol class="story-steps">
+            <li><b class="story-n">01</b><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></li>
+            <li><b class="story-n">02</b><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></li>
+            <li><b class="story-n">03</b><h3>Get paid, two ways</h3><p>Pitch the brands paying creators now with a draft that quotes your own words, or accept a licence request when a brand wants to run one of your videos as an ad.</p></li>
+          </ol>
+          <div class="story-meter" aria-hidden="true"><i></i></div>
+        </div>
+        <div class="story-visual" aria-hidden="true">
+          <div class="sv-phone">
+            <div class="sv-video"><span class="sv-handle">@yourhandle</span><span class="sv-cap">morning routine, no skips</span></div>
+            <div class="sv-wave"><i style="--h:22"></i><i style="--h:40"></i><i style="--h:30"></i><i style="--h:56"></i><i style="--h:34"></i><i style="--h:62"></i><i style="--h:44"></i><i style="--h:28"></i><i style="--h:70"></i><i style="--h:52"></i><i style="--h:36"></i><i style="--h:58"></i><i style="--h:80"></i><i style="--h:90"></i><i style="--h:84"></i><i style="--h:48"></i><i style="--h:30"></i><i style="--h:54"></i><i style="--h:38"></i><i style="--h:26"></i><i style="--h:46"></i><i style="--h:60"></i><i style="--h:34"></i><i style="--h:22"></i></div>
+          </div>
+          <div class="sv-receipt">
+            <span class="sv-kind">Said on camera</span>
+            <q>okay my <mark>Sol de Janeiro</mark> obsession is getting out of hand</q>
+            <span class="sv-meta"><b>▶ 0:12</b> 184K views · Sep 21</span>
+          </div>
+          <div class="sv-pitch">
+            <span class="sv-kind">Pitch draft</span>
+            <p>Hi Sol de Janeiro team, 184K people heard me say your name on Sep 21. Nobody paid for that one…</p>
+            <span class="sv-meta"><b>Paying creators now</b> · 12 sponsored posts this month</span>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <section class="band sides" aria-labelledby="sides-h">
-    <div class="u-container">
-      <span class="u-eyebrow">One place for both sides of the deal</span>
-      <h2 class="u-h2" id="sides-h">You don't have to go hunting. <em>Brands that watch their own name find you.</em></h2>
+    <div class="u-wide">
+      <span class="u-eyebrow">003 / Both sides of the deal</span>
+      <h2 class="u-mega-2" id="sides-h" data-split>You don't go hunting. <span class="u-voice">Brands that watch their own name find you.</span></h2>
       <div class="sides-grid">
-        <div class="side u-card u-card-pad">
+        <div class="side u-card u-card-pad" data-tilt>
           <h3 class="u-h3">If you create</h3>
           <ul>
             <li><b>A receipt for every mention.</b> Quote, timestamp, frame and views, on a public page you can drop into a pitch or media kit.</li>
@@ -270,7 +461,7 @@
           </ul>
           <a class="u-btn u-btn-sm" href="/creators/licenses">Open my offers</a>
         </div>
-        <div class="side u-card u-card-pad">
+        <div class="side u-card u-card-pad" data-tilt>
           <h3 class="u-h3">If you're a brand</h3>
           <ul>
             <li><b>Find the creators already saying your name.</b> Ranked as advocates, with the exact quote and frame, including mentions no caption or hashtag tool sees.</li>
@@ -285,12 +476,30 @@
     </div>
   </section>
 
-  <section class="band" aria-label="Pricing">
-    <div class="u-container pricing">
+  <section class="band pricing-band" aria-labelledby="pricing-h">
+    <div class="u-wide">
+      <span class="u-eyebrow">004 / Pricing</span>
+      <h2 class="u-mega-2" id="pricing-h" data-split>Free to find out. <span class="u-voice">Pro to get paid.</span></h2>
+      <div class="pricing" data-reveal="2">
       <div class="price u-card u-card-pad"><h3>Free <span>$0</span></h3><ul><li>1 scan a week</li><li>Top 3 brands with full receipts</li><li>Counts for everything else</li><li>Licence inbox: always free</li></ul></div>
       <div class="price pro u-card u-card-pad"><h3>Pro <span>$<span data-price>29</span>/mo</span></h3><ul><li>Every brand, every receipt</li><li>Who's paying creators for each brand right now</li><li>Pitch drafts with your rate range</li><li>50 scans a week, re-scan anytime</li></ul></div>
     </div>
+    </div>
   </section>
+
+  <footer class="end" aria-labelledby="end-h">
+    <div class="u-wide end-in">
+      <h2 class="end-h" id="end-h" data-split>You already said it. <span class="u-voice u-iris">Get the receipt.</span></h2>
+      <div class="end-row">
+        <button class="u-btn u-btn-primary u-btn-lg" type="button" id="end-scan" data-magnetic>Scan my handle, free</button>
+        <nav class="end-links" aria-label="More">
+          <a href="/creators/licenses">License offers</a><a href="/creators/roster">For managers</a><a href="/brands/">For brands</a><a href="/creators/?sample=1">Sample report</a>
+        </nav>
+      </div>
+    </div>
+    <p class="end-word" aria-hidden="true">Receipts</p>
+    <div class="u-wide end-fine"><span>Receipts by Unprompted</span><span>Creator data via Oriane and public TikTok pages</span></div>
+  </footer>
 </main>
 
 <main id="app" class="app u-container" hidden>
@@ -582,6 +791,7 @@ function showLanding() {
   document.title = 'Receipts by Unprompted'; $('#app').hidden = true; $('#landing').hidden = false; S.scan = null;
   if (!['/', '/creators/'].includes(location.pathname)) history.replaceState({}, '', '/creators/');
   if (!S.sampleData) loadPreview();
+  maybeGlass(); window.M?.refresh?.();
 }
 
 // ---- the sample report preview under the hero (fixture data, labelled as such)
@@ -817,6 +1027,34 @@ U.palette.add({ id: 'r-account', search: () => (S.user ? [{ id: 'r-signout', lab
 U.keys.add('/', newScan, { label: 'New scan' });
 
 // ---- boot
+// ---- the glass lens behind the hero (ui/glass3d.js): after load, never with motion reduced; the CSS poster otherwise
+const glassBtn = $('#glass-pause');
+let glass = null, glassLoading = false;
+const glassPausedPref = () => { try { return localStorage.getItem('glass3d') === 'paused'; } catch { return false; } };
+function syncGlassBtn() { glassBtn.textContent = (glass ? glass.paused() : glassPausedPref()) ? 'Play animation' : 'Pause animation'; }
+function maybeGlass() {
+  if (glass || glassLoading || document.readyState !== 'complete' || $('#landing').hidden || U.reduced()) return;
+  glassLoading = true;
+  import('/ui/glass3d.js?v=1')
+    .then((m) => m.start($('.glass-3d'), { reduced: U.reduced, paused: glassPausedPref() }))
+    .then((ctrl) => { glass = ctrl || null; glassBtn.hidden = !glass; syncGlassBtn(); })
+    .catch(() => {})
+    .finally(() => { glassLoading = false; });
+}
+glassBtn.addEventListener('click', () => {
+  if (!glass) return;
+  const paused = !glass.paused();
+  glass.setPaused(paused);
+  try { localStorage.setItem('glass3d', paused ? 'paused' : 'playing'); } catch {}
+  syncGlassBtn();
+});
+const glassMotion = () => { glass?.refresh(); maybeGlass(); };
+document.addEventListener('u:prefs', glassMotion);
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', glassMotion);
+const idle = (f) => (window.requestIdleCallback || ((g) => setTimeout(g, 300)))(f);
+if (document.readyState === 'complete') idle(maybeGlass); else addEventListener('load', () => idle(maybeGlass));
+$('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrollIntoView({ block: 'center', behavior: U.reduced() ? 'auto' : 'smooth' }); i.focus({ preventScroll: true }); });
+
 (async () => {
   if (/^#search=\d+$/.test(location.hash)) { location.replace('/brands/' + location.hash); return; }
   const shared = location.pathname.match(/^\/creators\/r\/([A-Za-z0-9_-]+)$/);

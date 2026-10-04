@@ -11,7 +11,7 @@
 
   // ---------------------------------------------------------------- preferences (applied before first paint)
   const PREFS_KEY = 'u-prefs';
-  const defaults = { theme: 'light', motion: 'system', keys: true, present: false, density: 'comfortable' };
+  const defaults = { theme: 'dark', motion: 'system', keys: true, present: false, density: 'comfortable' };
   let prefs = { ...defaults };
   try { prefs = { ...defaults, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') }; } catch {}
   if (new URLSearchParams(location.search).get('present') === '1') prefs.present = true;
