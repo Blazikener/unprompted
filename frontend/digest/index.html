@@ -201,10 +201,10 @@
           g.licenseUrl ? h('a', { href: g.licenseUrl }, 'License for ads') : null)
           : h('span', { class: 'end u-muted' }, g.checkedAt ? `No post yet (checked ${when(g.checkedAt)})` : 'Checked in the next weekly run'));
     })) : null;
-    box.replaceChildren(h('h2', { id: 'seeding-h' }, 'Gifted creators'), tally, h('p', { class: 'u-hint status-line', role: 'status' }),
+    box.replaceChildren(...[h('h2', { id: 'seeding-h' }, 'Gifted creators'), tally, h('p', { class: 'u-hint status-line', role: 'status' }),
       h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'gift-list' }, 'Gifting list: paste it, or upload a CSV'), text),
       h('div', { class: 'actions' }, add, h('label', { class: 'u-btn file-btn' }, 'Upload a CSV', file), clear), msg,
-      s.gifts.length > 200 ? h('p', { class: 'u-hint' }, `Showing the first 200 of ${s.gifts.length}.`) : null, list);
+      s.gifts.length > 200 ? h('p', { class: 'u-hint' }, `Showing the first 200 of ${s.gifts.length}.`) : null, list].filter(Boolean));
   }
 
   // The watch itself: status, what it listens for, freshness, and pause / resume / stop.
@@ -252,7 +252,7 @@
         ? [h('span', { class: 'u-pill u-pill-ok' }, 'New since last week'),
            dash ? h('a', { href: dash }, `${latest.newCount} new ${latest.newCount === 1 ? 'mention' : 'mentions'}`) : h('b', {}, `${latest.newCount} new`)]
         : h('span', {}, 'Nothing new since the week before'),
-        h('span', { class: 'u-muted' }, `in the check on ${when(latest.createdAt)}`), stamp(latest.createdAt)) : null,
+        h('span', { class: 'u-muted' }, `in the check on ${when(latest.createdAt)}`), stamp(latest.createdAt)) : '',
       h('dl', { class: 'facts' },
         h('dt', {}, 'Listening for'), h('dd', { dir: 'auto' }, [d.brand, ...(d.params.variants || [])].join(', ')),
         h('dt', {}, 'Where'), h('dd', {}, `${PLATFORM[d.params.platform]}, ${LANG[d.params.lang]}`),
