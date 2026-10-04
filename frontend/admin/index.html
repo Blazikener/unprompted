@@ -5,171 +5,342 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>License requests · Unprompted operator</title>
 <meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
 <style>
-  :root {
-    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
-    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
-    --amber-soft: oklch(0.96 0.05 80);
-    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+@layer page {
+  /* Operator console: dense, keyboard-first, nothing animates on repeated actions (report A1-A4). */
+  .console { width: min(1440px, 100% - 32px); margin-inline: auto; padding-block: var(--s-5) var(--s-8); --gap: var(--s-5); }
+  .console section { scroll-margin-top: 76px; }
+  .small { font-size: var(--fs-sm); }
+  .saved { color: var(--ok-text); font-size: var(--fs-sm); }
+  .err { color: var(--danger-text); }
+  #msg:empty { display: none; }
+  code { font: 400 0.9em var(--mono); background: var(--surface-3); padding: 1px 5px; border-radius: var(--r-1); overflow-wrap: anywhere; }
+  .linkish { min-height: 24px; padding: 0; border: 0; background: none; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .sec-title { font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+  .u-btn .u-kbd { margin-inline-start: 2px; }
+
+  /* page head and sign-in */
+  .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-4); }
+  .page-head .lead { font-size: var(--fs-sm); color: var(--text-2); max-width: 64ch; }
+  .auth { display: flex; gap: var(--s-2); flex: 0 1 420px; min-width: 0; }
+  .auth .u-input { min-width: 0; flex: 1; }
+
+  /* top: setup, health and everything waiting on you */
+  .top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--s-4); align-items: start; }
+  .top:not(:has(> section:not([hidden]))) { display: none; }
+  .panel { padding: var(--s-4); display: grid; gap: var(--s-2); min-width: 0; }
+  .panel > h2 { font-size: var(--fs-md); }
+  #health .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s-3) var(--s-5); }
+  #health h3 { margin-bottom: 4px; }
+  #health ul, .claim-list { margin: 0; padding-inline-start: 18px; font-size: var(--fs-sm); }
+  #health li, .claim-list li { margin: 3px 0; }
+  #health p { font-size: var(--fs-sm); }
+  #health .warn { color: var(--danger-text); font-weight: 600; }
+  #health .ok { color: var(--ok-text); }
+
+  /* the license queue */
+  .queue { display: grid; gap: var(--s-3); }
+  .queue-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-4); }
+  .queue-head h2 { font-size: var(--fs-lg); }
+  .queue .u-seg { flex-wrap: wrap; max-width: 100%; }
+  .u-seg .n { font: 500 var(--fs-xs) var(--mono); color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .overdue { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-sm); }
+  .stats { display: flex; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--r-2); background: var(--surface); overflow: hidden; }
+  .stats li { flex: 1 1 150px; border-inline-end: 1px solid var(--border); }
+  .stat { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 44px; padding: 6px 12px; border: 0; background: none;
+          text-align: start; font-size: var(--fs-xs); color: var(--text-2); }
+  .stat b { font: 600 var(--fs-md)/1.2 var(--sans); color: var(--text); font-variant-numeric: tabular-nums; }
+  button.stat { cursor: pointer; }
+  button.stat:hover { background: var(--surface-3); }
+  .wrap { border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); overflow: auto; max-height: max(320px, calc(100dvh - 200px)); }
+  .q-table { font-size: var(--fs-sm); }
+  .q-table th { height: 32px; padding: 0 10px; }
+  .q-table td { height: 36px; padding: 2px 10px; white-space: nowrap; }
+  :root[data-density="compact"] .q-table td { height: 32px; }
+  :root[data-density="roomy"] .q-table td { height: 44px; }
+  .q-table tbody tr { contain-intrinsic-size: auto 36px; scroll-margin-block: 36px 8px; transition: none; }
+  .q-table .cut { display: block; max-width: 26ch; overflow: hidden; text-overflow: ellipsis; }
+  .q-table .note { max-width: 30ch; color: var(--text-2); }
+  .q-table tr.late td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+  .q-table tr.renew td:first-child { box-shadow: inset 3px 0 0 var(--sponsored); }
+  .q-table .u-pill, .sheet-head .u-pill { height: 20px; padding: 0 8px; font-size: 0.6875rem; }
+  .u-pill-live::before { animation: none; }
+  .q-table .row-actions { display: inline-flex; gap: 4px; }
+  .q-table .u-btn-sm { --h: 26px; padding: 0 8px; font-size: var(--fs-xs); }
+  .q-table .clock-cell { font-variant-numeric: tabular-nums; }
+  .dones { display: inline-flex; gap: 8px; color: var(--text-3); }
+  .dones .on { color: var(--ok-text); }
+  .keys-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  @media (hover: none) { .q-table .row-actions { opacity: 1; } }
+  @media (max-width: 1099px) { .col-lg { display: none; } }
+  @media (max-width: 759px) {
+    .col-md, .keys-hint { display: none; }
+    .wrap { max-height: none; }
+    .u-bar { gap: var(--s-2); padding: 0 var(--s-4); }
+    .u-logo small, .kbd-hint { display: none; }
+    .auth { flex-basis: 100%; }
+    .u-btn-primary { --h: 44px; }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
-  main { max-width: 1280px; margin: 0 auto; padding: 28px 20px 60px; }
-  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-  h1 { margin: 0; font-size: 1.25rem; }
-  .muted { color: var(--ink-2); }
-  form.auth { display: flex; gap: 8px; }
-  input, select, textarea { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); }
-  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--moss); outline-offset: 1px; }
-  button { font: 600 0.8125rem var(--sans); height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); cursor: pointer; }
-  button.primary { background: var(--lime); border-color: transparent; }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
-  .stats li { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-  .stats b { display: block; font-size: 1.125rem; }
-  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-  table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-  #rosters, #seeding { overflow-x: auto; }   /* their tables scroll inside the card, not the page */
-  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-  th { font: 600 0.75rem var(--sans); letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-2); background: var(--bg); }
-  tr.late td:first-child { box-shadow: inset 3px 0 0 var(--coral); }
-  tr.renew td:first-child { box-shadow: inset 3px 0 0 oklch(0.7 0.14 70); }
-  .copy { margin-top: 6px; height: 26px; padding: 0 8px; font-size: 0.75rem; }
-  td a { color: var(--moss); }
-  .num { width: 84px; }
-  textarea { width: 100%; min-width: 180px; min-height: 52px; resize: vertical; }
-  .flags label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 600 0.6875rem var(--mono); text-transform: uppercase; background: var(--moss-soft); color: var(--moss); }
-  .pill.requested { background: var(--amber-soft); color: oklch(0.45 0.1 70); }
-  .pill.declined { background: var(--coral-soft); color: var(--coral); }
-  .saved { color: var(--moss); font-size: 0.75rem; }
-  .err { color: var(--coral); }
-  #arabic { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-  #arabic summary { font-weight: 600; cursor: pointer; }
-  #arabic table { min-width: 0; margin: 8px 0; }
-  #arabic .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
-  #arabic .card { margin: 10px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
-  #arabic .card p { margin: 6px 0; }
-  #arabic .said { font-size: 1rem; line-height: 1.7; }
-  #arabic mark { background: var(--lime); padding: 0 2px; border-radius: 3px; }
-  #arabic .errors { margin: 6px 0 0; padding-left: 18px; }
-  #arabic .errors li { margin: 6px 0; }
-  #health { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-  #health .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 20px; margin-top: 8px; }
-  #health h4 { margin: 0 0 4px; font-size: 0.8125rem; }
-  #health ul { margin: 0; padding-left: 18px; }
-  #health li { margin: 3px 0; }
-  #health .warn { color: var(--coral); font-weight: 600; }
-  #health .ok { color: var(--moss); }
-  #packaging { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow-x: auto; }
-  #packaging table { min-width: 760px; margin: 8px 0; }
+
+  /* the request sheet: opens instantly (j/k, Enter and Esc are repeated actions) */
+  .req-sheet { transition: none; max-width: 100vw; }
+  .req-sheet[open] { display: flex; }
+  .sheet-in { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; }
+  .sheet-head { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--border); }
+  .sheet-head h2 { font-size: var(--fs-lg); overflow-wrap: anywhere; }
+  .sheet-head h2:focus { outline: none; }
+  .sheet-head h2:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  #edit { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .sheet-body { flex: 1; overflow: auto; padding: var(--s-4) var(--s-5); display: grid; gap: var(--s-5); align-content: start; }
+  .sheet-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-5); border-top: 1px solid var(--border); background: var(--surface-2); }
+  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px var(--s-4); margin: 0; font-size: var(--fs-sm); }
+  .facts dt { color: var(--text-2); }
+  .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  .timeline li { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: var(--s-3); }
+  .clockline { font-size: var(--fs-sm); }
+  .edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-3); }
+  .flags { display: grid; gap: var(--s-2); margin: 0; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-2); }
+  .flags legend { padding: 0 4px; font-size: var(--fs-sm); color: var(--text-2); }
+  .changes { margin: 0; padding-inline-start: 18px; display: grid; gap: var(--s-2); font-size: var(--fs-sm); }
+
+  /* tests and pilots */
+  .analysis { display: grid; gap: var(--s-3); }
+  .analysis > h2 { font-size: var(--fs-lg); }
+  .analysis .u-tabs { overflow-x: auto; scrollbar-width: none; }
+  .analysis .u-tabs > [role="tab"] { flex: none; }
+  .tabpanel { padding-top: var(--s-2); }
+  .tabpanel > .tab-empty { display: none; }
+  .tabpanel:has(> section[hidden]) > .tab-empty { display: grid; }
+  .tabpanel section { display: grid; gap: var(--s-3); min-width: 0; }
+  .tscroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-2); background: var(--surface); }
+  .static { font-size: var(--fs-sm); }
+  .static th { position: static; height: 32px; }
+  .static td { height: 36px; white-space: nowrap; }
+  .static tbody tr { cursor: default; }
+  .row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2); }
+  .row .grow-field { flex: 1 1 320px; min-width: 0; }
+  .row .per { width: 104px; }
+  .label-card { display: grid; gap: var(--s-2); padding: var(--s-4); border: 1px solid var(--border-strong); border-radius: var(--r-3); background: var(--surface); }
+  .said { font: 400 var(--fs-lg)/1.75 var(--sans); color: var(--text); overflow-wrap: anywhere; }
+  .errors { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: var(--s-2); font-size: var(--fs-sm); }
+}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <div><h1>License requests</h1><p class="muted" style="margin:2px 0 0">Broker each one by hand: contact the creator within 24 hours, record what happens here.</p></div>
-    <form class="auth" id="auth"><input id="token" type="password" placeholder="Operator token (DIGEST_RUN_TOKEN)" aria-label="Operator token" autocomplete="off"><button class="primary">Load</button></form>
-  </header>
-  <p id="msg" class="muted" role="status"></p>
-  <section id="claims" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
-    <b>Handle claims to verify</b>
-    <p class="muted" style="margin:2px 0 8px">Instagram can't be checked automatically: verify once the code arrives by DM from the handle, or from the email in its bio.</p>
-    <ul id="claim-list" style="margin:0;padding-left:18px"></ul>
+<header class="u-bar">
+  <a class="u-logo" href="/">Un<mark>prompted</mark><small>Operator</small></a>
+  <span class="grow"></span>
+  <button class="u-btn u-btn-ghost u-btn-sm" type="button" id="open-palette">Commands <span class="kbd-hint"><kbd class="u-kbd" id="mod-key">Ctrl</kbd><kbd class="u-kbd">K</kbd></span></button>
+  <button class="u-btn u-btn-sm" type="button" id="open-settings">Display</button>
+</header>
+<main class="console u-stack">
+  <div class="page-head">
+    <div class="u-stack" style="--gap: 4px">
+      <span class="u-eyebrow">Operator console</span>
+      <h1 class="u-h2">License requests</h1>
+      <p class="lead">Broker each one by hand: contact the creator within 24 hours, record what happens here.</p>
+    </div>
+    <form class="auth" id="auth">
+      <label class="sr-only" for="token">Operator token</label>
+      <input id="token" class="u-input" type="password" placeholder="Operator token (DIGEST_RUN_TOKEN)" autocomplete="off">
+      <button class="u-btn u-btn-primary">Load</button>
+    </form>
+  </div>
+  <p id="msg" class="u-muted" role="status"></p>
+
+  <div class="top">
+    <section id="health" class="u-card panel" hidden aria-labelledby="health-sum">
+      <h2 id="health-sum">Setup and health</h2>
+      <div class="cols">
+        <div><h3 class="sec-title">Waiting on you</h3><div id="health-waiting"></div></div>
+        <div><h3 class="sec-title">Weekly jobs</h3><div id="health-weekly"></div></div>
+        <div><h3 class="sec-title">Production settings</h3><ul id="health-setup"></ul></div>
+      </div>
+    </section>
+    <section id="claims" class="u-card panel" hidden aria-labelledby="claims-h">
+      <h2 id="claims-h">Handle claims to verify</h2>
+      <p class="u-muted small">Instagram can't be checked automatically: verify once the code arrives by DM from the handle, or from the email in its bio.</p>
+      <ul id="claim-list" class="claim-list"></ul>
+    </section>
+  </div>
+
+  <section id="queue" class="queue" hidden aria-labelledby="queue-h">
+    <div class="queue-head">
+      <h2 id="queue-h">License queue</h2>
+      <div class="u-seg" role="radiogroup" aria-label="Show requests" id="filter">
+        <label><input type="radio" name="qf" value="all" checked>All <span class="n" data-n="all"></span></label>
+        <label><input type="radio" name="qf" value="requested">Waiting on you <span class="n" data-n="requested"></span></label>
+        <label><input type="radio" name="qf" value="contacted">With creator <span class="n" data-n="contacted"></span></label>
+        <label><input type="radio" name="qf" value="accepted">Accepted <span class="n" data-n="accepted"></span></label>
+        <label><input type="radio" name="qf" value="live">Live <span class="n" data-n="live"></span></label>
+        <label><input type="radio" name="qf" value="declined">Declined <span class="n" data-n="declined"></span></label>
+      </div>
+    </div>
+    <div id="overdue" class="overdue" hidden></div>
+    <ul class="stats" id="stats" aria-label="Brokering numbers"></ul>
+    <div class="wrap" id="wrap" hidden>
+      <table class="u-table q-table">
+        <caption class="sr-only">License requests. Focus a row and press Enter to open it; j and k move between rows.</caption>
+        <thead><tr><th scope="col">24-hour clock</th><th scope="col">Brand</th><th scope="col">Creator and video</th><th scope="col" class="col-md">Ask</th><th scope="col">Status</th>
+          <th scope="col" class="num col-md">Creator / final $</th><th scope="col" class="col-md">Done</th><th scope="col" class="col-lg">Notes</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div id="queue-empty" class="u-empty" hidden></div>
+    <p class="u-hint keys-hint no-present"><span><kbd class="u-kbd">J</kbd> <kbd class="u-kbd">K</kbd> move</span><span><kbd class="u-kbd">↵</kbd> open</span>
+      <span><kbd class="u-kbd">Esc</kbd> close</span><span><kbd class="u-kbd">1</kbd>–<kbd class="u-kbd">6</kbd> filter</span><span><kbd class="u-kbd">O</kbd> oldest overdue</span>
+      <span><kbd class="u-kbd">/</kbd> jump to a request</span><span><kbd class="u-kbd">?</kbd> all shortcuts</span></p>
   </section>
-  <ul class="stats" id="stats"></ul>
-  <section id="health" hidden>
-    <b id="health-sum">Setup and health</b>
-    <div class="cols">
-      <div><h4>Waiting on you</h4><div id="health-waiting"></div></div>
-      <div><h4>Weekly jobs</h4><div id="health-weekly"></div></div>
-      <div><h4>Production settings</h4><ul id="health-setup"></ul></div>
+
+  <section id="analysis" class="analysis" hidden aria-labelledby="analysis-h">
+    <h2 id="analysis-h">Tests and pilots</h2>
+    <div class="u-tabs" role="tablist" aria-label="Tests and pilots" id="tabs">
+      <button type="button" role="tab" id="t-pricing" aria-controls="p-pricing" aria-selected="true">Pricing test</button>
+      <button type="button" role="tab" id="t-arabic" aria-controls="p-arabic" aria-selected="false" tabindex="-1">Arabic check</button>
+      <button type="button" role="tab" id="t-seeding" aria-controls="p-seeding" aria-selected="false" tabindex="-1">Seeding reports</button>
+      <button type="button" role="tab" id="t-rosters" aria-controls="p-rosters" aria-selected="false" tabindex="-1">Roster pilots</button>
+    </div>
+
+    <div class="tabpanel" id="p-pricing" role="tabpanel" aria-labelledby="t-pricing" tabindex="0">
+      <section id="packaging" hidden aria-labelledby="packaging-h">
+        <h3 id="packaging-h" class="u-h3">Receipts pricing test (Phase 7)</h3>
+        <p class="u-muted small">Each visitor to /creators/ sees one offer: (a) Pro at $29/month, (b) free, paid by licences,
+          (c) Weekly leads at $9/month. Read it at about 300 visitors per offer: keep the offer with the best week-4 active rate and paid conversion.</p>
+        <div class="tscroll"><table class="u-table static"><thead><tr><th>Offer</th><th class="num">Visitors</th><th class="num">Signed up</th><th class="num">Scanned</th><th class="num">Week-4 active</th>
+          <th class="num">Paid</th><th class="num">Subscriptions</th><th class="num">Licence fees kept</th><th class="num">Checkout clicks</th></tr></thead><tbody id="packaging-rows"></tbody></table></div>
+        <p class="u-muted small" id="packaging-note"></p>
+      </section>
+      <div class="u-empty tab-empty"><b>No pricing test numbers yet.</b><span>They load with the console; if they don't appear, the packaging endpoint returned an error.</span></div>
+    </div>
+
+    <div class="tabpanel" id="p-arabic" role="tabpanel" aria-labelledby="t-arabic" tabindex="0" hidden>
+      <section id="arabic" hidden aria-labelledby="arabic-sum">
+        <h3 id="arabic-sum" class="u-h3">Arabic check (Gate 6)</h3>
+        <p class="u-muted small">Gate 6: 80%+ precision on Arabic videos with the brands' Arabic spellings, over 100+ videos labelled by hand.
+          Each brand collected is one Oriane search (40 credits) for Arabic videos from the last year; a random sample is kept to label.</p>
+        <div class="tscroll"><table class="u-table static"><thead><tr><th>Matching</th><th class="num">Labelled</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">Found, right</th>
+          <th class="num">Found, wrong</th><th class="num">Missed</th></tr></thead><tbody id="arabic-numbers"></tbody></table></div>
+        <form id="arabic-collect" class="row">
+          <div class="u-field grow-field"><label class="u-label" for="arabic-brands">Brands to collect, comma-separated</label><input id="arabic-brands" class="u-input" dir="auto"></div>
+          <div class="u-field"><label class="u-label" for="arabic-per">Videos per brand</label><input id="arabic-per" class="u-input per" type="number" min="1" max="50"></div>
+          <button class="u-btn u-btn-primary">Collect</button>
+          <span id="arabic-credits" class="u-muted small"></span>
+        </form>
+        <p id="arabic-msg" class="saved" role="status"></p>
+        <div id="arabic-card"></div>
+        <div id="arabic-brand-table"></div>
+        <div id="arabic-errors"></div>
+        <div class="row"><button type="button" id="arabic-export" class="u-btn u-btn-sm">Download labelled set (JSONL)</button>
+          <span class="u-muted small">The offline fixture for <code>python3 backend/eval_mentions.py file.jsonl</code>. It holds creators' transcripts: keep it out of the repo.</span></div>
+      </section>
+      <div class="u-empty tab-empty"><b>The Arabic check hasn't loaded.</b><span>It loads with the console; reload to try again.</span></div>
+    </div>
+
+    <div class="tabpanel" id="p-seeding" role="tabpanel" aria-labelledby="t-seeding" tabindex="0" hidden>
+      <section id="seeding" hidden aria-labelledby="seeding-h">
+        <h3 id="seeding-h" class="u-h3">Seeding reports (gifted creators)</h3>
+        <p class="u-muted small">Gate 5: posters found at least 2× what the brand's own tag and code tracking had.</p>
+        <div class="tscroll"><table class="u-table static"><thead><tr><th>Brand</th><th>Contact</th><th class="num">Gifted</th><th class="num">Posted</th><th class="num">On camera only</th>
+          <th class="num">Their tracking</th><th class="num">Multiple</th></tr></thead><tbody id="seeding-rows"></tbody></table></div>
+      </section>
+      <div class="u-empty tab-empty"><b>No seeding reports yet.</b><span>They appear here once a brand tracks the creators it gifted.</span></div>
+    </div>
+
+    <div class="tabpanel" id="p-rosters" role="tabpanel" aria-labelledby="t-rosters" tabindex="0" hidden>
+      <section id="rosters" hidden aria-labelledby="rosters-h">
+        <h3 id="rosters-h" class="u-h3">Roster pilots (talent managers)</h3>
+        <p class="u-muted small">Gate 4: 1+ deal from a Monday report across the cohort, and 3+ managers committing at $99/month.</p>
+        <form id="grant" class="row">
+          <div class="u-field grow-field"><label class="u-label" for="grant-email">Manager's account email</label><input id="grant-email" class="u-input" type="email" placeholder="manager@agency.com" required></div>
+          <div class="u-field"><label class="u-label" for="grant-weeks">Pilot weeks</label><input id="grant-weeks" class="u-input per" type="number" min="1" max="52" value="6"></div>
+          <button class="u-btn u-btn-primary">Grant pilot</button><span id="grant-msg" class="saved" role="status"></span>
+        </form>
+        <div class="tscroll"><table class="u-table static"><thead><tr><th>Manager</th><th>Access</th><th class="num">Creators</th><th class="num">Reports</th><th class="num">Deals</th><th>Committed</th>
+          <th>Last report</th></tr></thead><tbody id="roster-rows"></tbody></table></div>
+      </section>
+      <div class="u-empty tab-empty"><b>Roster pilots haven't loaded.</b><span>They load with the console; reload to try again.</span></div>
     </div>
   </section>
-  <section id="seeding" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
-    <b>Seeding reports (gifted creators)</b>
-    <p class="muted" style="margin:2px 0 8px">Gate 5: posters found at least 2× what the brand's own tag and code tracking had.</p>
-    <table><thead><tr><th>Brand</th><th>Contact</th><th>Gifted</th><th>Posted</th><th>On camera only</th><th>Their tracking</th><th>Multiple</th></tr></thead><tbody id="seeding-rows"></tbody></table>
-  </section>
-  <section id="rosters" hidden style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)">
-    <b>Roster pilots (talent managers)</b>
-    <p class="muted" style="margin:2px 0 8px">Gate 4: 1+ deal from a Monday report across the cohort, and 3+ managers committing at $99/month.</p>
-    <form id="grant" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px"><input id="grant-email" type="email" placeholder="manager@agency.com" aria-label="Manager's account email" required>
-      <input id="grant-weeks" type="number" min="1" max="52" value="6" class="num" aria-label="Pilot weeks"><button class="primary">Grant pilot</button><span id="grant-msg" class="saved" role="status"></span></form>
-    <table><thead><tr><th>Manager</th><th>Access</th><th>Creators</th><th>Reports</th><th>Deals</th><th>Committed</th><th>Last report</th></tr></thead><tbody id="roster-rows"></tbody></table>
-  </section>
-  <section id="packaging" hidden>
-    <b>Receipts pricing test (Phase 7)</b>
-    <p class="muted" style="margin:2px 0 6px">Each visitor to /creators/ sees one offer: (a) Pro at $29/month, (b) free, paid by licences,
-      (c) Weekly leads at $9/month. Read it at about 300 visitors per offer: keep the offer with the best week-4 active rate and paid conversion.</p>
-    <table><thead><tr><th>Offer</th><th>Visitors</th><th>Signed up</th><th>Scanned</th><th>Week-4 active</th><th>Paid</th><th>Subscriptions</th>
-      <th>Licence fees kept</th><th>Checkout clicks</th></tr></thead><tbody id="packaging-rows"></tbody></table>
-    <p class="muted" id="packaging-note" style="margin:0"></p>
-  </section>
-  <details id="arabic" hidden>
-    <summary id="arabic-sum">Arabic check (Gate 6)</summary>
-    <p class="muted" style="margin:6px 0">Gate 6: 80%+ precision on Arabic videos with the brands' Arabic spellings, over 100+ videos labelled by hand.
-      Each brand collected is one Oriane search (40 credits) for Arabic videos from the last year; a random sample is kept to label.</p>
-    <table><thead><tr><th>Matching</th><th>Labelled</th><th>Precision</th><th>Recall</th><th>Found, right</th><th>Found, wrong</th><th>Missed</th></tr></thead>
-      <tbody id="arabic-numbers"></tbody></table>
-    <form id="arabic-collect" class="row">
-      <input id="arabic-brands" style="flex:1 1 320px" aria-label="Brands to collect, comma-separated">
-      <input id="arabic-per" type="number" min="1" max="50" class="num" aria-label="Videos per brand">
-      <button class="primary">Collect</button><span id="arabic-credits" class="muted"></span>
-    </form>
-    <p id="arabic-msg" class="saved" role="status"></p>
-    <div id="arabic-card"></div>
-    <div id="arabic-brand-table"></div>
-    <div id="arabic-errors"></div>
-    <div class="row"><button type="button" id="arabic-export">Download labelled set (JSONL)</button>
-      <span class="muted">The offline fixture for <code>python3 backend/eval_mentions.py file.jsonl</code>. It holds creators' transcripts: keep it out of the repo.</span></div>
-  </details>
-  <div class="wrap" id="wrap" hidden>
-    <table>
-      <thead><tr><th>Age</th><th>Brand</th><th>Creator and video</th><th>Ask</th><th>Status</th><th>Creator / final $</th><th>Done</th><th>Notes</th><th></th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
 </main>
+
+<dialog id="sheet" class="u-dialog u-sheet req-sheet" aria-labelledby="sheet-title"></dialog>
+<dialog id="confirm" class="u-dialog" aria-labelledby="confirm-title">
+  <form method="dialog">
+    <div class="u-dialog-body"><h2 class="u-h3" id="confirm-title">Save these changes?</h2><div id="confirm-body" class="u-stack" style="--gap: 12px"></div></div>
+    <div class="u-dialog-foot"><button class="u-btn" value="cancel" autofocus>Cancel</button><button class="u-btn u-btn-primary" value="ok">Save changes</button></div>
+  </form>
+</dialog>
+
 <script>
+  const { h } = U;
   const $ = (s) => document.querySelector(s);
   const STATUSES = ['requested', 'contacted', 'accepted', 'declined', 'live', 'ended'];
-  let token = '', list = [];
+  const LABEL = { requested: 'Requested', contacted: 'Contacted', accepted: 'Accepted', declined: 'Declined', live: 'Live', ended: 'Ended' };
+  const OPTION = { requested: 'Requested: waiting on you', contacted: 'Contacted: with the creator', accepted: 'Accepted', declined: 'Declined', live: 'Live', ended: 'Ended' };
+  const PILL = { requested: 'u-pill-warn', contacted: '', accepted: 'u-pill-ok', declined: 'u-pill-danger', live: 'u-pill-ok u-pill-live', ended: '' };
+  const FILTERS = [['all', 'All'], ['requested', 'Waiting on you'], ['contacted', 'With creator'], ['accepted', 'Accepted'], ['live', 'Live'], ['declined', 'Declined']];
+  const NONE_IN = { requested: 'waiting on you', contacted: 'with a creator', accepted: 'accepted', live: 'live', declined: 'declined' };
+  // Reversible steps: moving between these sends no email and moves no money or rights, so it can be optimistic.
+  const SOFT = new Set(['requested', 'contacted']);
+  const EFFECT = {
+    accepted: 'The brand is emailed that the creator said yes, and asked to pay.',
+    declined: 'The brand is told the creator passed. If they paid through Stripe, the full payment is refunded.',
+    live: 'Starts the licence window and sets its end date. If the brand paid through Stripe, the creator’s share is transferred.',
+    ended: 'Ends the licence.',
+  };
+  let token = '', list = [], filter = 'all', sheetId = null, selectedId = null, health = null, tabsCtl = null, hashDone = false;
+  const drafts = new Map();          // unsaved edits per request, kept while you move between requests
   try { token = sessionStorage.getItem('opToken') || ''; } catch {}
-  function h(tag, attrs, ...kids) {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
-    el.append(...kids.filter((k) => k != null));
-    return el;
-  }
+  const kbd = (k) => h('kbd', { class: 'u-kbd' }, k);
+  const ext = (href, text, attrs = {}) => h('a', { href, target: '_blank', rel: 'noopener', ...attrs }, text);
   const day = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
-  const age = (hrs) => hrs < 48 ? `${hrs}h` : `${Math.round(hrs / 24)}d`;
+  const age = (hrs) => { const x = Math.max(0, Math.round(hrs)); return x < 48 ? `${x}h` : `${Math.round(x / 24)}d`; };
   const CREATOR_SHARE = 0.85;                 // the pilot pays creators 85% of what the brand pays
   const price = (r) => r.finalPriceUsd ?? r.creatorPriceUsd ?? r.priceUsd;
   const daysLeft = (r) => r.expiresAt ? Math.ceil((new Date(r.expiresAt) - Date.now()) / 864e5) : null;
   const renewalDue = (r) => r.status === 'live' && daysLeft(r) !== null && daysLeft(r) <= 7;
+  // The 24-hour brokering clock runs from the server's age, ticking on locally since it arrived.
+  const fresh = (r) => Object.assign(r, { _at: Date.now() });
+  const hoursOf = (r) => (r.ageHours || 0) + (Date.now() - (r._at || Date.now())) / 36e5;
+  const isLate = (r) => r.status === 'requested' && hoursOf(r) >= 24;
+  const byId = (id) => list.find((x) => x.id === id);
+  const rowById = (id) => document.querySelector(`#rows tr[data-id="${Number(id)}"]`);
+  const matches = (r) => filter === 'all' || r.status === filter;
+  function visible() {
+    const v = list.filter(matches);
+    return filter === 'requested' ? v.sort((a, b) => hoursOf(b) - hoursOf(a)) : v;   // oldest first when working the queue
+  }
   // Message drafts the operator copies into a DM or email; nothing is sent from here.
   function creatorMessage(r) {
     const ad = r.platform === 'tiktok' ? 'a TikTok Spark Ad (you authorize the video for ads and send me the code)'
-      : 'an Instagram partnership ad (you approve the brand\u2019s partnership request)';
+      : 'an Instagram partnership ad (you approve the brand’s partnership request)';
     return `Hi @${r.handle}, ${r.brand} saw your video where you talk about them (${r.videoUrl}) and wants to run it as ${ad} for ${r.days} days. `
-      + `You\u2019d get $${Math.round(price(r) * CREATOR_SHARE)}: the brand pays upfront, and you’re paid within 3 days of the ad going live. You keep ownership: paid ads only, ${r.days} days, `
+      + `You’d get $${Math.round(price(r) * CREATOR_SHARE)}: the brand pays upfront, and you’re paid within 3 days of the ad going live. You keep ownership: paid ads only, ${r.days} days, `
       + `no edits beyond captions and cropping. Details, and accept, counter or decline in one tap: ${r.offerUrl}`;
   }
   function renewalMessage(r) {
-    return `Your license for @${r.handle}\u2019s video ends on ${day(r.expiresAt)}. Want another ${r.days} days at $${price(r)}? `
-      + `Reply yes and I\u2019ll arrange it with the creator (a new ad code is needed once the old one expires).`;
+    return `Your license for @${r.handle}’s video ends on ${day(r.expiresAt)}. Want another ${r.days} days at $${price(r)}? `
+      + `Reply yes and I’ll arrange it with the creator (a new ad code is needed once the old one expires).`;
   }
-  async function copy(text, btn) {
-    try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
-    catch { window.prompt('Copy this message:', text); }
+  async function copyText(text, what, action) {
+    try { await navigator.clipboard.writeText(text); U.toast(what, action ? { action } : { kind: 'ok' }); return true; }
+    catch { window.prompt('Copy this message:', text); return false; }
   }
+  const copyCreator = (r) => copyText(creatorMessage(r), `Message to @${r.handle} copied`,
+    r.status === 'requested' ? { label: 'Mark contacted', run: () => quickStatus(r.id, 'contacted') } : null);
   async function call(path, body) {
     const res = await fetch(path, { method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     return data;
   }
+
+  // ---------------------------------------------------------------- numbers (each status count is a filter)
   function stats(list) {
     const n = (s) => list.filter((r) => r.status === s).length;
     const paid = list.filter((r) => r.brandPaidAt).reduce((t, r) => t + (r.finalPriceUsd ?? r.priceUsd), 0);
@@ -181,74 +352,346 @@
     const median = hours.length ? Math.round(hours[Math.floor((hours.length - 1) / 2)]) : null;
     const quick = list.filter((r) => ['accepted', 'live'].includes(r.status) && r.respondedAt && wait(r) <= 72).length;
     const asked = list.filter((r) => r.status !== 'requested').length;
-    $('#stats').replaceChildren(...[
-      ['Waiting on you', n('requested')], ['With creator', n('contacted')], ['Accepted', n('accepted')], ['Live', n('live')],
-      ['Declined', n('declined')], ['Renewals due (7 days)', list.filter(renewalDue).length], ['Paid by brands', `$${paid}`],
-      ['Creators to pay', owed], ['Median hours to answer', median ?? '—'],
-      ['Accepted within 72h', asked ? `${Math.round(100 * quick / asked)}%` : '—'],
-      ['Answered in app', answered.length ? `${Math.round(100 * answered.filter((r) => r.respondedVia !== 'operator').length / answered.length)}%` : '—'],
-    ].map(([k, v]) => h('li', {}, h('b', {}, String(v)), h('span', { class: 'muted' }, k))));
+    for (const [v] of FILTERS) {
+      const el = document.querySelector(`#filter [data-n="${v}"]`);
+      if (el) el.textContent = String(v === 'all' ? list.length : n(v));
+    }
+    const renewals = list.filter(renewalDue).length;
+    const plain = (label, value) => h('li', {}, h('div', { class: 'stat' }, h('b', {}, String(value)), h('span', {}, label)));
+    $('#stats').replaceChildren(
+      h('li', {}, h('button', { class: 'stat', type: 'button', 'aria-label': `Renewals due in 7 days: ${renewals}. Show live licences`,
+        onclick: () => { setFilter('live'); focusQueue(); } }, h('b', {}, String(renewals)), h('span', {}, 'Renewals due (7 days)'))),
+      plain('Paid by brands', U.fmt(paid, 'money')), plain('Creators to pay', owed), plain('Median hours to answer', median ?? '—'),
+      plain('Accepted within 72h', asked ? `${Math.round(100 * quick / asked)}%` : '—'),
+      plain('Answered in app', answered.length ? `${Math.round(100 * answered.filter((r) => r.respondedVia !== 'operator').length / answered.length)}%` : '—'));
+    overdueCallout();
   }
-  function row(r) {
-    const status = h('select', { 'aria-label': `Status for request ${r.id}` }, ...STATUSES.map((s) => h('option', { value: s, selected: s === r.status }, s)));
-    const creatorPrice = h('input', { class: 'num', type: 'number', min: 0, step: 1, value: r.creatorPriceUsd ?? '', placeholder: 'creator', 'aria-label': 'Creator price' });
-    const finalPrice = h('input', { class: 'num', type: 'number', min: 0, step: 1, value: r.finalPriceUsd ?? '', placeholder: 'final', 'aria-label': 'Final price' });
-    const flag = (key, label, at) => h('label', {}, h('input', { type: 'checkbox', 'data-key': key, checked: !!at }), label, at ? h('span', { class: 'muted' }, ` ${day(at)}`) : null);
-    const flags = h('div', { class: 'flags' }, flag('codeReceived', 'Code received', r.codeReceivedAt), flag('brandPaid', 'Brand paid', r.brandPaidAt), flag('creatorPaid', 'Creator paid', r.creatorPaidAt));
-    const note = h('textarea', { 'aria-label': 'Operator note', placeholder: 'Contact used, counter, next step…' }, r.opsNote || '');
-    const saved = h('span', { class: 'saved', role: 'status' });
-    const save = h('button', { class: 'primary', onclick: async () => {
-      save.disabled = true; saved.textContent = '';
-      const num = (el) => el.value === '' ? null : Number(el.value);
-      const body = { status: status.value, creatorPriceUsd: num(creatorPrice), finalPriceUsd: num(finalPrice), opsNote: note.value };
-      // Send only flags you changed, so setting a status still stamps what it implies (e.g. live = code received).
-      for (const box of flags.querySelectorAll('input')) if (box.checked !== box.defaultChecked) body[box.dataset.key] = box.checked;
-      try {
-        const updated = await call(`/api/admin/licenses/${r.id}`, body);
-        list = list.map((x) => x.id === r.id ? updated : x);
-        stats(list);
-        const next = row(updated);
-        tr.replaceWith(next);
-        next.querySelector('.saved').textContent = 'Saved';
-      }
-      catch (ex) { saved.textContent = ex.message; saved.className = 'err'; save.disabled = false; }
-    } }, 'Save');
-    const late = r.status === 'requested' && r.ageHours >= 24;
-    const copyCreator = h('button', { class: 'copy', type: 'button', onclick: (e) => copy(creatorMessage(r), e.currentTarget) }, 'Copy message to creator');
-    const copyRenewal = renewalDue(r) ? h('button', { class: 'copy', type: 'button', onclick: (e) => copy(renewalMessage(r), e.currentTarget) }, 'Copy renewal note to brand') : null;
-    const tr = h('tr', { class: late ? 'late' : renewalDue(r) ? 'renew' : null },
-      h('td', {}, age(r.ageHours), late ? h('div', { class: 'err' }, 'over 24h') : null),
-      h('td', {}, h('b', {}, r.brand), r.renewalOf ? h('div', { class: 'saved' }, `Renewal of #${r.renewalOf}`) : null, h('div', { class: 'muted' }, r.requestedBy), h('a', { href: r.page, target: '_blank', rel: 'noopener' }, 'Brand page ↗')),
-      h('td', {}, h('a', { href: r.profileUrl, target: '_blank', rel: 'noopener' }, `@${r.handle}`), ` · ${r.platform} · ${r.views.toLocaleString()} views`,
-        r.claimed ? h('div', { class: 'saved' }, 'Handle claimed: they get offers by email') : null,
-        h('div', {}, h('a', { href: r.videoUrl, target: '_blank', rel: 'noopener' }, 'Video ↗')), r.note ? h('div', { class: 'muted' }, `“${r.note}”`) : null,
-        ['requested', 'contacted'].includes(r.status) ? copyCreator : null),
-      h('td', {}, `${r.days} days`, h('div', { class: 'muted' }, `~$${r.priceUsd} shown`),
-        r.brandPriceUsd !== r.priceUsd ? h('div', {}, `brand pays $${r.brandPriceUsd}`) : null, h('div', { class: 'muted' }, `creator gets $${r.creatorShareUsd}`),
-        r.expiresAt ? h('div', {}, `until ${day(r.expiresAt)}`, renewalDue(r) ? h('b', {}, ` (${daysLeft(r)}d left)`) : null) : null, copyRenewal),
-      h('td', {}, h('span', { class: `pill ${r.status}` }, r.status), r.respondedVia ? h('div', { class: 'muted' }, `via ${r.respondedVia}`) : null,
-        r.declineReason ? h('div', { class: 'muted' }, r.declineReason) : null, h('div', { style: 'margin-top:6px' }, status)),
-      h('td', {}, creatorPrice, ' ', finalPrice),
-      h('td', {}, flags, r.adCode ? h('div', { style: 'margin-top:6px' }, 'Code: ', h('code', {}, r.adCode)) : null,
-        r.paidOnline ? h('div', { class: 'saved' }, 'Paid through Stripe') : null,
-        r.transfer && r.transfer !== 'pending' ? h('div', { class: 'saved' }, `Creator paid by Stripe (${r.transfer})`) : null,
-        r.refundedAt ? h('div', { class: 'err' }, `Refunded ${day(r.refundedAt)}`) : null),
-      h('td', {}, note), h('td', {}, save, h('div', {}, saved)));
+  function overdueCallout() {
+    const late = list.filter(isLate).length, el = $('#overdue');
+    el.hidden = !late;
+    el.replaceChildren(...(late ? [h('span', { class: 'u-pill u-pill-danger' }, `${late} overdue`),
+      h('span', {}, `${late === 1 ? 'A creator has' : 'Creators have'} waited over 24 hours for you to get in touch.`),
+      h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: nextOverdue }, 'Open the oldest', kbd('O'))] : []));
+  }
+
+  // ---------------------------------------------------------------- the queue
+  function clockCell(r) {
+    const hrs = hoursOf(r);
+    const since = (iso, label) => h('span', { title: iso ? `${label} ${new Date(iso).toLocaleString()}` : null }, iso ? U.ago(iso) : `${age(hrs)} ago`);
+    if (r.status === 'requested') {
+      if (hrs >= 24) return [since(r.createdAt, 'Requested'), ' ', h('span', { class: 'u-pill u-pill-danger' }, `Overdue ${age(Math.max(1, hrs - 24))}`)];
+      return [since(r.createdAt, 'Requested'), ' ', h('span', { class: hrs >= 20 ? 'u-pill u-pill-warn' : 'u-stamp' }, `${Math.max(1, Math.ceil(24 - hrs))}h left`)];
+    }
+    if (r.status === 'contacted' && r.contactedAt) return [h('span', { class: 'u-muted' }, 'contacted '), since(r.contactedAt, 'Contacted')];
+    return h('span', { class: 'u-muted' }, since(r.createdAt, 'Requested'));
+  }
+  function priceCell(r) {
+    const c = r.creatorPriceUsd, f = r.finalPriceUsd;
+    if (c == null && f == null) return h('span', { class: 'u-muted', title: 'No counter or final price yet' }, 'not set');
+    return `${c == null ? '–' : '$' + c} / ${f == null ? '–' : '$' + f}`;
+  }
+  function doneCell(r) {
+    const tick = (at, label, full) => h('span', { class: at ? 'on' : null, title: `${full}: ${at ? day(at) : 'not yet'}` }, at ? '✓ ' : '– ', label);
+    return h('span', { class: 'dones' }, tick(r.codeReceivedAt, 'Code', 'Code received'), tick(r.brandPaidAt, 'Brand', 'Brand paid'), tick(r.creatorPaidAt, 'Creator', 'Creator paid'));
+  }
+  function rowEl(r) {
+    const late = isLate(r), renew = renewalDue(r);
+    const views = r.views != null ? ext(r.videoUrl, `${U.fmt(r.views, 'compact')} views`, { title: `${U.fmt(r.views)} views: open the video` })
+      : ext(r.videoUrl, 'views unavailable', { title: 'Open the video' });
+    const tr = h('tr', { 'data-u-item': '', 'data-id': r.id, tabindex: -1, class: [late ? 'late' : '', renew ? 'renew' : ''].filter(Boolean).join(' ') || null,
+                         'aria-selected': String(r.id === selectedId) },
+      h('td', { class: 'clock-cell' }, clockCell(r)),
+      h('td', {}, h('span', { class: 'cut', dir: 'auto' }, h('b', {}, h('bdi', {}, r.brand)), r.renewalOf ? h('span', { class: 'u-muted' }, ` · renews #${r.renewalOf}`) : null)),
+      h('td', {}, h('span', { class: 'cut' }, ext(r.profileUrl, h('bdi', {}, `@${r.handle}`)), h('span', { class: 'u-muted' }, ` · ${U.PLATFORM[r.platform] || r.platform} · `), views,
+        r.claimed ? h('span', { class: 'u-muted', title: 'Handle claimed: they get offers by email' }, ' · claimed') : null)),
+      h('td', { class: 'col-md' }, `${r.days} days`, h('span', { class: 'u-computed' }, ` · ${U.fmt(r.brandPriceUsd, 'money')}`)),
+      h('td', {}, h('span', { class: `u-pill ${PILL[r.status] || ''}` }, LABEL[r.status] || r.status),
+        renew ? [' ', h('span', { class: 'u-pill u-pill-warn' }, `Renew · ${daysLeft(r)}d`)] : null),
+      h('td', { class: 'num col-md' }, priceCell(r)),
+      h('td', { class: 'col-md' }, doneCell(r)),
+      h('td', { class: 'col-lg' }, drafts.has(r.id) ? h('span', { class: 'u-pill u-pill-warn' }, 'Unsaved edits')
+        : r.opsNote ? h('span', { class: 'cut note', dir: 'auto', title: r.opsNote }, r.opsNote) : h('span', { class: 'u-muted' }, '—')),
+      h('td', {}, h('span', { class: 'row-actions' },
+        ['requested', 'contacted'].includes(r.status) ? h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => copyCreator(r) }, 'Copy message') : null,
+        r.status === 'requested' ? h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => quickStatus(r.id, 'contacted') }, 'Mark contacted') : null,
+        h('button', { class: 'u-btn u-btn-sm u-btn-ghost', type: 'button', 'aria-label': `Open request ${r.id}`, onclick: () => openRequest(r.id) }, 'Open'))));
+    tr.addEventListener('click', (e) => { if (!e.target.closest('a, button, input, select, textarea, label')) openRequest(r.id); });
+    // Enter and Space on a link or button inside the row act on that control, not the row.
+    tr.addEventListener('keydown', (e) => { if (e.target !== tr && (e.key === 'Enter' || e.key === ' ')) e.stopPropagation(); });
     return tr;
   }
+  function renderRows() {
+    const shown = visible();
+    const rows = shown.map(rowEl);
+    const sel = rows.find((tr) => Number(tr.dataset.id) === selectedId) || rows[0];
+    if (sel) sel.tabIndex = 0;
+    $('#rows').replaceChildren(...rows);
+    $('#wrap').hidden = !shown.length;
+    const empty = $('#queue-empty');
+    empty.hidden = !!shown.length;
+    empty.replaceChildren(...(shown.length ? [] : list.length
+      ? [h('b', {}, `No requests ${NONE_IN[filter] || 'here'}.`), h('span', {}, `${list.length} request${list.length === 1 ? '' : 's'} in all.`),
+         h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => setFilter('all') }, 'Show all')]
+      : [h('b', {}, 'No license requests yet.'), h('span', {}, 'They arrive when a brand asks to license a video from its weekly report. Each one starts a 24-hour clock to contact the creator.')]));
+  }
+  // Replace one request everywhere it shows, without re-rendering the whole table (keeps focus where it was).
+  function putRequest(r) {
+    list = list.map((x) => (x.id === r.id ? r : x));
+    stats(list);
+    const old = rowById(r.id);
+    if (old) {
+      const hadFocus = old.contains(document.activeElement);
+      if (matches(r)) {
+        const next = rowEl(r);
+        next.tabIndex = old.tabIndex;
+        old.replaceWith(next);
+        if (hadFocus) next.focus({ preventScroll: true });
+      } else {
+        const sib = old.nextElementSibling || old.previousElementSibling;
+        old.remove();
+        if (sib && (hadFocus || old.tabIndex === 0)) { sib.tabIndex = 0; if (hadFocus) sib.focus({ preventScroll: true }); }
+        if (!sib) renderRows();
+      }
+    } else if (matches(r)) renderRows();
+    if (sheetId === r.id && $('#sheet').open) renderSheet(r);
+    return r;
+  }
+  function setFilter(f) {
+    const input = document.querySelector(`#filter input[value="${f}"]`);
+    if (input) input.checked = true;
+    filter = f;
+    renderRows();
+  }
+  $('#filter').addEventListener('change', (e) => { if (e.target.name === 'qf') { filter = e.target.value; renderRows(); } });
+  const roving = U.rovingList($('#rows'), { item: 'tr[data-u-item]', onOpen: (tr) => openRequest(Number(tr.dataset.id)) });
+  function focusQueue() {
+    const rows = [...document.querySelectorAll('#rows tr[data-u-item]')];
+    if (!rows.length) return;
+    const tr = rowById(selectedId);
+    roving.focusAt(Math.max(0, rows.indexOf(tr)));
+  }
+  function markSelected(id) {
+    selectedId = id;
+    for (const tr of document.querySelectorAll('#rows tr[data-u-item]')) {
+      const on = Number(tr.dataset.id) === id;
+      tr.setAttribute('aria-selected', String(on));
+      tr.tabIndex = on ? 0 : -1;
+    }
+  }
+  function nextOverdue() {
+    const late = list.filter(isLate).sort((a, b) => hoursOf(b) - hoursOf(a));
+    if (!late.length) { U.toast('Nothing is overdue.', { kind: 'ok' }); return; }
+    if (filter !== 'requested') setFilter('requested');
+    openRequest(late[0].id);
+  }
+
+  // Reversible status steps apply at once, with Undo; anything touching money or rights goes through Save and a dialog.
+  function quickStatus(id, to) {
+    const before = byId(id);
+    if (!before || before.status === to) return Promise.resolve();
+    if (!(SOFT.has(before.status) && SOFT.has(to))) { openRequest(id); return Promise.resolve(); }
+    const from = before.status;
+    const setDraft = (s) => { const d = drafts.get(id); if (d) d.status = s; };
+    setDraft(to);
+    return U.optimistic({
+      apply: () => putRequest({ ...before, status: to }),
+      send: async () => putRequest(fresh(await call(`/api/admin/licenses/${id}`, { status: to }))),
+      revert: () => { setDraft(from); putRequest(before); },
+      done: `@${before.handle} for ${before.brand}: ${to === 'contacted' ? 'marked contacted' : 'back to waiting on you'}`,
+      undo: () => quickStatus(id, from),
+    }).catch(() => {});
+  }
+
+  // ---------------------------------------------------------------- the request sheet (full editor)
+  const sheet = $('#sheet');
+  function readForm(form) {
+    const q = (s) => form.querySelector(s);
+    return { status: q('#f-status').value, creatorPrice: q('#f-creator').value, finalPrice: q('#f-final').value, note: q('#f-note').value,
+             flags: Object.fromEntries([...form.querySelectorAll('input[data-key]')].map((b) => [b.dataset.key, b.checked])) };
+  }
+  const original = (r) => ({ status: r.status, creatorPrice: r.creatorPriceUsd == null ? '' : String(r.creatorPriceUsd), finalPrice: r.finalPriceUsd == null ? '' : String(r.finalPriceUsd),
+                             note: r.opsNote || '', flags: { codeReceived: !!r.codeReceivedAt, brandPaid: !!r.brandPaidAt, creatorPaid: !!r.creatorPaidAt } });
+  function stashDraft(r, form) {
+    const f = readForm(form), had = drafts.has(r.id);
+    if (JSON.stringify(f) === JSON.stringify(original(r))) drafts.delete(r.id); else drafts.set(r.id, f);
+    if (had !== drafts.has(r.id)) {
+      const old = rowById(r.id);
+      if (old) { const next = rowEl(r); next.tabIndex = old.tabIndex; old.replaceWith(next); }
+    }
+  }
+  function changesOf(r, body) {
+    const out = [], money = (v) => (v == null ? 'none' : `$${v}`);
+    if (body.status !== r.status) out.push({ what: `Status: ${LABEL[r.status]} → ${LABEL[body.status]}`, why: EFFECT[body.status] || '', serious: !(SOFT.has(r.status) && SOFT.has(body.status)) });
+    if (body.creatorPriceUsd !== (r.creatorPriceUsd ?? null)) out.push({ what: `Creator price: ${money(r.creatorPriceUsd)} → ${money(body.creatorPriceUsd)}`, why: 'Changes what the brand pays and what the creator gets.', serious: true });
+    if (body.finalPriceUsd !== (r.finalPriceUsd ?? null)) out.push({ what: `Final price: ${money(r.finalPriceUsd)} → ${money(body.finalPriceUsd)}`, why: 'This is what the brand pays.', serious: true });
+    if ('brandPaid' in body) out.push({ what: body.brandPaid ? 'Mark the brand as paid' : 'Clear “brand paid”', why: body.brandPaid ? 'Only once the money has arrived.' : '', serious: true });
+    if ('creatorPaid' in body) out.push({ what: body.creatorPaid ? 'Mark the creator as paid' : 'Clear “creator paid”', why: body.creatorPaid ? 'Only once their share has gone out, by hand or through Stripe.' : '', serious: true });
+    if ('codeReceived' in body) out.push({ what: body.codeReceived ? 'Mark the ad code received' : 'Clear “code received”', why: '', serious: false });
+    const paidAfter = 'brandPaid' in body ? body.brandPaid : !!r.brandPaidAt, codeAfter = 'codeReceived' in body ? body.codeReceived : !!r.codeReceivedAt;
+    if (body.status === 'accepted' && paidAfter && codeAfter && (body.status !== r.status || 'brandPaid' in body || 'codeReceived' in body)) {
+      out.push({ what: 'This takes the licence live', why: 'Paid with the code in: the window starts, the brand gets the code, and the creator is paid through Stripe if they’ve connected payouts.', serious: true });
+    }
+    if ((body.opsNote || '').trim() !== (r.opsNote || '')) out.push({ what: 'Update the note', why: '', serious: false });
+    return out;
+  }
+  function confirmChanges(r, changes) {
+    const dlg = $('#confirm');
+    $('#confirm-title').textContent = `Save these changes to request #${r.id}?`;
+    $('#confirm-body').replaceChildren(
+      h('p', { class: 'u-muted small' }, h('bdi', {}, r.brand), ' · ', h('bdi', {}, `@${r.handle}`), ` · the brand price is ${U.fmt(r.brandPriceUsd, 'money')} before this change`),
+      h('ul', { class: 'changes' }, ...changes.map((c) => h('li', {}, h('b', {}, c.what), c.why ? h('div', { class: 'u-muted' }, c.why) : null))),
+      h('p', { class: 'u-hint' }, 'Money or rights move here, so this waits for the server. Nothing is saved until you confirm.'));
+    dlg.returnValue = '';
+    dlg.showModal();
+    return new Promise((resolve) => dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true }));
+  }
+  $('#confirm').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close('cancel'); });
+  async function saveRequest(r, form, save, saved) {
+    const f = readForm(form);
+    const num = (v) => (v === '' ? null : Number(v));
+    const body = { status: f.status, creatorPriceUsd: num(f.creatorPrice), finalPriceUsd: num(f.finalPrice), opsNote: f.note };
+    // Send only flags you changed, so setting a status still stamps what it implies (e.g. live = code received).
+    for (const [key, on] of Object.entries(f.flags)) if (on !== !!r[`${key}At`]) body[key] = on;
+    const changes = changesOf(r, body);
+    if (changes.some((c) => c.serious) && !(await confirmChanges(r, changes))) { saved.className = 'u-muted small'; saved.textContent = 'Not saved.'; return; }
+    save.disabled = true; save.setAttribute('aria-busy', 'true'); saved.className = 'saved'; saved.textContent = '';
+    try {
+      const updated = fresh(await call(`/api/admin/licenses/${r.id}`, body));
+      drafts.delete(r.id);
+      putRequest(updated);
+      const now = $('#sheet-saved');
+      if (now && sheetId === r.id) now.textContent = 'Saved';
+      U.toast(`Saved request #${r.id}${body.status !== r.status ? `: ${LABEL[updated.status] || updated.status}` : ''}`, { kind: 'ok' });
+    } catch (ex) { saved.textContent = ex.message; saved.className = 'err small'; save.disabled = false; save.removeAttribute('aria-busy'); }
+  }
+  function renderSheet(r) {
+    const refocus = sheet.contains(document.activeElement);
+    const v = drafts.get(r.id) || original(r);
+    const ids = visible().map((x) => x.id), at = ids.indexOf(r.id);
+    const head = h('div', { class: 'sheet-head' },
+      h('div', { class: 'u-grow u-stack', style: { '--gap': '6px' } },
+        h('span', { class: 'u-eyebrow' }, `Request #${r.id}`, at >= 0 ? ` · ${at + 1} of ${ids.length}` : ''),
+        h('h2', { id: 'sheet-title', tabindex: '-1', dir: 'auto' }, h('bdi', {}, r.brand), ' · ', h('bdi', {}, `@${r.handle}`)),
+        h('div', { class: 'u-row clockline', style: { '--gap': '6px' } }, h('span', { class: `u-pill ${PILL[r.status] || ''}` }, LABEL[r.status] || r.status), clockCell(r))),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-icon', type: 'button', 'aria-label': 'Previous request (k)', disabled: at <= 0, onclick: () => step(-1) }, '↑'),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-icon', type: 'button', 'aria-label': 'Next request (j)', disabled: at < 0 || at >= ids.length - 1, onclick: () => step(1) }, '↓'),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-icon', type: 'button', 'aria-label': 'Close (Esc)', onclick: () => sheet.close() }, '×'));
+
+    const receipt = U.receipt({ url: r.videoUrl, platform: r.platform, handle: r.handle, views: r.views },
+      { size: 'sm', extraMeta: ext(r.videoUrl, 'Video ↗'), actions: [
+        r.status === 'requested' ? h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => quickStatus(r.id, 'contacted') }, 'Mark contacted', kbd('C')) : null,
+        r.status === 'contacted' ? h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => quickStatus(r.id, 'requested') }, 'Back to waiting on you') : null,
+        ['requested', 'contacted'].includes(r.status) ? h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => copyCreator(r) }, 'Copy message to creator') : null,
+        renewalDue(r) ? h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => copyText(renewalMessage(r), 'Renewal note copied') }, 'Copy renewal note to brand') : null,
+        h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => copyText(r.offerUrl, 'Offer link copied') }, 'Copy offer link'),
+        ext(r.offerUrl, 'Offer page ↗', { class: 'u-btn u-btn-sm u-btn-ghost' })].filter(Boolean) });
+
+    const fact = (k, ...val) => [h('dt', {}, k), h('dd', {}, ...val)];
+    const facts = h('dl', { class: 'facts' },
+      fact('Brand', h('b', { dir: 'auto' }, h('bdi', {}, r.brand)), ' · ', h('span', { class: 'u-muted' }, r.requestedBy), ' · ', ext(r.page, 'Brand page ↗')),
+      r.renewalOf ? fact('Renewal of', byId(r.renewalOf) ? h('button', { class: 'linkish', type: 'button', onclick: () => openRequest(r.renewalOf) }, `#${r.renewalOf}`) : `#${r.renewalOf}`) : null,
+      fact('Creator', ext(r.profileUrl, h('bdi', {}, `@${r.handle}`)), ` · ${U.PLATFORM[r.platform] || r.platform} · `,
+        r.views != null ? ext(r.videoUrl, `${r.views.toLocaleString()} views`) : h('span', { class: 'u-muted' }, 'views unavailable'),
+        r.claimed ? h('div', { class: 'saved' }, 'Handle claimed: they get offers by email') : null),
+      fact('Ask', `${r.days} days · ~$${r.priceUsd} shown`,
+        h('div', { class: 'u-computed' }, r.brandPriceUsd !== r.priceUsd ? `brand pays $${r.brandPriceUsd} · ` : '', `creator gets $${r.creatorShareUsd}`)),
+      r.expiresAt ? fact('Window', `until ${day(r.expiresAt)}`, renewalDue(r) ? h('b', {}, ` (${daysLeft(r)}d left)`) : null) : null,
+      r.respondedVia || r.declineReason ? fact('Answer', r.respondedVia ? `via ${r.respondedVia}` : '', r.declineReason ? h('div', { dir: 'auto' }, r.declineReason) : null) : null,
+      r.adCode ? fact('Ad code', h('code', {}, r.adCode), ' ', h('button', { class: 'u-btn u-btn-sm u-btn-ghost', type: 'button', onclick: () => copyText(r.adCode, 'Ad code copied') }, 'Copy')) : null,
+      r.paidOnline || r.transfer || r.refundedAt ? fact('Stripe', r.paidOnline ? h('div', { class: 'saved' }, 'Paid through Stripe') : null,
+        r.transfer && r.transfer !== 'pending' ? h('div', { class: 'saved' }, `Creator paid by Stripe (${r.transfer})`) : null,
+        r.transfer === 'pending' ? h('div', { class: 'u-muted' }, 'Transfer to the creator in progress') : null,
+        r.refundedAt ? h('div', { class: 'err' }, `Refunded ${day(r.refundedAt)}`) : null) : null,
+      r.note ? fact('Brand’s note', h('span', { dir: 'auto' }, `“${r.note}”`)) : null);
+
+    const steps = [['Requested', r.createdAt], ['Contacted', r.contactedAt], ['Answered', r.respondedAt], ['Code received', r.codeReceivedAt], ['Brand paid', r.brandPaidAt],
+      ['Creator paid', r.creatorPaidAt], ['Live from', r.startsAt], ['Ends', r.expiresAt], ['Refunded', r.refundedAt]].filter(([, iso]) => iso);
+    const timeline = h('section', { class: 'u-stack', style: { '--gap': '8px' }, 'aria-labelledby': 'tl-h' }, h('h3', { class: 'sec-title', id: 'tl-h' }, 'Timeline'),
+      steps.length ? h('ol', { class: 'timeline' }, ...steps.map(([k, iso]) => h('li', {}, h('span', { class: 'u-muted' }, k),
+        h('span', {}, h('time', { datetime: iso, title: new Date(iso).toLocaleString() }, U.date(iso)), h('span', { class: 'u-muted' }, ` · ${U.ago(iso)}`)))))
+        : h('p', { class: 'u-muted small' }, 'No dates recorded yet.'));
+
+    const field = (id, label, el) => h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: id }, label), el);
+    const status = h('select', { class: 'u-select', id: 'f-status' }, ...STATUSES.map((s) => h('option', { value: s, selected: s === v.status }, OPTION[s])));
+    const creatorPrice = h('input', { class: 'u-input', id: 'f-creator', type: 'number', min: 0, step: 1, inputmode: 'numeric', value: v.creatorPrice, placeholder: 'none' });
+    const finalPrice = h('input', { class: 'u-input', id: 'f-final', type: 'number', min: 0, step: 1, inputmode: 'numeric', value: v.finalPrice, placeholder: 'none' });
+    const flag = (key, label, iso) => h('label', { class: 'u-switch' }, h('input', { type: 'checkbox', 'data-key': key, checked: !!v.flags[key] }), label,
+      iso ? h('span', { class: 'u-muted' }, ` ${day(iso)}`) : null);
+    const flags = h('fieldset', { class: 'flags' }, h('legend', {}, 'Done'), flag('codeReceived', 'Code received', r.codeReceivedAt),
+      flag('brandPaid', 'Brand paid', r.brandPaidAt), flag('creatorPaid', 'Creator paid', r.creatorPaidAt));
+    const note = h('textarea', { class: 'u-textarea', id: 'f-note', dir: 'auto', placeholder: 'Contact used, counter, next step…' }, v.note);
+    const saved = h('span', { class: 'saved u-grow', role: 'status', id: 'sheet-saved' }, drafts.has(r.id) ? 'Unsaved edits' : '');
+    const save = h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Save');
+    const form = h('form', { id: 'edit' },
+      h('div', { class: 'sheet-body' }, receipt, facts, timeline,
+        h('section', { class: 'u-stack', style: { '--gap': '12px' }, 'aria-labelledby': 'rec-h' }, h('h3', { class: 'sec-title', id: 'rec-h' }, 'Record what happened'),
+          h('div', { class: 'edit-grid' }, field('f-status', 'Status', status), field('f-creator', 'Creator price ($)', creatorPrice), field('f-final', 'Final price ($)', finalPrice)),
+          flags, field('f-note', 'Operator note', note),
+          h('p', { class: 'u-hint' }, 'Status changes that email the brand or move money, prices and the paid flags ask you to confirm before they save.'))),
+      h('div', { class: 'sheet-foot' }, saved,
+        h('span', { class: 'u-hint no-present' }, kbd('J'), ' ', kbd('K'), ' next · ', kbd('Esc'), ' close'), save));
+    form.addEventListener('input', () => stashDraft(r, form));
+    form.addEventListener('change', () => stashDraft(r, form));
+    form.addEventListener('submit', (e) => { e.preventDefault(); saveRequest(r, form, save, saved); });
+    sheet.replaceChildren(h('div', { class: 'sheet-in' }, head, form));
+    if (refocus) $('#sheet-title').focus();
+  }
+  function openRequest(id) {
+    const r = byId(id);
+    if (!r) { U.toast(`Request #${id} isn't in the list.`, { kind: 'error' }); return; }
+    if (!matches(r)) setFilter('all');
+    sheetId = id;
+    markSelected(id);
+    renderSheet(r);
+    if (!sheet.open) sheet.showModal();
+    $('#sheet-title').focus();
+    try { history.replaceState(null, '', `#request-${id}`); } catch {}
+  }
+  function step(d) {
+    const ids = visible().map((x) => x.id), next = ids[ids.indexOf(sheetId) + d];
+    if (next == null) return;
+    openRequest(next);
+    const tr = rowById(next);
+    if (tr) tr.scrollIntoView({ block: 'nearest' });       // instant: keyboard moves never animate
+  }
+  sheet.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { const f = $('#edit'); if (f) { e.preventDefault(); f.requestSubmit(); } return; }
+    if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey || !U.prefs.keys) return;
+    const r = byId(sheetId);
+    if (!r) return;
+    if (e.key === 'j') { e.preventDefault(); step(1); }
+    else if (e.key === 'k') { e.preventDefault(); step(-1); }
+    else if (e.key === 'c' && r.status === 'requested') { e.preventDefault(); quickStatus(r.id, 'contacted'); }
+  });
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+  sheet.addEventListener('close', () => {
+    const id = sheetId;
+    sheetId = null;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+    const tr = rowById(id);
+    if (tr) { markSelected(id); tr.focus({ preventScroll: true }); }
+  });
+  function openFromHash() {
+    if (hashDone) return;
+    hashDone = true;
+    const m = location.hash.match(/^#request-(\d+)$/);
+    if (m) openRequest(Number(m[1]));
+  }
+
+  // ---------------------------------------------------------------- roster pilots and seeding
   function rosterRows(list) {
     $('#rosters').hidden = false;
-    $('#roster-rows').replaceChildren(...list.map((x) => h('tr', {}, h('td', {}, x.email),
+    $('#roster-rows').replaceChildren(...(list.length ? list.map((x) => h('tr', {}, h('td', {}, x.email),
       h('td', {}, x.access ? `${x.access}${x.access === 'pilot' ? ' until ' + day(x.pilotUntil) : ''}` : 'ended'),
-      h('td', {}, String(x.creators)), h('td', {}, String(x.reports)), h('td', {}, String(x.deals)), h('td', {}, x.committed ? 'yes' : '—'),
-      h('td', {}, day(x.lastSentAt) || '—'))));
+      h('td', { class: 'num' }, String(x.creators)), h('td', { class: 'num' }, String(x.reports)), h('td', { class: 'num' }, String(x.deals)), h('td', {}, x.committed ? 'yes' : '—'),
+      h('td', {}, day(x.lastSentAt) || '—'))) : [h('tr', {}, h('td', { colspan: 7, class: 'u-muted' }, 'No roster pilots yet. Grant one above.'))]));
   }
   async function loadSeeding() {
     try {
       const { watches } = await call('/api/admin/seeding');
       $('#seeding').hidden = !watches.length;
-      $('#seeding-rows').replaceChildren(...watches.map((w) => h('tr', {}, h('td', {}, w.brand), h('td', {}, w.email), h('td', {}, String(w.gifted)),
-        h('td', {}, String(w.posted)), h('td', {}, String(w.spokenOnly)), h('td', {}, String(w.tracked)), h('td', {}, w.multiple ? `${w.multiple}×` : '—'))));
+      $('#seeding-rows').replaceChildren(...watches.map((w) => h('tr', {}, h('td', {}, h('bdi', {}, w.brand)), h('td', {}, w.email), h('td', { class: 'num' }, String(w.gifted)),
+        h('td', { class: 'num' }, String(w.posted)), h('td', { class: 'num' }, String(w.spokenOnly)), h('td', { class: 'num' }, String(w.tracked)), h('td', { class: 'num' }, w.multiple ? `${w.multiple}×` : '—'))));
     } catch {}
   }
   async function loadRosters() {
@@ -256,18 +699,20 @@
   }
   $('#grant').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const msg = $('#grant-msg');
-    msg.className = 'saved'; msg.textContent = '';
+    const msg = $('#grant-msg'), btn = $('#grant button');
+    msg.className = 'saved'; msg.textContent = ''; btn.setAttribute('aria-busy', 'true');
     try {
       rosterRows((await call('/api/admin/rosters', { email: $('#grant-email').value, weeks: Number($('#grant-weeks').value) })).rosters);
       msg.textContent = 'Granted: they were emailed.';
     } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
+    btn.removeAttribute('aria-busy');
   });
-  // Arabic check (eval_mentions.py, Gate 6): collect Arabic videos, label them by hand, read precision both ways.
+
+  // ---------------------------------------------------------------- Arabic check (eval_mentions.py, Gate 6): collect Arabic videos, label them by hand, read precision both ways.
   let evalData = null;
   const skipped = new Set();
   const pctf = (x) => (x == null ? '—' : `${Math.round(x * 100)}%`);
-  const said = (sn) => h('p', { class: 'said', dir: 'auto' }, sn.text.slice(0, sn.hit[0]), h('mark', {}, sn.text.slice(sn.hit[0], sn.hit[1])), sn.text.slice(sn.hit[1]));
+  const said = (sn) => h('p', { class: 'said', dir: 'auto' }, sn.text.slice(0, sn.hit[0]), h('mark', { class: 'u-mark' }, sn.text.slice(sn.hit[0], sn.hit[1])), sn.text.slice(sn.hit[1]));
   async function setLabel(id, label) {
     await call(`/api/admin/eval/${id}`, { label });
     evalData = await call('/api/admin/eval');
@@ -277,19 +722,20 @@
     const left = evalData.queue.filter((x) => !skipped.has(x.id));
     const item = left[0];
     if (!item) {
-      return h('p', { class: 'muted' }, evalData.collected ? 'Nothing waiting to label. Collect more brands, or reload for skipped videos.' : 'Collect a few brands to start labelling.');
+      return h('div', { class: 'u-empty' }, evalData.collected ? [h('b', {}, 'Nothing waiting to label.'), h('span', {}, 'Collect more brands, or reload for skipped videos.')]
+        : [h('b', {}, 'Nothing collected yet.'), h('span', {}, 'Collect a few brands to start labelling.')]);
     }
     const msg = h('span', { class: 'err', role: 'status' });
     const answer = (label) => async () => { try { await setLabel(item.id, label); } catch (ex) { msg.textContent = ex.message; } };
-    return h('div', { class: 'card' },
-      h('p', {}, h('b', {}, `Does this video really mention ${item.brand}?`), ` ${evalData.labelled} of ${evalData.gate.n} labelled.`),
-      h('p', { class: 'muted' }, `@${item.handle} · ${item.platform} `, item.url ? h('a', { href: item.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null,
-        ` · spellings: ${item.spellings.join(', ')}`),
-      ...(item.snippets.length ? item.snippets.map(said) : [h('p', { class: 'muted' }, 'No spelling of the brand in the transcript. It opens:'), h('p', { class: 'said', dir: 'auto' }, item.opening || '(no transcript)')]),
-      item.caption ? h('p', { dir: 'auto' }, h('span', { class: 'muted' }, 'Caption: '), item.caption) : null,
-      h('div', { class: 'row' }, h('button', { class: 'primary', type: 'button', onclick: answer('yes') }, `Yes, it's about ${item.brand} (y)`),
-        h('button', { type: 'button', onclick: answer('no') }, 'No (n)'),
-        h('button', { type: 'button', onclick: () => { skipped.add(item.id); evalRender(); } }, 'Not sure, skip (s)'), msg));
+    return h('div', { class: 'label-card' },
+      h('p', {}, h('b', {}, 'Does this video really mention ', h('bdi', {}, item.brand), '?'), h('span', { class: 'u-muted' }, ` ${evalData.labelled} of ${evalData.gate.n} labelled.`)),
+      h('p', { class: 'u-muted small' }, h('bdi', {}, `@${item.handle}`), ` · ${U.PLATFORM[item.platform] || item.platform} `, item.url ? ext(item.url, 'Watch ↗') : null,
+        ' · spellings: ', h('bdi', { dir: 'auto' }, item.spellings.join(', '))),
+      ...(item.snippets.length ? item.snippets.map(said) : [h('p', { class: 'u-muted' }, 'No spelling of the brand in the transcript. It opens:'), h('p', { class: 'said', dir: 'auto' }, item.opening || '(no transcript)')]),
+      item.caption ? h('p', { dir: 'auto' }, h('span', { class: 'u-muted' }, 'Caption: '), item.caption) : null,
+      h('div', { class: 'row' }, h('button', { class: 'u-btn u-btn-primary', type: 'button', 'aria-keyshortcuts': 'y', onclick: answer('yes') }, 'Yes, it\'s about ', h('bdi', {}, item.brand), kbd('Y')),
+        h('button', { class: 'u-btn', type: 'button', 'aria-keyshortcuts': 'n', onclick: answer('no') }, 'No', kbd('N')),
+        h('button', { class: 'u-btn u-btn-ghost', type: 'button', 'aria-keyshortcuts': 's', onclick: () => { skipped.add(item.id); evalRender(); } }, 'Not sure, skip', kbd('S')), msg));
   }
   function evalRender() {
     const d = evalData;
@@ -297,50 +743,66 @@
     $('#arabic-sum').textContent = `Arabic check (Gate 6): ${d.labelled} of ${d.gate.n} labelled · precision ${pctf(d.arabic.precision)} with Arabic spellings`
       + (d.gate.passed ? ' · passed' : '');
     $('#arabic-numbers').replaceChildren(...[['Latin name only', d.latin], ['With Arabic spellings', d.arabic]].map(([title, m]) => h('tr', {},
-      h('td', {}, title), h('td', {}, String(m.n)), h('td', {}, pctf(m.precision)), h('td', {}, pctf(m.recall)), h('td', {}, String(m.tp)),
-      h('td', {}, String(m.fp)), h('td', {}, String(m.fn)))));
+      h('td', {}, title), h('td', { class: 'num' }, String(m.n)), h('td', { class: 'num' }, pctf(m.precision)), h('td', { class: 'num' }, pctf(m.recall)), h('td', { class: 'num' }, String(m.tp)),
+      h('td', { class: 'num' }, String(m.fp)), h('td', { class: 'num' }, String(m.fn)))));
     if (!$('#arabic-brands').value) $('#arabic-brands').value = d.defaults.brands.filter((b) => !d.brands.some((x) => x.brand === b)).join(', ');
     if (!$('#arabic-per').value) $('#arabic-per').value = d.defaults.perBrand;
     $('#arabic-credits').textContent = `${d.defaults.creditsPerBrand} credits a brand · ${d.credits.usedToday} of ${d.credits.dailyBudget} used today`;
     $('#arabic-card').replaceChildren(labelCard());
     const byBrand = new Map(d.arabic.brands.map((b) => [b.brand, b]));
-    $('#arabic-brand-table').replaceChildren(d.brands.length ? h('table', {},
-      h('thead', {}, h('tr', {}, ...['Brand', 'Collected', 'Labelled', 'Precision', 'Recall'].map((t) => h('th', {}, t)))),
-      h('tbody', {}, ...d.brands.map((b) => h('tr', {}, h('td', {}, b.brand), h('td', {}, String(b.collected)), h('td', {}, String(b.labelled)),
-        h('td', {}, pctf(byBrand.get(b.brand)?.precision)), h('td', {}, pctf(byBrand.get(b.brand)?.recall)))))) : '');
+    $('#arabic-brand-table').replaceChildren(d.brands.length ? h('div', { class: 'tscroll' }, h('table', { class: 'u-table static' },
+      h('thead', {}, h('tr', {}, ...['Brand', 'Collected', 'Labelled', 'Precision', 'Recall'].map((t, i) => h('th', { class: i ? 'num' : null }, t)))),
+      h('tbody', {}, ...d.brands.map((b) => h('tr', {}, h('td', {}, h('bdi', {}, b.brand)), h('td', { class: 'num' }, String(b.collected)), h('td', { class: 'num' }, String(b.labelled)),
+        h('td', { class: 'num' }, pctf(byBrand.get(b.brand)?.precision)), h('td', { class: 'num' }, pctf(byBrand.get(b.brand)?.recall))))))) : '');
     const errors = d.arabic.errors;
     $('#arabic-errors').replaceChildren(errors.length ? h('div', {}, h('b', {}, `Where it's wrong, with Arabic spellings (${errors.length})`),
       h('ul', { class: 'errors' }, ...errors.map((x) => h('li', {},
-        h('b', {}, x.brand), x.error === 'fp' ? ` · counted as ${x.kind}, labelled not about the brand · ` : ' · labelled about the brand, missed · ',
-        x.url ? h('a', { href: x.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null, ' ',
-        h('button', { class: 'copy', type: 'button', onclick: () => setLabel(x.id, x.label === 'yes' ? 'no' : 'yes') }, `Change label to ${x.label === 'yes' ? 'no' : 'yes'}`),
+        h('b', {}, h('bdi', {}, x.brand)), x.error === 'fp' ? ` · counted as ${x.kind}, labelled not about the brand · ` : ' · labelled about the brand, missed · ',
+        x.url ? ext(x.url, 'Watch ↗') : null, ' ',
+        h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => setLabel(x.id, x.label === 'yes' ? 'no' : 'yes').catch((ex) => U.toast(ex.message, { kind: 'error' })) },
+          `Change label to ${x.label === 'yes' ? 'no' : 'yes'}`),
         x.quote ? h('p', { class: 'said', dir: 'auto', style: 'margin:4px 0' }, x.quote) : null)))) : '');
   }
-  // Setup and health (ops.py): missing settings, whether the weekly job runs, and people waiting on an answer.
+  // y / n / s label the video on screen while the Arabic check tab is open (single-key shortcuts can be turned off in Display).
+  const arabicActive = () => !$('#analysis').hidden && !$('#p-arabic').hidden && !$('#arabic').hidden
+    && !(document.activeElement && document.activeElement.closest('#rows'));
+  const arabicKey = (key) => () => {
+    if (!arabicActive()) return;
+    const item = evalData && evalData.queue.find((x) => !skipped.has(x.id));
+    if (!item) return;
+    if (key === 's') { skipped.add(item.id); evalRender(); }
+    else setLabel(item.id, key === 'y' ? 'yes' : 'no').catch((ex) => U.toast(ex.message, { kind: 'error' }));
+  };
+  U.keys.add('y', arabicKey('y'), { label: 'Arabic check: yes, it mentions the brand' });
+  U.keys.add('n', arabicKey('n'), { label: 'Arabic check: no' });
+  U.keys.add('s', arabicKey('s'), { label: 'Arabic check: not sure, skip' });
+
+  // ---------------------------------------------------------------- Setup and health (ops.py): missing settings, whether the weekly job runs, and people waiting on an answer.
   async function loadHealth() {
     try {
       const d = await call('/api/admin/health');
+      health = d;
       const missing = d.setup.filter((x) => !x.ok), w = d.weekly, wait = d.waiting;
       const people = wait.pilots.length + wait.reservations.length + wait.commitments.length;
       $('#health').hidden = false;
       $('#health-sum').textContent = `Setup and health: ${people ? `${people} waiting on you, ` : ''}${missing.length ? `${missing.length} setting${missing.length === 1 ? '' : 's'} missing` : 'all set'}${w.overdueWatches ? ', weekly reports overdue' : ''}`;
       const list = (title, rows, line) => rows.length ? [h('p', { style: 'margin:4px 0 2px' }, h('b', {}, `${title} (${rows.length})`)), h('ul', {}, ...rows.map((r) => h('li', {}, line(r))))] : [];
-      const emails = (rows) => rows.length ? h('button', { class: 'copy', type: 'button', onclick: (e) => copy(rows.map((r) => r.email).join(', '), e.target) }, 'Copy emails') : null;
+      const emails = (rows) => rows.length ? h('button', { class: 'u-btn u-btn-sm', type: 'button', style: 'margin-top:6px', onclick: () => copyText(rows.map((r) => r.email).join(', '), 'Emails copied') }, 'Copy emails') : null;
       $('#health-waiting').replaceChildren(...(people ? [
         ...list('Roster pilot requests: grant below', wait.pilots, (r) => `${r.email} · ${day(r.at)}${r.note ? ` · “${r.note}”` : ''}`),
         ...list('Reserved a paid plan: email them when checkout opens', wait.reservations, (r) => `${r.email} · ${r.plan === 'leads' ? 'Weekly leads' : 'Pro'} · ${day(r.at)}`),
         emails(wait.reservations),
         ...list('Committed to the roster plan: send the payment link', wait.commitments, (r) => `${r.email} · ${day(r.at)}`),
-      ] : [h('p', { class: 'muted', style: 'margin:0' }, 'Nobody.')]));
-      const ago = (iso) => (iso ? day(iso) : 'never');
+      ].filter(Boolean) : [h('p', { class: 'u-muted', style: 'margin:0' }, 'Nobody.')]));
+      const when = (iso) => (iso ? `${day(iso)} (${U.ago(iso)})` : 'never');
       $('#health-weekly').replaceChildren(
         w.overdueWatches ? h('p', { class: 'warn', style: 'margin:0 0 4px' }, `${w.overdueWatches} weekly report${w.overdueWatches === 1 ? ' is' : 's are'} overdue (since ${day(w.overdueSince)}): `
-          + 'the weekly job isn\u2019t running. Set DIGEST_SCHEDULER=1 or call POST /api/digests/run from a daily cron.') : h('p', { class: 'ok', style: 'margin:0 0 4px' }, 'No weekly report overdue.'),
-        h('ul', {}, h('li', {}, `Brand reports: last ${ago(w.lastRuns.reports)}`), h('li', {}, `Creator summaries: last ${ago(w.lastRuns.summaries)}`),
-          h('li', {}, `Roster reports: last ${ago(w.lastRuns.rosters)}`), h('li', {}, `Weekly leads: last ${ago(w.lastRuns.feeds)}`),
+          + 'the weekly job isn’t running. Set DIGEST_SCHEDULER=1 or call POST /api/digests/run from a daily cron.') : h('p', { class: 'ok', style: 'margin:0 0 4px' }, 'No weekly report overdue.'),
+        h('ul', {}, h('li', {}, `Brand reports: last ${when(w.lastRuns.reports)}`), h('li', {}, `Creator summaries: last ${when(w.lastRuns.summaries)}`),
+          h('li', {}, `Roster reports: last ${when(w.lastRuns.rosters)}`), h('li', {}, `Weekly leads: last ${when(w.lastRuns.feeds)}`),
           h('li', {}, `Oriane credits today: ${w.creditsToday} of ${w.dailyBudget}`)));
-      $('#health-setup').replaceChildren(...d.setup.map((x) => h('li', {}, h('span', { class: x.ok ? 'ok' : 'warn' }, x.ok ? '\u2713 ' : '\u2717 '),
-        h('b', {}, x.name), x.ok ? '' : `: ${x.unlocks}`, x.ok || !x.settings.length ? '' : h('span', { class: 'muted' }, ` (${x.settings.join(', ')})`))));
+      $('#health-setup').replaceChildren(...d.setup.map((x) => h('li', {}, h('span', { class: x.ok ? 'ok' : 'warn' }, x.ok ? '✓ ' : '✗ '),
+        h('b', {}, x.name), x.ok ? '' : `: ${x.unlocks}`, x.ok || !x.settings.length ? '' : h('span', { class: 'u-muted' }, ` (${x.settings.join(', ')})`))));
     } catch {}
   }
   // Receipts pricing test (packaging.py, Phase 7): the three offers side by side.
@@ -350,10 +812,10 @@
       const rate = (n, of) => (of ? `${n} (${Math.round(n / of * 100)}%)` : String(n));
       $('#packaging').hidden = false;
       $('#packaging-rows').replaceChildren(...d.arms.map((a) => h('tr', {},
-        h('td', {}, h('b', {}, `(${a.arm}) `), a.offer, a.price ? ` $${a.price}/mo` : '', a.live ? '' : h('span', { class: 'muted' }, ' · off')),
-        h('td', {}, `${a.visitors} of ${d.targetVisitors}`), h('td', {}, rate(a.signups, a.visitors)), h('td', {}, rate(a.scanned, a.signups)),
-        h('td', {}, a.eligible ? rate(a.week4, a.eligible) : '—'), h('td', {}, rate(a.paid, a.signups)),
-        h('td', {}, a.subscribed ? `${a.subscribed} · $${a.mrrUsd}/mo` : '0'), h('td', {}, `$${a.licenceKeptUsd}`), h('td', {}, String(a.intent)))));
+        h('td', {}, h('b', {}, `(${a.arm}) `), a.offer, a.price ? ` $${a.price}/mo` : '', a.live ? '' : h('span', { class: 'u-muted' }, ' · off')),
+        h('td', { class: 'num' }, `${a.visitors} of ${d.targetVisitors}`), h('td', { class: 'num' }, rate(a.signups, a.visitors)), h('td', { class: 'num' }, rate(a.scanned, a.signups)),
+        h('td', { class: 'num' }, a.eligible ? rate(a.week4, a.eligible) : '—'), h('td', { class: 'num' }, rate(a.paid, a.signups)),
+        h('td', { class: 'num' }, a.subscribed ? `${a.subscribed} · $${a.mrrUsd}/mo` : '0'), h('td', { class: 'num' }, `$${a.licenceKeptUsd}`), h('td', { class: 'num' }, String(a.intent)))));
       $('#packaging-note').textContent = `Live offers: ${d.live.join(', ')}. Week-4 active counts accounts at least 28 days old. Preview one without being counted: /creators/?arm=a, ?arm=b or ?arm=c. `
         + 'When one wins, set RECEIPTS_ARMS on Render to its letter and every visitor gets it.';
     } catch {}
@@ -365,7 +827,7 @@
     e.preventDefault();
     const msg = $('#arabic-msg'), btn = $('#arabic-collect button');
     const brands = $('#arabic-brands').value.split(',').map((b) => b.trim()).filter(Boolean);
-    msg.className = 'saved'; msg.textContent = `Collecting ${brands.length} brand${brands.length === 1 ? '' : 's'}…`; btn.disabled = true;
+    msg.className = 'saved'; msg.textContent = `Collecting ${brands.length} brand${brands.length === 1 ? '' : 's'}…`; btn.disabled = true; btn.setAttribute('aria-busy', 'true');
     try {
       const out = await call('/api/admin/eval/collect', { brands, perBrand: Number($('#arabic-per').value) });
       evalData = out.report;
@@ -376,21 +838,17 @@
       $('#arabic-brands').value = '';
       evalRender();
     } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
-    btn.disabled = false;
+    btn.disabled = false; btn.removeAttribute('aria-busy');
   });
-  $('#arabic-export').addEventListener('click', async () => {
-    const { items } = await call('/api/admin/eval/export');
-    const url = URL.createObjectURL(new Blob([items.map((x) => JSON.stringify(x)).join('\n') + '\n'], { type: 'application/x-ndjson' }));
-    h('a', { href: url, download: 'arabic-check.jsonl' }).click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-  document.addEventListener('keydown', (e) => {
-    if (!$('#arabic').open || e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
-    const item = evalData && evalData.queue.find((x) => !skipped.has(x.id));
-    if (!item) return;
-    if (e.key === 'y' || e.key === 'n') setLabel(item.id, e.key === 'y' ? 'yes' : 'no').catch(() => {});
-    else if (e.key === 's') { skipped.add(item.id); evalRender(); }
-  });
+  async function exportArabic() {
+    try {
+      const { items } = await call('/api/admin/eval/export');
+      const url = URL.createObjectURL(new Blob([items.map((x) => JSON.stringify(x)).join('\n') + '\n'], { type: 'application/x-ndjson' }));
+      h('a', { href: url, download: 'arabic-check.jsonl' }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (ex) { U.toast(ex.message, { kind: 'error' }); }
+  }
+  $('#arabic-export').addEventListener('click', exportArabic);
   async function loadClaims() {
     try {
       const { handles } = await call('/api/admin/handles');
@@ -398,30 +856,38 @@
       $('#claims').hidden = !pending.length;
       $('#claim-list').replaceChildren(...pending.map((x) => {
         const msg = h('span', { class: 'saved', role: 'status' });
-        const btn = h('button', { class: 'copy', type: 'button', onclick: async () => {
+        const btn = h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: async () => {
           btn.disabled = true;
           try { await call(`/api/admin/handles/${x.id}/verify`, {}); loadClaims(); } catch (ex) { msg.textContent = ex.message; msg.className = 'err'; btn.disabled = false; }
         } }, 'Verify');
-        return h('li', {}, `@${x.handle} (${x.platform}) · code `, h('code', {}, x.code), ` · ${x.email} `, btn, ' ', msg);
+        return h('li', {}, h('bdi', {}, `@${x.handle}`), ` (${x.platform}) · code `, h('code', {}, x.code), ` · ${x.email} `, btn, ' ', msg);
       }));
     } catch {}
   }
   async function load(quiet) {
-    if (!quiet) $('#msg').textContent = 'Loading…';
+    const btn = $('#auth button');
+    if (!quiet) { $('#msg').className = 'u-muted'; $('#msg').textContent = 'Loading…'; }
+    btn.setAttribute('aria-busy', 'true');
     try {
       const { requests } = await call('/api/admin/licenses');
-      list = requests;
-      stats(requests);
-      $('#rows').replaceChildren(...requests.map(row));
-      $('#wrap').hidden = !requests.length;
+      list = requests.map(fresh);
+      drafts.clear();
+      $('#queue').hidden = false;
+      $('#analysis').hidden = false;
+      if (!tabsCtl) tabsCtl = U.tabs($('#tabs'));
+      stats(list);
+      renderRows();
       $('#msg').textContent = requests.length ? '' : 'No license requests yet.';
+      if (sheetId != null) { const r = byId(sheetId); if (r) renderSheet(r); else sheet.close(); }
       loadClaims();
       loadRosters();
       loadSeeding();
       loadEval();
       loadPackaging();
       loadHealth();
-    } catch (ex) { $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
+      openFromHash();
+    } catch (ex) { $('#msg').className = 'err'; $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
+    btn.removeAttribute('aria-busy');
   }
   $('#auth').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -429,6 +895,63 @@
     try { sessionStorage.setItem('opToken', token); } catch {}
     load();
   });
+
+  // ---------------------------------------------------------------- keyboard and command palette
+  function showTab(name, focusSel) {
+    if ($('#analysis').hidden) { U.toast('Load the console with the operator token first.', { kind: 'info' }); return; }
+    if (tabsCtl) tabsCtl.select($(`#t-${name}`));
+    $('#analysis').scrollIntoView({ block: 'start' });
+    if (focusSel && $(focusSel)) $(focusSel).focus({ preventScroll: true });
+  }
+  function copyReservations() {
+    const rows = (health && health.waiting && health.waiting.reservations) || [];
+    if (!rows.length) { U.toast(health ? 'Nobody has reserved a paid plan.' : 'Setup and health hasn’t loaded yet.', { kind: 'info' }); return; }
+    copyText(rows.map((r) => r.email).join(', '), `${rows.length} reservation email${rows.length === 1 ? '' : 's'} copied`);
+  }
+  const notInQueue = () => !(document.activeElement && document.activeElement.closest('#rows'));
+  U.keys.add('j', () => { if (notInQueue()) focusQueue(); }, { label: 'Next request (focus the queue)' });
+  U.keys.add('k', () => { if (notInQueue()) focusQueue(); }, { label: 'Previous request' });
+  U.keys.add('o', nextOverdue, { label: 'Open the oldest overdue request' });
+  U.keys.add('/', () => U.palette.open(), { label: 'Jump to a request' });
+  U.keys.add('r', () => { if (token) load(); }, { label: 'Reload the console' });
+  FILTERS.forEach(([value, label], i) => {
+    U.keys.add(String(i + 1), () => { if (!$('#queue').hidden) setFilter(value); }, { label: `Show: ${label}` });
+  });
+  U.palette.add({ id: 'op-requests', search: (q) => {
+    const pool = q ? list : list.filter((r) => r.status === 'requested').sort((a, b) => hoursOf(b) - hoursOf(a)).slice(0, 6);
+    return pool.map((r) => ({ id: `op-r-${r.id}`, label: `${r.brand} · @${r.handle}`, group: 'License requests',
+      hint: `#${r.id} · ${LABEL[r.status] || r.status}${isLate(r) ? ' · overdue' : ''}`,
+      keywords: `${r.handle} @${r.handle} ${r.brand} ${r.requestedBy} #${r.id} ${r.status} ${r.platform}`, run: () => openRequest(r.id) }));
+  } });
+  U.palette.add({ id: 'op-overdue', label: 'Open the oldest overdue request', group: 'License queue', shortcut: 'o', run: nextOverdue });
+  FILTERS.forEach(([value, label], i) => U.palette.add({ id: `op-f-${value}`, label: `Show: ${label}`, group: 'License queue', shortcut: String(i + 1),
+    keywords: 'filter status', run: () => { if ($('#queue').hidden) return; setFilter(value); focusQueue(); } }));
+  U.palette.add({ id: 'op-reload', label: 'Reload the console', hint: 'Requests, health, tests and pilots', group: 'Console', shortcut: 'r', run: () => (token ? load() : $('#token').focus()) });
+  U.palette.add({ id: 'op-token', label: 'Change the operator token', group: 'Console', run: () => $('#token').focus() });
+  U.palette.add({ id: 'op-health', label: 'Go to setup and health', group: 'Console', run: () => { const s = $('#health'); if (!s.hidden) { s.scrollIntoView({ block: 'start' }); } else U.toast('Setup and health hasn’t loaded.', { kind: 'info' }); } });
+  U.palette.add({ id: 'op-claims', label: 'Go to handle claims to verify', group: 'Console', run: () => { const s = $('#claims'); if (!s.hidden) s.scrollIntoView({ block: 'start' }); else U.toast('No handle claims waiting.', { kind: 'ok' }); } });
+  U.palette.add({ id: 'op-reservations', label: 'Copy reservation emails', hint: 'People who reserved a paid plan', group: 'Console', run: copyReservations });
+  U.palette.add({ id: 'op-pricing', label: 'Open the pricing test', group: 'Tests and pilots', run: () => showTab('pricing') });
+  U.palette.add({ id: 'op-arabic', label: 'Open the Arabic check', hint: 'Label with Y, N, S', group: 'Tests and pilots', run: () => showTab('arabic', '#t-arabic') });
+  U.palette.add({ id: 'op-arabic-collect', label: 'Arabic check: collect videos', hint: '40 Oriane credits a brand', group: 'Tests and pilots', run: () => showTab('arabic', '#arabic-brands') });
+  U.palette.add({ id: 'op-arabic-export', label: 'Arabic check: download labelled set (JSONL)', group: 'Tests and pilots', run: exportArabic });
+  U.palette.add({ id: 'op-seeding', label: 'Open seeding reports', group: 'Tests and pilots', run: () => showTab('seeding') });
+  U.palette.add({ id: 'op-rosters', label: 'Open roster pilots', group: 'Tests and pilots', run: () => showTab('rosters') });
+  U.palette.add({ id: 'op-grant', label: 'Grant a roster pilot', group: 'Tests and pilots', run: () => showTab('rosters', '#grant-email') });
+  $('#open-palette').addEventListener('click', () => U.palette.open());
+  $('#open-settings').addEventListener('click', () => U.settings());
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) $('#mod-key').textContent = '⌘';
+  // The clock keeps ticking: relative times and overdue pills refresh every minute (text only, no motion).
+  setInterval(() => {
+    if (!list.length) return;
+    for (const tr of document.querySelectorAll('#rows tr[data-u-item]')) {
+      const r = byId(Number(tr.dataset.id));
+      if (!r) continue;
+      tr.querySelector('.clock-cell').replaceChildren(...[].concat(clockCell(r)));
+      tr.classList.toggle('late', isLate(r));
+    }
+    overdueCallout();
+  }, 60000);
   if (token) load();
 </script>
 </body>

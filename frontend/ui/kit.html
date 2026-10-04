@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI kit · Unprompted</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
+<style>
+@layer page {
+  main { padding-block: var(--s-7) var(--s-9); }
+  section { padding-block: var(--s-6); border-top: 1px solid var(--border); display: grid; gap: var(--s-4); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--s-3); }
+  .swatch { border: 1px solid var(--border); border-radius: var(--r-2); overflow: hidden; font: 400 var(--fs-xs) var(--mono); }
+  .swatch i { display: block; height: 48px; }
+  .swatch span { display: block; padding: 6px 8px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--s-4); align-items: start; }
+  @media (max-width: 520px) { .u-bar .u-btn-ghost { display: none; } }
+}
+</style>
+</head>
+<body>
+<header class="u-bar">
+  <a class="u-logo" href="/">Un<mark>prompted</mark><small>UI kit</small></a>
+  <span class="grow"></span>
+  <button class="u-btn u-btn-ghost u-btn-sm" type="button" onclick="U.palette.open()">Commands <kbd class="u-kbd">Ctrl</kbd><kbd class="u-kbd">K</kbd></button>
+  <button class="u-btn u-btn-sm" type="button" onclick="U.settings()">Display</button>
+</header>
+<main class="u-container u-stack" style="--gap: 0">
+  <div class="u-stack" style="padding-bottom: var(--s-6)">
+    <span class="u-eyebrow">Design system</span>
+    <h1 class="u-display">Make the receipt the whole interface.</h1>
+    <p class="u-lead">Every component used across the brand app, Receipts, the licence pages and the console. Lime means one thing: the brand was said here.</p>
+  </div>
+
+  <section aria-labelledby="h-color">
+    <h2 id="h-color" class="u-h2">Colour roles</h2>
+    <div class="swatches" id="swatches"></div>
+  </section>
+
+  <section aria-labelledby="h-type">
+    <h2 id="h-type" class="u-h2">Type</h2>
+    <p class="u-h1">IBM Plex Sans for the interface</p>
+    <blockquote class="u-quote">honestly <mark>Tim Hortons</mark> iced capp is my whole personality</blockquote>
+    <blockquote class="u-quote" dir="rtl" lang="ar">رحت <mark>ستاربكس</mark> الصبح وطلبت لاتيه بارد</blockquote>
+    <p class="u-row"><span class="u-time">0:42</span><span class="num">48,200 views</span><span class="u-stamp">updated 2 days ago</span><span class="u-computed-tag">Computed</span></p>
+  </section>
+
+  <section aria-labelledby="h-controls">
+    <h2 id="h-controls" class="u-h2">Controls</h2>
+    <div class="u-row">
+      <button class="u-btn u-btn-primary" type="button" onclick="U.toast('Saved to your shortlist', {kind: 'ok'})">Find who said it</button>
+      <button class="u-btn" type="button" onclick="U.toast('Request sent to @dana.eats', {action: {label: 'Undo', run: () => U.toast('Undone', {kind: 'ok'})}})">Secondary</button>
+      <button class="u-btn u-btn-ghost" type="button" data-u-tip="Ghost buttons sit in toolbars">Ghost</button>
+      <button class="u-btn u-btn-danger" type="button" onclick="U.toast('Couldn’t reach Oriane. Nothing was charged.', {kind: 'error'})">Error toast</button>
+      <button class="u-btn u-btn-primary" type="button" aria-busy="true">Busy</button>
+      <button class="u-btn u-btn-sm" type="button">Small</button>
+      <button class="u-btn u-btn-primary u-btn-lg" type="button">Large primary</button>
+    </div>
+    <div class="grid2">
+      <div class="u-field"><label class="u-label" for="k-brand">Brand</label><input id="k-brand" class="u-input u-input-lg" placeholder="e.g. Tim Hortons"><span class="u-hint">Say it how people say it out loud.</span></div>
+      <div class="u-stack">
+        <div class="u-seg" data-u-seg role="radiogroup" aria-label="Platform">
+          <label><input type="radio" name="k-p" value="all" checked>All</label><label><input type="radio" name="k-p" value="ig">Instagram</label><label><input type="radio" name="k-p" value="tt">TikTok</label>
+        </div>
+        <label class="u-switch"><input type="checkbox" checked> Untapped only</label>
+        <div class="u-tabs" role="tablist" aria-label="Report" id="k-tabs">
+          <button role="tab" aria-selected="true" aria-controls="k-p1">Receipts</button><button role="tab" aria-selected="false" aria-controls="k-p2">Pitch</button><button role="tab" aria-selected="false" aria-controls="k-p3">Licence</button>
+        </div>
+        <div id="k-p1" class="u-hint">Receipts panel</div><div id="k-p2" class="u-hint" hidden>Pitch panel</div><div id="k-p3" class="u-hint" hidden>Licence panel</div>
+      </div>
+    </div>
+    <div class="u-row"><span class="u-kind u-kind-spoken">Said on camera</span><span class="u-kind u-kind-tagged">Tagged</span><span class="u-kind u-kind-sponsored">Disclosed ad</span>
+      <span class="u-pill">Requested</span><span class="u-pill u-pill-warn">Waiting 26h</span><span class="u-pill u-pill-ok">Accepted</span><span class="u-pill u-pill-live">Live</span><span class="u-pill u-pill-danger">Declined</span></div>
+  </section>
+
+  <section aria-labelledby="h-receipt">
+    <h2 id="h-receipt" class="u-h2">The receipt</h2>
+    <div class="grid2" id="receipts"></div>
+  </section>
+
+  <section aria-labelledby="h-score">
+    <h2 id="h-score" class="u-h2">Score that explains itself</h2>
+    <div class="u-row" id="score"></div>
+  </section>
+
+  <section aria-labelledby="h-table">
+    <h2 id="h-table" class="u-h2">Shortlist table</h2>
+    <p class="u-hint">Click a row, or focus it and use <kbd class="u-kbd">J</kbd> <kbd class="u-kbd">K</kbd> <kbd class="u-kbd">↵</kbd>. Hover a quote marker for the receipt.</p>
+    <div class="u-card" style="overflow:auto"><table class="u-table" id="k-table"><thead><tr><th>#</th><th>Creator</th><th>Moment</th><th class="num">Views</th><th>Trend</th><th>Score</th><th></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="h-states">
+    <h2 id="h-states" class="u-h2">Loading, progress and absence</h2>
+    <div class="grid2">
+      <div class="u-progress"><div class="u-progress-bar" style="--pct: 38"><b></b></div><span class="u-progress-text">Scanned 3 of 8 pages · 14 mentions so far</span></div>
+      <div class="u-stack" style="--gap: 8px"><span class="u-skel" style="height: 14px; width: 60%">.</span><span class="u-skel" style="height: 14px; width: 90%">.</span><span class="u-skel" style="height: 14px; width: 40%">.</span></div>
+      <div class="u-empty"><b>Nobody says it unprompted. Yet.</b><span>Searched 1,240 TikTok and Instagram videos from the last 12 months for “Kibsons”.</span><button class="u-btn u-btn-sm" type="button">Add a nickname</button></div>
+      <div class="u-card u-card-pad u-stack"><span class="u-label">Count-up on first view</span><b class="u-h1 num" data-u-count="144600" data-u-format="compact">0</b><span class="u-hint">organic views</span></div>
+    </div>
+  </section>
+</main>
+<script>
+const { h } = U;
+const roles = [['--surface', 'surface'], ['--surface-2', 'surface-2'], ['--text', 'text'], ['--text-2', 'text-2 (computed)'], ['--border', 'border'], ['--accent', 'accent (actions)'],
+  ['--highlight', 'highlight (said here)'], ['--focus', 'focus'], ['--tagged', 'tagged'], ['--sponsored', 'sponsored'], ['--danger', 'danger'], ['--cinema', 'cinema']];
+document.getElementById('swatches').append(...roles.map(([v, n]) => h('div', { class: 'swatch' }, h('i', { style: { background: `var(${v})` } }), h('span', {}, n))));
+
+const R = [
+  { handle: 'dana.eats', platform: 'tiktok', kind: 'spoken', views: 48200, publishedAt: '2026-09-28T10:00:00Z', url: '#', quote: { text: 'okay honestly Tim Hortons iced capp is the only thing getting me through finals week', hit: [14, 25], start: 42 } },
+  { handle: 'gulf.creator', platform: 'instagram', kind: 'spoken', views: 230000, publishedAt: '2026-09-18T10:00:00Z', url: '#', quote: { text: 'رحت ستاربكس الصبح وطلبت لاتيه بارد', hit: [4, 11], start: 11 } },
+];
+const box = document.getElementById('receipts');
+box.append(U.receipt(R[0], { size: 'lg', spot: true, draw: true, onTime: (s) => U.toast(`Playing from ${U.clock(s)}`), actions: [
+  h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => U.copy('https://unprompted.app/m/dana#t=42', 'Link to this moment copied') }, 'Copy link to this moment'),
+  h('a', { class: 'u-btn u-btn-sm u-btn-ghost', href: '#' }, 'Open on TikTok ↗')] }));
+box.append(U.receipt(R[1], { size: 'md' }));
+
+const parts = [{ label: 'Loyalty', value: 13, max: 40, detail: '1 unprompted video' }, { label: 'Reach', value: 23, max: 30, detail: '48K organic views' },
+               { label: 'Engagement', value: 15, max: 20, detail: '6.1% per view' }, { label: 'On camera', value: 10, max: 10, detail: 'said it out loud' }];
+const whyBody = () => U.why({ title: 'Why #1?', parts, note: 'Ranks above #2 because the brand is said on camera, not just tagged.' });
+document.getElementById('score').append(U.scoreRing(61, { size: 56, why: whyBody }), h('span', { class: 'u-band' }, 'Good'), U.meter(parts),
+  h('span', { class: 'u-hint' }, 'Click the ring: the breakdown lives next to the number.'));
+
+const rows = [['dana.eats', 48200, 61, [3, 5, 4, 9, 6, 12, 8], 5], ['gymwithsam', 48200, 61, [8, 6, 7, 5, 9, 4, 6], 2], ['lina.vlogs', 48200, 51, [2, 3, 2, 4, 3, 5, 4], 6]];
+const tbody = document.querySelector('#k-table tbody');
+rows.forEach(([handle, views, score, spark, mark], i) => {
+  tbody.append(h('tr', { 'data-u-item': '', tabindex: i ? -1 : 0, 'aria-selected': 'false', onclick: (e) => select(e.currentTarget) },
+    h('td', { class: 'num' }, String(i + 1)), h('td', {}, h('b', {}, '@' + handle)),
+    h('td', {}, h('span', { class: 'u-time', 'data-receipt': String(i) }, '0:42')),
+    h('td', { class: 'num' }, U.fmt(views, 'compact')), h('td', {}, U.sparkline(spark, { mark, label: `Views over 7 videos; the mention is video ${mark + 1}` })),
+    h('td', {}, h('span', { class: 'u-score' }, U.scoreRing(score, { size: 32 }), U.meter(parts))),
+    h('td', {}, h('span', { class: 'row-actions' }, h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: (e) => { e.stopPropagation(); U.toast(`@${handle} added to the deck`, { kind: 'ok' }); } }, 'Add to deck')))));
+});
+function select(tr) { tbody.querySelectorAll('tr').forEach((r) => r.setAttribute('aria-selected', String(r === tr))); }
+U.rovingList(tbody, { item: 'tr', onOpen: (tr) => { select(tr); U.toast('Opened the side panel'); } });
+U.card.provide('[data-receipt]', (a) => U.receipt(R[0], { size: 'sm', bare: true }));
+U.tabs(document.getElementById('k-tabs'));
+U.palette.add({ id: 'k-search', label: 'Search a brand', hint: 'Find who said it', group: 'Search', shortcut: '/', run: () => document.getElementById('k-brand').focus() });
+U.palette.add({ id: 'k-creators', group: 'Creators', search: (q) => rows.map(([handle]) => ({ id: handle, label: '@' + handle, hint: 'Jump to creator', group: 'Creators', run: () => U.toast(`Jumped to @${handle}`) })) });
+U.keys.add('/', () => document.getElementById('k-brand').focus(), { label: 'Search a brand' });
+</script>
+</body>
+</html>

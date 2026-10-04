@@ -5,71 +5,113 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>License offers · Receipts</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
 <style>
-  :root {
-    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
-    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
-    --amber-soft: oklch(0.96 0.05 80);
-    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
-  main { max-width: 720px; margin: 0 auto; padding: 36px 20px 60px; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
-  .top a { color: var(--ink); text-decoration: none; font-weight: 700; }
-  .top .who { font-size: 0.8125rem; color: var(--ink-2); }
-  .top .who a { font-weight: 500; color: var(--moss); margin-left: 8px; }
-  h1 { margin: 0 0 6px; font: italic 500 1.875rem/1.2 var(--serif); letter-spacing: -0.01em; }
-  .lede { margin: 0 0 24px; color: var(--ink-2); max-width: 60ch; }
-  section { margin: 0 0 18px; padding: 20px 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
-  h2 { margin: 0 0 12px; font-size: 1rem; }
-  .muted { color: var(--ink-2); font-size: 0.875rem; }
-  .money { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .money div { padding: 12px 14px; border-radius: 12px; background: var(--moss-soft); }
-  .money b { display: block; font-size: 1.25rem; }
-  ul.list { list-style: none; margin: 0; padding: 0; }
-  ul.list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 12px 0; border-top: 1px solid var(--line); }
-  ul.list li:first-child { border-top: 0; padding-top: 0; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 600 0.6875rem var(--mono); text-transform: uppercase; letter-spacing: 0.03em; background: var(--moss-soft); color: var(--moss); }
-  .pill.wait { background: var(--amber-soft); color: oklch(0.45 0.1 70); }
-  .pill.declined { background: var(--coral-soft); color: var(--coral); }
-  code { font: 600 0.9375rem var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--moss-soft); }
-  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
-  label { display: grid; gap: 4px; font-size: 0.8125rem; font-weight: 600; }
-  input, select { font: inherit; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
-  input.wide { min-width: min(100%, 320px); }
-  .btn { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.875rem var(--sans); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
-  .btn.primary { background: var(--lime); border-color: transparent; }
-  .btn.small { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
-  .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
-  .err { color: var(--coral); margin: 8px 0 0; font-size: 0.875rem; }
-  .ok { color: var(--moss); margin: 8px 0 0; font-size: 0.875rem; }
-  .how { margin: 8px 0 0; font-size: 0.875rem; color: var(--ink-2); }
-  @media (max-width: 560px) { .money { grid-template-columns: minmax(0, 1fr); } section { padding: 18px 16px; } }
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  #who { display: flex; align-items: center; gap: var(--s-3); min-width: 0; font-size: var(--fs-sm); color: var(--text-2); }
+  #who .email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
+  #who a { font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; min-height: 32px; }
+  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } .u-logo small, #who .email { display: none; } }
+
+  .page { width: min(760px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  .intro { display: grid; gap: var(--s-2); }
+  .intro h1 { font-size: var(--fs-3xl); letter-spacing: -0.025em; line-height: 1.08; }
+  #app { display: grid; gap: var(--s-4); min-width: 0; }
+  #app > section { min-width: 0; }
+  .sec { display: grid; gap: var(--s-3); padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); }
+  @media (max-width: 560px) { .sec { padding: var(--s-4); } }
+  .sec-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
+  .sec-head h2 { font-size: var(--fs-lg); }
+  .sec-head small { color: var(--text-2); font-size: var(--fs-sm); }
+  .sec-p { color: var(--text-2); font-size: var(--fs-sm); max-width: 62ch; }
+  .u-error:empty, .u-hint:empty { display: none; }
+
+  /* money: one line of facts, each linking to the offers behind it */
+  .money { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); padding: var(--s-4) var(--s-5); border-radius: var(--r-3); background: var(--surface-2); }
+  .money a, .money span { display: grid; gap: 0; text-decoration: none; color: var(--text); min-height: 44px; }
+  .money b { font-size: var(--fs-xl); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .money small { font-size: var(--fs-sm); color: var(--text-2); }
+  .money a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .money .none b { color: var(--text-2); font-weight: 500; font-size: var(--fs-md); }
+
+  /* offers: what was said comes first */
+  .offers { list-style: none; margin: 0; padding: 0; display: grid; }
+  .offers > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2) var(--s-4); align-items: center; padding: var(--s-4) 0; border-top: 1px solid var(--border); }
+  .offers > li:first-child { border-top: 0; padding-top: 0; }
+  .offers > li:last-child { padding-bottom: 0; }
+  @media (max-width: 560px) { .offers > li { grid-template-columns: minmax(0, 1fr); } }
+  .offer-body { display: grid; gap: 6px; min-width: 0; }
+  .offer-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s-3); }
+  .offer-top b { font-size: var(--fs-md); font-weight: 600; }
+  .offer-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s-3); font-size: var(--fs-sm); color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .offer-meta .share { color: var(--text); font-weight: 600; }
+  .snip { font-size: var(--fs-md); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .offers .u-btn { min-height: 44px; }
+  .offers .vid { font-size: var(--fs-sm); font-weight: 500; }
+
+  /* handles */
+  .handles { list-style: none; margin: 0; padding: 0; display: grid; }
+  .handles > li { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s-2) var(--s-4); padding: var(--s-3) 0; border-top: 1px solid var(--border); }
+  .handles > li:first-child { border-top: 0; padding-top: 0; }
+  .handles .h-main { display: grid; gap: 4px; min-width: 0; flex: 1 1 260px; }
+  .handles .h-side { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+  .how { font-size: var(--fs-sm); color: var(--text-2); max-width: 60ch; }
+  code { font: 500 var(--fs-sm) var(--mono); padding: 1px 6px; border-radius: var(--r-1); background: var(--surface-3); color: var(--text); }
+  .inline-form { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: flex-end; }
+  .inline-form .u-field { flex: 1 1 180px; }
+  .inline-form .u-field.narrow { flex: 0 1 160px; }
+  .inline-form .u-btn { min-height: 44px; }
+  .inline-form .u-input, .inline-form .u-select { min-height: 44px; }
+
+  /* rules: switches, a segmented control and brand chips, each saving on its own */
+  .rule { display: grid; gap: var(--s-2); padding-top: var(--s-4); border-top: 1px solid var(--border); }
+  .rule h3 { font-size: var(--fs-md); font-weight: 600; }
+  .rule .u-seg { max-width: 100%; justify-self: start; }
+  .rule .u-seg > label { height: auto; min-height: 36px; padding-block: 6px; }
+  @media (max-width: 480px) { .rule .u-seg { display: flex; justify-self: stretch; } .rule .u-seg > label { flex: 1; justify-content: center; text-align: center; } }
+  .rule .u-switch { min-height: 44px; font-size: var(--fs-md); }
+  .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips li { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding-inline: 12px 2px; border-radius: var(--r-pill); background: var(--surface-3); font-size: var(--fs-sm); font-weight: 500; }
+  .chips li button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: none; color: var(--text-2); cursor: pointer; font-size: 1.05rem; line-height: 1; }
+  .chips li button:hover { background: var(--surface); color: var(--text); }
+  .chips .none { background: none; padding: 0; color: var(--text-2); font-weight: 400; }
+  .saved { font: 400 var(--fs-xs) var(--mono); color: var(--text-2); }
+
+  .signin form { display: grid; gap: var(--s-3); max-width: 420px; }
+  .signin .row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .signin .u-btn, .signin .u-input { min-height: 44px; }
+
+  .terms { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-4); margin: 0; font-size: var(--fs-sm); }
+  .terms dt { color: var(--text-2); }
+  .terms dd { margin: 0; }
+  .u-dialog-foot { flex-wrap: wrap; }
+  .u-dialog-foot .u-btn { min-height: 44px; }
+}
 </style>
 </head>
 <body>
-<main>
-  <div class="top"><a href="/creators/">Receipts by Unprompted</a><span class="who" id="who"></span></div>
-  <h1>License offers</h1>
-  <p class="lede">When a brand wants to run one of your videos as an ad, the offer lands here and in your inbox. You choose: accept, counter or decline. Nothing runs without your yes.</p>
-  <div id="app"><p class="muted">Loading…</p></div>
+<header class="u-bar">
+  <a class="u-logo" href="/creators/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <span class="grow"></span>
+  <span id="who" class="no-present"></span>
+</header>
+<main class="page">
+  <div class="intro">
+    <span class="u-eyebrow">Your inbox</span>
+    <h1>License offers</h1>
+    <p class="u-lead">When a brand wants to run one of your videos as an ad, the offer lands here and in your inbox. You choose: accept, counter or decline. Nothing runs without your yes.</p>
+  </div>
+  <div id="app" aria-busy="true"><p class="u-muted">Loading…</p></div>
 </main>
 <script>
+  const { h } = U;
   const $ = (s) => document.querySelector(s);
-  const STATUS = { requested: ['Waiting for you', 'wait'], contacted: ['Waiting for you', 'wait'], accepted: ['Accepted', ''], live: ['Live', ''],
-    declined: ['Declined', 'declined'], ended: ['Ended', ''] };
-  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
-  function h(tag, attrs, ...kids) {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
-    el.append(...kids.filter((k) => k != null));
-    return el;
-  }
+  const when = (iso) => U.date(iso);
+  const usd = (n) => `$${U.fmt(n)}`;
   async function call(path, body) {
     const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
     const data = await res.json();
@@ -77,117 +119,283 @@
     return data;
   }
   const brands = (s) => s.split(',').map((b) => b.trim()).filter(Boolean);
+  // Busy until the server answers; a second press while busy does nothing.
+  async function pending(btn, work) {
+    if (btn.getAttribute('aria-busy') === 'true') return;
+    btn.setAttribute('aria-busy', 'true');
+    try { return await work(); } finally { if (btn.isConnected) btn.removeAttribute('aria-busy'); }
+  }
+  // A confirmation dialog that waits for the server; errors stay in the dialog.
+  function decide({ title, lead, confirm, danger, run }) {
+    const id = `dlg-${Math.random().toString(36).slice(2, 8)}`;
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const ok = h('button', { class: `u-btn ${danger ? 'u-btn-danger' : 'u-btn-primary'}`, type: 'button' }, confirm);
+    const cancel = h('button', { class: 'u-btn', type: 'button' }, 'Cancel');
+    const dlg = h('dialog', { class: 'u-dialog', 'aria-labelledby': id },
+      h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title), lead ? h('p', { class: 'u-muted' }, lead) : null, err),
+      h('div', { class: 'u-dialog-foot' }, cancel, ok));
+    let busy = false;
+    const close = () => { if (!busy) dlg.close(); };
+    cancel.addEventListener('click', close);
+    dlg.addEventListener('cancel', (e) => { if (busy) e.preventDefault(); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+    dlg.addEventListener('close', () => dlg.remove());
+    ok.addEventListener('click', async () => {
+      if (busy) return;
+      busy = true; err.textContent = ''; ok.setAttribute('aria-busy', 'true'); cancel.disabled = true;
+      try { await run(); busy = false; dlg.close(); }
+      catch (ex) { busy = false; err.textContent = ex.message; ok.removeAttribute('aria-busy'); cancel.disabled = false; }
+    });
+    document.body.append(dlg);
+    dlg.showModal();
+  }
 
   function signIn() {
     let signup = true;
-    const email = h('input', { type: 'email', required: true, autocomplete: 'email', class: 'wide', id: 'email' });
-    const pw = h('input', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password', id: 'pw' });
-    const err = h('p', { class: 'err', role: 'alert' });
-    const submit = h('button', { class: 'btn primary' }, 'Create account');
-    const toggle = h('button', { class: 'btn', type: 'button', onclick: () => {
+    const email = h('input', { type: 'email', required: true, autocomplete: 'email', class: 'u-input', id: 'email' });
+    const pw = h('input', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password', class: 'u-input', id: 'pw' });
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const submit = h('button', { class: 'u-btn u-btn-primary' }, 'Create account');
+    const toggle = h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => {
       signup = !signup;
       submit.textContent = signup ? 'Create account' : 'Sign in';
       toggle.textContent = signup ? 'I already have an account' : 'Create an account';
       pw.autocomplete = signup ? 'new-password' : 'current-password';
     } }, 'I already have an account');
     const form = h('form', { onsubmit: async (e) => {
-      e.preventDefault(); err.textContent = ''; submit.disabled = true;
-      try { await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value }); load(); }
-      catch (ex) { err.textContent = ex.message; submit.disabled = false; }
-    } }, h('label', { for: 'email' }, 'Email', email), h('label', { for: 'pw' }, 'Password', pw), submit, toggle);
-    $('#app').replaceChildren(h('section', {}, h('h2', {}, 'Sign in to see your offers'),
-      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Same account as Receipts. Free.'), form, err));
+      e.preventDefault(); err.textContent = '';
+      await pending(submit, async () => {
+        try { await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value }); load(); }
+        catch (ex) { err.textContent = ex.message; }
+      });
+    } }, h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'email' }, 'Email'), email),
+      h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'pw' }, 'Password'), pw, h('span', { class: 'u-hint' }, 'At least 8 characters.')),
+      h('div', { class: 'row' }, submit, toggle), err);
+    $('#app').removeAttribute('aria-busy');
+    $('#app').replaceChildren(h('section', { class: 'sec signin' }, h('div', { class: 'sec-head' }, h('h2', {}, 'Sign in to see your offers')),
+      h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
   }
 
   function handles(d) {
     const pre = new URLSearchParams(location.search).get('claim') || '';
     const [prePlatform, preHandle] = pre.includes(':') ? pre.split(':') : ['tiktok', ''];
-    const platform = h('select', { id: 'platform' }, h('option', { value: 'tiktok', selected: prePlatform === 'tiktok' }, 'TikTok'),
+    const platform = h('select', { id: 'platform', class: 'u-select' }, h('option', { value: 'tiktok', selected: prePlatform === 'tiktok' }, 'TikTok'),
       h('option', { value: 'instagram', selected: prePlatform === 'instagram' }, 'Instagram'));
-    const handle = h('input', { id: 'handle', placeholder: 'yourhandle', value: decodeURIComponent(preHandle || ''), autocomplete: 'off' });
-    const err = h('p', { class: 'err', role: 'alert' });
+    const handle = h('input', { id: 'handle', class: 'u-input', placeholder: 'yourhandle', value: decodeURIComponent(preHandle || ''), autocomplete: 'off', spellcheck: 'false' });
+    const err = h('p', { class: 'u-error', role: 'alert' });
     const items = d.handles.map((x) => {
-      const msg = h('p', { class: 'err', role: 'alert' });
+      const msg = h('p', { class: 'u-error', role: 'alert' });
       const body = { platform: x.platform, handle: x.handle };
-      const verify = h('button', { class: 'btn small primary', type: 'button', onclick: async () => {
-        verify.disabled = true; msg.textContent = '';
-        try { await call('/api/licenses/verify', body); load(); } catch (ex) { msg.textContent = ex.message; verify.disabled = false; }
-      } }, 'Check my bio');
-      const remove = h('button', { class: 'btn small', type: 'button', onclick: async () => { render(await call('/api/licenses/remove', body)); } }, 'Remove');
+      const verify = h('button', { class: 'u-btn u-btn-sm u-btn-primary', type: 'button', onclick: () => pending(verify, async () => {
+        msg.textContent = '';
+        try { await call('/api/licenses/verify', body); U.toast(`Verified @${x.handle}`, { kind: 'ok' }); load(); } catch (ex) { msg.textContent = ex.message; }
+      }) }, 'Check my bio');
+      const remove = h('button', { class: 'u-btn u-btn-sm u-btn-ghost', type: 'button', onclick: () => decide({
+        title: `Remove @${x.handle}?`, danger: true, confirm: 'Remove',
+        lead: x.verified ? 'Offers for its videos stop coming here until you claim and verify it again.' : 'You can claim it again any time.',
+        run: async () => { render(await call('/api/licenses/remove', body)); U.toast(`Removed @${x.handle}`, { kind: 'ok' }); },
+      }) }, 'Remove');
       const how = x.verified ? null : x.platform === 'tiktok'
         ? h('p', { class: 'how' }, 'Add ', h('code', {}, x.code), ' anywhere in your TikTok bio, save, then press Check my bio. You can remove it once verified.')
-        : h('p', { class: 'how' }, 'Instagram is checked by hand: DM ', h('code', {}, x.code), ` from @${x.handle} to the account that contacted you, or email it from the address in your bio. We’ll confirm within a day.`);
-      return h('li', {}, h('div', {}, h('b', {}, `@${x.handle}`), h('span', { class: 'muted' }, ` · ${x.platform === 'tiktok' ? 'TikTok' : 'Instagram'}`), how, msg),
-        h('div', {}, x.verified ? h('span', { class: 'pill' }, 'Verified') : x.platform === 'tiktok' ? verify : h('span', { class: 'pill wait' }, 'Pending'), ' ', remove));
+        : h('p', { class: 'how' }, 'Instagram is checked by hand: DM ', h('code', {}, x.code), ' from ', h('bdi', {}, `@${x.handle}`), ' to the account that contacted you, or email it from the address in your bio. We’ll confirm within a day.');
+      return h('li', {}, h('div', { class: 'h-main' }, h('span', {}, h('b', {}, h('bdi', {}, `@${x.handle}`)), h('span', { class: 'u-muted' }, ` · ${x.platform === 'tiktok' ? 'TikTok' : 'Instagram'}`)), how, msg),
+        h('div', { class: 'h-side' }, x.verified ? h('span', { class: 'u-pill u-pill-ok' }, 'Verified') : x.platform === 'tiktok' ? verify : h('span', { class: 'u-pill u-pill-warn' }, 'Pending'), remove));
     });
-    const form = h('form', { onsubmit: async (e) => {
+    const claim = h('button', { class: 'u-btn u-btn-primary' }, 'Claim');
+    const form = h('form', { class: 'inline-form', onsubmit: async (e) => {
       e.preventDefault(); err.textContent = '';
-      try { await call('/api/licenses/handles', { platform: platform.value, handle: handle.value }); history.replaceState(null, '', location.pathname); load(); }
-      catch (ex) { err.textContent = ex.message; }
-    } }, h('label', { for: 'platform' }, 'Platform', platform), h('label', { for: 'handle' }, 'Handle', handle), h('button', { class: 'btn primary' }, 'Claim'));
-    return h('section', {}, h('h2', {}, 'Your handles'),
-      items.length ? h('ul', { class: 'list' }, ...items) : h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Claim your handle so offers for your videos come straight to you.'),
-      h('div', { style: 'margin-top:12px' }, form, err));
+      await pending(claim, async () => {
+        try {
+          await call('/api/licenses/handles', { platform: platform.value, handle: handle.value });
+          history.replaceState(null, '', location.pathname);
+          U.toast(`Claimed @${handle.value.replace(/^@/, '')}. Now verify it.`, { kind: 'ok' });
+          load();
+        } catch (ex) { err.textContent = ex.message; }
+      });
+    } }, h('div', { class: 'u-field narrow' }, h('label', { class: 'u-label', for: 'platform' }, 'Platform'), platform),
+      h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'handle' }, 'Handle'), handle), claim);
+    return h('section', { class: 'sec', 'aria-labelledby': 'h-handles' }, h('div', { class: 'sec-head' }, h('h2', { id: 'h-handles' }, 'Your handles')),
+      items.length ? h('ul', { class: 'handles' }, ...items) : h('p', { class: 'sec-p' }, 'Claim your handle so offers for your videos come straight to you.'),
+      form, err);
+  }
+
+  // Status with its date, so every offer says where it stands and until when.
+  function statusOf(o) {
+    if (['requested', 'contacted'].includes(o.status)) return o.counterUsd && o.respondedVia
+      ? [`You asked for $${o.counterUsd}`, 'u-pill-warn', `waiting on ${o.brand}`] : ['Waiting for you', 'u-pill-warn', `since ${when(o.createdAt)}`];
+    if (o.status === 'accepted') return o.adCode ? ['Code sent', 'u-pill-ok', 'going live soon'] : ['Accepted', 'u-pill-ok', 'send the ad code'];
+    if (o.status === 'live') return ['Live', 'u-pill-live', `until ${when(o.expiresAt)}`];
+    if (o.status === 'declined') return ['Declined', 'u-pill-danger', o.respondedVia === 'auto' ? 'by your rule' : when(o.createdAt)];
+    if (o.status === 'ended') return ['Ended', '', when(o.expiresAt)];
+    return [o.status, '', when(o.createdAt)];
+  }
+  function receiptFor(o, opts) {
+    const v = o.video, q = v.quote;
+    return U.receipt({ handle: v.handle, platform: v.platform, url: v.url, views: v.views || null, publishedAt: v.publishedAt, kind: v.kind,
+                       quote: q || undefined, frame: q && q.frame, caption: q ? null : (v.caption || null) }, opts);
+  }
+  let offerById = {};
+  U.card.provide('[data-offer]', (a) => (offerById[a.dataset.offer] ? receiptFor(offerById[a.dataset.offer], { size: 'sm', bare: true }) : null));
+  // Status changes since this browser last looked are announced (a per-viewer convenience; nothing depends on it).
+  function announceChanges(offers) {
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem('inbox-seen') || '{}'); } catch {}
+    const changed = offers.filter((o) => seen[o.token] && seen[o.token] !== o.status);
+    const fresh = offers.filter((o) => !seen[o.token] && Object.keys(seen).length && ['requested', 'contacted'].includes(o.status));
+    if (changed.length === 1) U.toast(`${changed[0].brand}: ${statusOf(changed[0])[0]}`, { kind: 'ok' });
+    else if (changed.length > 1) U.toast(`${changed.length} offers changed since your last visit`, { kind: 'ok' });
+    if (fresh.length) U.toast(`${fresh.length} new ${fresh.length === 1 ? 'offer' : 'offers'} waiting for you`);
+    try { localStorage.setItem('inbox-seen', JSON.stringify(Object.fromEntries(offers.map((o) => [o.token, o.status])))); } catch {}
   }
 
   function offers(d) {
-    if (!d.offers.length) return h('section', {}, h('h2', {}, 'Offers'), h('p', { class: 'muted', style: 'margin:0' },
-      d.handles.some((x) => x.verified) ? 'No offers yet. When a brand asks to license one of your videos, it shows up here and we email you.'
-        : 'Verify a handle above and offers for its videos will show up here.'));
-    return h('section', {}, h('h2', {}, 'Offers'), h('ul', { class: 'list' }, ...d.offers.map((o) => {
-      const [label, cls] = STATUS[o.status] || [o.status, ''];
-      const detail = o.status === 'live' ? `until ${when(o.expiresAt)}` : o.status === 'declined' && o.respondedVia === 'auto' ? 'by your rule' : when(o.createdAt);
-      return h('li', {}, h('div', {}, h('b', {}, o.brand), h('span', { class: 'muted' }, ` · @${o.video.handle} · ${o.days} days · $${o.shareUsd} to you · ${detail}`)),
-        h('div', {}, h('span', { class: `pill ${cls}` }, label), ' ', h('a', { class: 'btn small', href: o.url }, ['requested', 'contacted'].includes(o.status) ? 'Answer' : 'Open')));
-    })));
+    if (!d.offers.length) return h('section', { class: 'sec', id: 'offers', 'aria-labelledby': 'h-offers' }, h('div', { class: 'sec-head' }, h('h2', { id: 'h-offers' }, 'Offers')),
+      h('div', { class: 'u-empty' }, h('b', {}, 'No offers yet.'), h('span', {},
+        d.handles.some((x) => x.verified) ? 'When a brand asks to license one of your videos, it shows up here and we email you.'
+          : 'Verify a handle below and offers for its videos will show up here.')));
+    offerById = Object.fromEntries(d.offers.map((o) => [o.token, o]));
+    const waiting = d.offers.filter((o) => ['requested', 'contacted'].includes(o.status) && !(o.counterUsd && o.respondedVia)).length;
+    return h('section', { class: 'sec', id: 'offers', 'aria-labelledby': 'h-offers' },
+      h('div', { class: 'sec-head' }, h('h2', { id: 'h-offers' }, 'Offers'), h('small', {}, waiting ? `${waiting} waiting for your answer` : 'Nothing waiting for you')),
+      h('ul', { class: 'offers' }, ...d.offers.map((o) => {
+        const [label, cls, dated] = statusOf(o);
+        const v = o.video, q = v.quote, open = ['requested', 'contacted'].includes(o.status);
+        const snip = q || v.caption ? U.quoteEl(q || { text: v.caption }) : null;
+        if (snip) snip.classList.add('snip');
+        const moment = q && q.start != null
+          ? h('a', { class: 'u-time', href: v.url, target: '_blank', rel: 'noopener', 'data-offer': o.token, 'aria-label': `Said at ${U.clock(q.start)}: open the video` }, U.clock(q.start))
+          : h('a', { class: 'vid', href: v.url, target: '_blank', rel: 'noopener', 'data-offer': o.token }, 'Video ↗');
+        return h('li', {},
+          h('div', { class: 'offer-body' },
+            h('div', { class: 'offer-top' }, h('b', {}, h('bdi', {}, o.brand)), h('span', { class: `u-pill ${cls}` }, label), h('span', { class: 'u-stamp' }, dated)),
+            snip,
+            h('div', { class: 'offer-meta' }, moment, h('bdi', {}, `@${v.handle}`), h('span', {}, `${o.days} days`), h('span', { class: 'share' }, `$${o.shareUsd} to you`))),
+          h('a', { class: `u-btn ${open ? 'u-btn-primary' : ''}`, href: o.url }, open ? 'Answer' : 'Open'));
+      })));
   }
 
+  // Rules save on their own: the switch, the segmented control and the brand chips apply at once and undo on failure.
+  let saved = null, want = null, queue = Promise.resolve(), paint = () => {};
+  const prefsBody = (p) => ({ minPriceUsd: p.minPriceUsd ?? null, rate30dUsd: p.rate30dUsd ?? null, approveBrands: p.approveBrands, blockBrands: p.blockBrands, weeklySummary: p.weeklySummary });
+  function persist() {
+    const body = prefsBody(want);
+    const p = queue.then(() => call('/api/licenses/prefs', body));
+    queue = p.catch(() => {});
+    return p.then((out) => { saved = { ...out.prefs }; const m = $('#rules-msg'); if (m) m.textContent = `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`; return out; });
+  }
+  function savePrefs(patch, { done, undo } = {}) {
+    return U.optimistic({
+      apply: () => { Object.assign(want, patch); paint(); },
+      send: persist,
+      revert: () => { for (const k of Object.keys(patch)) want[k] = saved[k]; paint(); },
+      done, undo,
+    }).catch(() => {});
+  }
   function rules(d) {
-    const min = h('input', { id: 'min', type: 'number', min: 0, step: 1, value: d.prefs.minPriceUsd ?? '', placeholder: 'none' });
-    const rate = h('input', { id: 'rate', type: 'number', min: 0, step: 1, value: d.prefs.rate30dUsd ?? '', placeholder: 'suggested' });
-    const approve = h('input', { id: 'approve', class: 'wide', value: d.prefs.approveBrands.join(', '), placeholder: 'e.g. Rhode, Glossier' });
-    const block = h('input', { id: 'block', class: 'wide', value: d.prefs.blockBrands.join(', '), placeholder: 'brands you never want to run ads for' });
-    const weekly = h('input', { id: 'weekly', type: 'checkbox', checked: d.prefs.weeklySummary, style: 'height:auto' });
-    const msg = h('p', { class: 'ok', role: 'status' });
-    const form = h('form', { onsubmit: async (e) => {
-      e.preventDefault(); msg.textContent = ''; msg.className = 'ok';
-      try {
-        render(await call('/api/licenses/prefs', { minPriceUsd: min.value === '' ? null : Number(min.value), rate30dUsd: rate.value === '' ? null : Number(rate.value),
-          approveBrands: brands(approve.value), blockBrands: brands(block.value), weeklySummary: weekly.checked }));
-        $('#rules-msg').textContent = 'Saved';
-      } catch (ex) { msg.className = 'err'; msg.textContent = ex.message; }
-    } }, h('label', { for: 'rate' }, 'Your rate for 30 days ($)', rate), h('label', { for: 'min' }, 'Minimum you’ll take ($)', min), h('label', { for: 'approve' }, 'Say yes automatically to', approve),
-      h('label', { for: 'block' }, 'Always decline', block),
-      h('label', { for: 'weekly', style: 'display:flex;align-items:center;gap:8px;height:40px' }, weekly, 'Weekly summary email'),
-      h('button', { class: 'btn primary' }, 'Save rules'));
-    return h('section', {}, h('h2', {}, 'Rules'),
-      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Optional. Your rate sets the price brands see for your videos (what you receive per 30 days). Offers below your minimum or from blocked brands are declined for you; brands on your yes list are accepted, and you just send the code.'),
-      form, h('p', { class: 'ok', role: 'status', id: 'rules-msg' }), msg);
+    saved = { ...d.prefs }; want = { ...d.prefs };
+    const rate = h('input', { id: 'rate', class: 'u-input', type: 'number', min: 0, step: 1, inputmode: 'numeric', value: d.prefs.rate30dUsd ?? '', placeholder: 'suggested' });
+    const min = h('input', { id: 'min', class: 'u-input', type: 'number', min: 0, step: 1, inputmode: 'numeric', value: d.prefs.minPriceUsd ?? '', placeholder: 'none' });
+    const msg = h('p', { class: 'u-error', role: 'alert' });
+    // Minimum: a segmented choice; "Decline below" reveals the amount.
+    const radio = (value, label) => h('label', {}, h('input', { type: 'radio', name: 'min-mode', value, checked: (value === 'below') === (d.prefs.minPriceUsd != null) }), label);
+    const mode = h('div', { class: 'u-seg', 'data-u-seg': '', role: 'radiogroup', 'aria-label': 'Minimum price' }, radio('none', 'Answer every offer'), radio('below', 'Decline below a minimum'));
+    const minField = h('div', { class: 'u-field narrow', hidden: d.prefs.minPriceUsd == null }, h('label', { class: 'u-label', for: 'min' }, 'Minimum you’ll take ($)'), min);
+    mode.addEventListener('change', (e) => {
+      const below = e.target.value === 'below';
+      minField.hidden = !below;
+      if (below) { min.focus(); return; }
+      const before = want.minPriceUsd;
+      min.value = '';
+      if (before != null) savePrefs({ minPriceUsd: null }, { done: 'No minimum: you answer every offer yourself', undo: () => savePrefs({ minPriceUsd: before }) });
+    });
+    const saveAmounts = h('button', { class: 'u-btn u-btn-primary' }, 'Save amounts');
+    const amounts = h('form', { class: 'inline-form', onsubmit: async (e) => {
+      e.preventDefault(); msg.textContent = '';
+      const below = mode.querySelector('input:checked')?.value === 'below';
+      await pending(saveAmounts, async () => {
+        const patch = { rate30dUsd: rate.value === '' ? null : Number(rate.value), minPriceUsd: below && min.value !== '' ? Number(min.value) : null };
+        const before = { rate30dUsd: want.rate30dUsd, minPriceUsd: want.minPriceUsd };
+        Object.assign(want, patch);
+        try { await persist(); U.toast('Amounts saved', { kind: 'ok' }); }
+        catch (ex) { Object.assign(want, before); msg.textContent = ex.message; }   // the typed values stay so they can be fixed
+      });
+    } }, h('div', { class: 'u-field narrow' }, h('label', { class: 'u-label', for: 'rate' }, 'Your rate for 30 days ($)'), rate), minField, saveAmounts);
+
+    // Brand lists as chips: add with Enter or the button, remove with ×; each change saves at once.
+    function chipList(key, id, label, placeholder, hint) {
+      const input = h('input', { id, class: 'u-input', placeholder, autocomplete: 'off', dir: 'auto' });
+      const list = h('ul', { class: 'chips', 'aria-label': label });
+      const draw = () => list.replaceChildren(...(want[key].length ? want[key].map((b) => h('li', {}, h('bdi', {}, b),
+        h('button', { type: 'button', 'aria-label': `Remove ${b}`, onclick: () => {
+          const before = [...want[key]];
+          savePrefs({ [key]: want[key].filter((x) => x !== b) }, { done: `Removed ${b}`, undo: () => savePrefs({ [key]: before }) });
+          input.focus();
+        } }, '×'))) : [h('li', { class: 'none' }, 'None yet')]));
+      const add = () => {
+        const more = brands(input.value).filter((b) => !want[key].some((x) => x.toLowerCase() === b.toLowerCase()));
+        input.value = '';
+        if (more.length) savePrefs({ [key]: [...want[key], ...more] });
+      };
+      draw();
+      return { draw, el: h('div', { class: 'rule' }, h('h3', {}, label), h('p', { class: 'sec-p' }, hint), list,
+        h('form', { class: 'inline-form', onsubmit: (e) => { e.preventDefault(); add(); } },
+          h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: id }, 'Add brands (comma-separated)'), input), h('button', { class: 'u-btn' }, 'Add'))) };
+    }
+    const yes = chipList('approveBrands', 'approve', 'Say yes automatically to', 'e.g. Rhode, Glossier', 'Offers from these brands are accepted for you; you just send the code.');
+    const no = chipList('blockBrands', 'block', 'Always decline', 'brands you never want to run ads for', 'Offers from these brands are declined for you.');
+    const weekly = h('input', { id: 'weekly', type: 'checkbox', checked: d.prefs.weeklySummary, onchange: () => {
+      const on = weekly.checked;
+      savePrefs({ weeklySummary: on }, { done: on ? 'Weekly summary on' : 'Weekly summary off', undo: () => savePrefs({ weeklySummary: !on }) });
+    } });
+    paint = () => {
+      yes.draw(); no.draw();
+      weekly.checked = !!want.weeklySummary;
+      if (document.activeElement !== rate) rate.value = want.rate30dUsd ?? '';
+      const setMode = (v) => mode.querySelectorAll('input').forEach((r) => { r.checked = r.value === v; });
+      if (want.minPriceUsd != null) {   // a saved minimum: show it
+        setMode('below'); minField.hidden = false;
+        if (document.activeElement !== min) min.value = want.minPriceUsd;
+      } else if (minField.hidden) setMode('none');   // otherwise leave a half-typed minimum alone
+    };
+    return h('section', { class: 'sec', 'aria-labelledby': 'h-rules' },
+      h('div', { class: 'sec-head' }, h('h2', { id: 'h-rules' }, 'Rules'), h('span', { class: 'saved', id: 'rules-msg', role: 'status' })),
+      h('p', { class: 'sec-p' }, 'Optional. Your rate sets the price brands see for your videos (what you receive per 30 days). Offers below your minimum or from blocked brands are declined for you; brands on your yes list are accepted, and you just send the code.'),
+      h('div', { class: 'rule' }, h('h3', {}, 'Price'), mode, amounts, msg),
+      yes.el, no.el,
+      h('div', { class: 'rule' }, h('h3', {}, 'Email'), h('label', { class: 'u-switch', for: 'weekly' }, weekly, 'Weekly summary email'),
+        h('p', { class: 'sec-p' }, 'Offers waiting, ads ending soon and money on its way, once a week. Weeks with nothing to say send nothing.')));
   }
 
   function payouts(d) {
-    const p = d.payouts, err = h('p', { class: 'err', role: 'alert' });
-    if (!p.online) return h('section', {}, h('h2', {}, 'Getting paid'),
-      h('p', { class: 'muted', style: 'margin:0' }, 'For now we pay your share by bank transfer or PayPal within 3 days of an ad going live. Reply to any offer email with your details.'));
-    if (p.payoutsEnabled) return h('section', {}, h('h2', {}, 'Getting paid'),
-      h('p', { class: 'muted', style: 'margin:0' }, h('span', { class: 'pill' }, 'Payouts on'), ' Your share goes to your Stripe account as soon as an ad goes live.'));
-    const country = h('select', { id: 'country' }, ...p.countries.map((c) => h('option', { value: c }, c)));
-    const go = h('button', { class: 'btn primary', type: 'button', onclick: async () => {
-      go.disabled = true; err.textContent = '';
-      try { location.href = (await call('/api/licenses/payouts/connect', { country: country.value })).url; }
-      catch (ex) { err.textContent = ex.message; go.disabled = false; }
+    const p = d.payouts, err = h('p', { class: 'u-error', role: 'alert' });
+    const head = h('div', { class: 'sec-head' }, h('h2', { id: 'h-pay' }, 'Getting paid'));
+    if (!p.online) return h('section', { class: 'sec', 'aria-labelledby': 'h-pay' }, head,
+      h('p', { class: 'sec-p' }, 'For now we pay your share by bank transfer or PayPal within 3 days of an ad going live. Reply to any offer email with your details.'));
+    if (p.payoutsEnabled) return h('section', { class: 'sec', 'aria-labelledby': 'h-pay' }, head,
+      h('p', { class: 'u-row' }, h('span', { class: 'u-pill u-pill-ok' }, 'Payouts on'), h('span', { class: 'sec-p' }, 'Your share goes to your Stripe account as soon as an ad goes live.')));
+    const country = h('select', { id: 'country', class: 'u-select' }, ...p.countries.map((c) => h('option', { value: c }, c)));
+    const go = h('button', { class: 'u-btn u-btn-primary', type: 'button', onclick: () => {
+      if (go.getAttribute('aria-busy') === 'true') return;
+      go.setAttribute('aria-busy', 'true'); err.textContent = '';
+      call('/api/licenses/payouts/connect', { country: country.value }).then((out) => { location.href = out.url; })   // stays busy on the way to Stripe
+        .catch((ex) => { err.textContent = ex.message; go.removeAttribute('aria-busy'); });
     } }, p.connected ? 'Finish setting up payouts' : 'Set up payouts');
-    return h('section', {}, h('h2', {}, 'Getting paid'),
-      h('p', { class: 'muted', style: 'margin:0 0 12px' }, 'Get your share automatically when an ad goes live. Stripe handles your bank details; we never see them.'),
-      h('form', { onsubmit: (e) => e.preventDefault() }, p.connected ? null : h('label', { for: 'country' }, 'Bank account country', country), go), err);
+    return h('section', { class: 'sec', 'aria-labelledby': 'h-pay' }, head,
+      h('p', { class: 'sec-p' }, p.connected ? h('span', { class: 'u-pill u-pill-warn' }, 'Stripe needs a few more details') : null, p.connected ? ' ' : null,
+        'Get your share automatically when an ad goes live. Stripe handles your bank details; we never see them.'),
+      h('form', { class: 'inline-form', onsubmit: (e) => e.preventDefault() }, p.connected ? null : h('div', { class: 'u-field narrow' }, h('label', { class: 'u-label', for: 'country' }, 'Bank account country'), country), go), err);
   }
 
   function render(d) {
     const m = d.money;
+    const fact = (n, text, none) => n ? h('a', { href: '#offers' }, h('b', {}, n), h('small', {}, text)) : h('span', { class: 'none' }, h('b', {}, none), h('small', {}, text));
+    $('#app').removeAttribute('aria-busy');
     $('#app').replaceChildren(
-      h('section', {}, h('div', { class: 'money' }, h('div', {}, h('b', {}, `$${m.paidUsd}`), h('span', { class: 'muted' }, 'Paid to you')),
-        h('div', {}, h('b', {}, `$${m.owedUsd}`), h('span', { class: 'muted' }, 'On its way')), h('div', {}, h('b', {}, String(m.live)), h('span', { class: 'muted' }, 'Ads live now')))),
+      h('section', { class: 'money', 'aria-label': 'Money' },
+        fact(m.paidUsd ? usd(m.paidUsd) : 0, 'Paid to you', 'Nothing paid yet'), fact(m.owedUsd ? usd(m.owedUsd) : 0, 'On its way', 'Nothing owed'),
+        fact(m.live ? String(m.live) : 0, m.live === 1 ? 'Ad live now' : 'Ads live now', 'No ads live')),
       offers(d), payouts(d), handles(d), rules(d));
+    announceChanges(d.offers);
   }
 
   async function load() {
@@ -195,13 +403,17 @@
       const me = await call('/api/creators/me');
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
       call('/api/creators/visit', { page: 'inbox' }).catch(() => {});   // a return visit, for the packaging test's week-4 count
-      $('#who').replaceChildren(me.user.email, h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      let connected = false;
       if (new URLSearchParams(location.search).get('connect') === 'done') {   // back from Stripe onboarding
         await call('/api/licenses/payouts/refresh', {}).catch(() => {});
         history.replaceState(null, '', location.pathname);
+        connected = true;
       }
-      render(await call('/api/licenses/mine'));
-    } catch (ex) { $('#app').replaceChildren(h('p', { class: 'err' }, ex.message)); }
+      const d = await call('/api/licenses/mine');
+      render(d);
+      if (connected && d.payouts.online) U.toast(d.payouts.payoutsEnabled ? 'Payouts are on' : 'Stripe still needs a few details to turn payouts on', { kind: d.payouts.payoutsEnabled ? 'ok' : 'info' });
+    } catch (ex) { $('#app').removeAttribute('aria-busy'); $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, ex.message)); }
   }
   load();
 </script>
