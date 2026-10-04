@@ -492,7 +492,7 @@ def test_frontend_routes(base):
     status, html = call(base, "GET", "/brands/")
     assert status == 200 and b"<title>Unprompted</title>" in html and b"Watch this search, get a weekly report." in html
     assert b"Saved, but we couldn't send the confirmation email right now. Try again in a few minutes." in html
-    assert b"Watch a brand: one email report a week." in html and "Watching · weekly".encode() in html
+    assert b"One email a week." in html and "Watching · weekly".encode() in html
     assert b"See a sample report" in html and b"Start with a search" in html
     status, html = call(base, "GET", "/digest/x")
     assert status == 200 and b"href: '/brands/'" in html and b"/brands/#search=${r.searchId}" in html
