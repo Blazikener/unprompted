@@ -4,284 +4,361 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Receipts by Unprompted</title>
-<meta name="description" content="Find the brands you already talk about on camera, prove it, and get paid by them.">
+<meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with the brands that will pay: pitch them, or answer licence requests for your best videos.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
 <style>
-  :root {
-    --forest: oklch(0.26 0.055 160); --forest-2: oklch(0.315 0.06 160); --forest-line: oklch(0.42 0.05 160);
-    --on-forest: oklch(0.97 0.01 160); --on-forest-2: oklch(0.81 0.035 160);
-    --lime: oklch(0.92 0.19 122); --lime-strong: oklch(0.87 0.2 124); --lime-soft: oklch(0.965 0.065 120);
-    --bg: oklch(1 0 0); --panel: oklch(0.975 0.008 160); --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
-    --line: oklch(0.915 0.01 160); --line-2: oklch(0.85 0.012 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160);
-    --spoken: oklch(0.44 0.12 160); --tagged-soft: oklch(0.955 0.035 205); --tagged-ink: oklch(0.4 0.08 210);
-    --sponsored-soft: oklch(0.96 0.045 60); --sponsored-ink: oklch(0.47 0.13 45);
-    --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25); --coral-ink: oklch(0.45 0.16 27);
-    --ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif;
-    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    color-scheme: light;
-  }
-  *, *::before, *::after { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 0.9375rem/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
-  a { color: inherit; }
-  mark { background: var(--lime); color: var(--ink); padding: 0 3px; border-radius: 3px; }
-  button { font: inherit; color: inherit; }
-  input, textarea { font: inherit; color: inherit; }
-  [hidden] { display: none !important; }
+@layer page {
+  /* ---- top bar: on a phone the bar scrolls sideways, never the page */
+  .u-bar { overflow-x: auto; scrollbar-width: none; gap: var(--s-3); }
+  .u-bar nav { display: flex; align-items: center; gap: var(--s-4); }
+  #account { display: flex; align-items: center; gap: var(--s-2); }
+  #account .who { font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
+  .cmdk-btn .u-kbd { margin-inline-start: 2px; }
+  @media (max-width: 1100px) { #account .who { display: none; } }
+  @media (max-width: 900px) { .u-bar nav .u-bar-link + .u-bar-link { display: none; } }   /* keep "License offers" */
+  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } .u-logo small, .cmdk-btn { display: none; } }
 
-  .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 24px; background: var(--forest); color: var(--on-forest); }
-  .wordmark { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; text-decoration: none; display: flex; align-items: baseline; gap: 8px; }
-  .wordmark small { font-weight: 500; font-size: 0.75rem; color: var(--on-forest-2); }
-  .bar .grow { flex: 1; }
-  .bar .bar-link { color: var(--on-forest-2); font-size: 0.875rem; font-weight: 500; text-decoration: none; white-space: nowrap; }
-  .bar .bar-link:hover { color: var(--lime); }
-  .bar .who { font-size: 0.8125rem; color: var(--on-forest-2); }
-  .plan { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--forest-line); }
-  .plan.pro { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+  .avatar { width: var(--size, 40px); height: var(--size, 40px); border-radius: 50%; object-fit: cover; background: var(--surface-3); flex: none; display: block; }
 
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap; background: transparent; transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.12s var(--ease); }
-  .btn:active { transform: translateY(1px) scale(0.99); }
-  .btn:disabled { opacity: 0.6; cursor: progress; }
-  .btn-primary { background: var(--lime); color: var(--ink); }
-  .btn-primary:hover { background: var(--lime-strong); }
-  .btn-quiet { background: var(--bg); border-color: var(--line-2); color: var(--ink); }
-  .btn-quiet:hover { border-color: var(--ink); }
-  .bar .btn-quiet { background: transparent; border-color: var(--forest-line); color: var(--on-forest); }
-  .bar .btn-quiet:hover { border-color: var(--on-forest); }
-  .btn-sm { height: 32px; padding: 0 12px; font-size: 0.8125rem; }
-  .btn-link { background: none; border: 0; padding: 0; height: auto; color: var(--ink-2); text-decoration: underline; cursor: pointer; font-weight: 500; }
+  /* ---- hero: one thumb, the receipt inside the first mobile screen */
+  .hero { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); grid-template-areas: "head preview" "lead preview" "form preview" "fine preview";
+               column-gap: var(--s-7); row-gap: var(--s-4); align-items: start; padding-block: var(--s-7); }
+  .hero-head { grid-area: head; display: grid; gap: var(--s-2); }
+  .hero-head h1 em { font: italic 500 1.04em/1 var(--serif); color: var(--accent); letter-spacing: -0.01em; }
+  .hero-lead { grid-area: lead; }
+  .hero-form { grid-area: form; display: grid; gap: var(--s-3); }
+  .hero-fine { grid-area: fine; }
+  .preview { grid-area: preview; }
 
-  /* Landing */
-  .hero { background: var(--forest); color: var(--on-forest); padding: 64px 24px 72px; }
-  .hero-in { max-width: 860px; margin: 0 auto; }
-  .eyebrow { font: 500 0.75rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); }
-  h1 { font: italic 500 clamp(2.25rem, 5vw, 3.5rem)/1.05 var(--serif); letter-spacing: -0.01em; margin: 12px 0 16px; }
-  h1 em { font-style: italic; color: var(--lime); }
-  .hero p.lead { font-size: 1.125rem; color: var(--on-forest-2); max-width: 620px; margin: 0 0 32px; }
-  .scan-form { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; background: var(--forest-2); padding: 10px; border-radius: 14px; }
-  .seg { display: inline-flex; background: var(--forest); border-radius: 10px; padding: 4px; }
-  .seg button { height: 46px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: var(--on-forest-2); font-weight: 600; cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--on-forest); color: var(--ink); }
-  .scan-form input { height: 54px; border: 0; border-radius: 10px; padding: 0 16px; font-size: 1.0625rem; background: var(--forest); color: var(--on-forest); }
-  .scan-form input::placeholder { color: var(--on-forest-2); opacity: 0.7; }
-  .scan-form .btn-primary { height: 54px; font-size: 1.0625rem; padding: 0 26px; }
-  .hero .miss { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: oklch(1 0 0 / 0.08); border: 1px solid oklch(1 0 0 / 0.14); font-size: 0.875rem; color: var(--on-forest); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .hero .miss .chip small { font-weight: 500; opacity: 0.75; margin-left: 6px; }
-  .hero .fine { margin-top: 14px; font-size: 0.8125rem; color: var(--on-forest-2); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-  .chip { height: 32px; padding: 0 14px; border: 1px solid oklch(1 0 0 / 0.22); border-radius: 999px; background: transparent; color: var(--on-forest); font-weight: 600; cursor: pointer; }
-  .chip:hover { background: var(--lime); border-color: var(--lime); color: var(--ink); }
-  .how { max-width: 860px; margin: 0 auto; padding: 48px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .how h3 { margin: 0 0 6px; font-size: 1rem; }
-  .how p { margin: 0; color: var(--ink-2); font-size: 0.9375rem; }
-  .how .n { font: 500 0.75rem var(--mono); color: var(--moss); margin-bottom: 8px; }
-  .pricing { max-width: 860px; margin: 0 auto 64px; padding: 0 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .price { border: 1px solid var(--line-2); border-radius: 14px; padding: 22px; }
-  .price.pro { border-color: var(--ink); }
-  .price h3 { margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
-  .price h3 span { font: italic 500 1.75rem var(--serif); }
-  .price ul { margin: 14px 0 0; padding: 0; list-style: none; color: var(--ink-2); }
-  .price li { padding: 4px 0; }
-  .price li::before { content: "— "; color: var(--moss); }
+  .scan-form { display: grid; gap: var(--s-2); }
+  .scan-controls { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: stretch; }
+  .scan-form .u-seg > label { height: 44px; padding: 0 18px; font-size: var(--fs-md); justify-content: center; }
+  #scan-btn { min-height: 48px; flex: 1 1 auto; }
+  .scan-status { padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface-2); }
+  .scan-status .u-row { justify-content: space-between; font-size: var(--fs-sm); color: var(--text-2); }
+  .miss { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; font-size: var(--fs-sm); }
+  .miss > span:first-child { flex: 1 1 100%; color: var(--text); }
+  .fine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
+  .linkish { height: auto; min-height: 24px; padding: 2px 4px; text-decoration: underline; text-underline-offset: 3px; color: var(--accent); }
 
-  /* App */
-  .app { max-width: 1080px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1fr 260px; gap: 28px; align-items: start; }
-  .profile { display: flex; gap: 18px; align-items: center; }
-  .pfp { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--panel); }
-  .profile h2 { margin: 0; font-size: 1.375rem; letter-spacing: -0.01em; }
-  .profile .meta { color: var(--ink-2); font-size: 0.875rem; display: flex; gap: 12px; flex-wrap: wrap; }
-  .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
-  .tag.demo { background: var(--coral-soft); color: var(--coral-ink); }
-  .tag.live { background: var(--moss-soft); color: var(--moss); }
-  .tag.public { background: var(--moss-soft); color: var(--moss); }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
-  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--panel); }
-  .stat b { display: block; font: italic 500 1.75rem/1.1 var(--serif); }
-  .stat span { color: var(--ink-2); font-size: 0.8125rem; }
-  .section-h { display: flex; justify-content: space-between; align-items: baseline; margin: 28px 0 10px; }
-  .section-h h3 { margin: 0; font-size: 1.0625rem; }
-  .section-h small { color: var(--ink-2); }
+  .chip, .r-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--r-pill);
+                   background: var(--surface); color: var(--text); font: 500 var(--fs-sm)/1.2 var(--sans); cursor: pointer; text-align: start; }
+  .chip { min-height: 40px; }
+  .chip:hover, .r-chip:hover { background: var(--surface-3); }
+  .chip small, .r-chip b { font: 500 var(--fs-xs) var(--mono); color: var(--text-2); }
+  .r-chip .tick { width: 8px; height: 8px; border-radius: 50%; background: var(--highlight); box-shadow: 0 0 0 1px var(--border-strong); flex: none; }  /* said on camera */
+  .r-chip.locked { cursor: default; border-style: dashed; color: var(--text-2); }
+  .r-chip.locked:hover { background: var(--surface); }
+  .r-chip.locked .blur { filter: blur(4px); user-select: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
-  .brand { border: 1px solid var(--line-2); border-radius: 14px; margin-bottom: 12px; overflow: hidden; background: var(--bg); }
-  .brand-head { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 16px 18px; cursor: pointer; align-items: center; }
-  .brand-head:hover { background: var(--panel); }
-  .brand-name { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
-  .brand-name .cat { font: 500 0.6875rem var(--mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; }
-  .brand-sub { color: var(--ink-2); font-size: 0.875rem; display: flex; gap: 12px; flex-wrap: wrap; }
-  .status { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-weight: 600; font-size: 0.75rem; }
-  .status.unpaid { background: var(--lime-soft); color: var(--moss); }
-  .status.past-sponsor { background: var(--tagged-soft); color: var(--tagged-ink); }
-  .status.sponsored-only { background: var(--sponsored-soft); color: var(--sponsored-ink); }
-  .brand.locked .brand-name b { filter: blur(6px); user-select: none; }
-  .brand.locked .brand-head { cursor: default; }
-  .brand-body { border-top: 1px solid var(--line); padding: 16px 18px 18px; }
-  .receipt { display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  .receipt:last-child { border-bottom: 0; }
-  .receipt img { width: 64px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--panel); }
-  .receipt .q { font: italic 400 1.0625rem/1.4 var(--serif); }
-  .receipt .r-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; color: var(--ink-2); font-size: 0.8125rem; margin-top: 6px; }
-  .kind { display: inline-flex; height: 20px; padding: 0 7px; border-radius: 999px; align-items: center; font: 500 0.625rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
-  .kind-spoken { background: var(--spoken); color: #fff; }
-  .kind-tagged { background: var(--tagged-soft); color: var(--tagged-ink); }
-  .kind-sponsored { background: var(--sponsored-soft); color: var(--sponsored-ink); }
-  .ts { font: 500 0.75rem var(--mono); }
-  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-  .panel { margin-top: 14px; border: 1px solid var(--line-2); border-radius: 12px; padding: 16px; background: var(--panel); }
-  .panel h4 { margin: 0 0 8px; font-size: 0.9375rem; display: flex; gap: 10px; align-items: center; }
-  .verdict { display: inline-flex; height: 24px; padding: 0 10px; border-radius: 999px; align-items: center; font-weight: 600; font-size: 0.75rem; }
-  .verdict.active { background: var(--lime); color: var(--ink); }
-  .verdict.some { background: var(--tagged-soft); color: var(--tagged-ink); }
-  .verdict.quiet { background: var(--line); color: var(--ink-2); }
-  .tiers { display: flex; gap: 4px; margin: 10px 0; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
-  .tiers i { display: block; height: 100%; background: var(--moss); }
-  .tiers i:nth-child(2) { background: oklch(0.6 0.12 160); } .tiers i:nth-child(3) { background: oklch(0.72 0.1 160); } .tiers i:nth-child(4) { background: oklch(0.82 0.08 160); }
-  .examples { margin: 10px 0 0; padding: 0; list-style: none; font-size: 0.875rem; color: var(--ink-2); }
-  .examples li { padding: 4px 0; }
-  .pitch textarea { width: 100%; min-height: 260px; border: 1px solid var(--line-2); border-radius: 10px; padding: 12px; background: var(--bg); resize: vertical; line-height: 1.5; }
-  .pitch input { width: 100%; height: 40px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 12px; margin-bottom: 8px; background: var(--bg); font-weight: 600; }
-  .locked-note { color: var(--ink-2); font-size: 0.875rem; }
-  .upsell { border: 1px dashed var(--line-2); border-radius: 14px; padding: 18px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--lime-soft); }
-  .upsell b { display: block; }
-  .upsell span { color: var(--ink-2); font-size: 0.875rem; }
+  .preview { padding: var(--s-4); display: grid; gap: var(--s-3); }
+  .preview-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .preview-who { display: flex; align-items: center; gap: var(--s-3); font-size: var(--fs-sm); }
+  .preview-who small { display: block; color: var(--text-2); }
+  .preview-receipts { display: grid; gap: var(--s-2); }
+  .preview .skel-line { display: block; height: 14px; }
 
-  aside .box { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; background: var(--panel); }
-  aside h4 { margin: 0 0 8px; font: 500 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
-  aside .rate b { font: italic 500 1.5rem var(--serif); display: block; }
-  aside .rate small { color: var(--ink-2); display: block; }
-  .hist { list-style: none; margin: 0; padding: 0; }
-  .hist li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.875rem; }
-  .hist li:last-child { border: 0; }
-  .hist button { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; width: 100%; }
-  .hist button:hover { color: var(--moss); }
-  .hist small { color: var(--ink-2); display: block; }
-  aside form input { width: 100%; height: 36px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 10px; margin-bottom: 8px; background: var(--bg); }
-
-  dialog { border: 0; border-radius: 16px; padding: 28px; width: min(420px, 92vw); box-shadow: 0 30px 80px -20px oklch(0 0 0 / 0.4); }
-  dialog::backdrop { background: oklch(0.2 0.035 160 / 0.6); }
-  dialog h3 { margin: 0 0 4px; font-size: 1.25rem; }
-  dialog p { margin: 0 0 16px; color: var(--ink-2); }
-  dialog label { display: block; font-size: 0.8125rem; font-weight: 600; margin: 10px 0 4px; }
-  dialog input { width: 100%; height: 42px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 12px; }
-  dialog .row { display: flex; gap: 10px; margin-top: 18px; align-items: center; }
-  dialog .row .grow { flex: 1; }
-  .err { color: var(--coral); font-size: 0.875rem; margin-top: 10px; min-height: 1.2em; }
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; z-index: 20; }
-  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid oklch(0 0 0 / 0.2); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .hero .btn-link { color: var(--on-forest-2); }
-  .hero .btn-link:hover { color: var(--lime); }
-  .recent { max-width: 860px; margin: 0 auto; padding: 32px 24px 0; }
-  .recent .section-h { margin: 0 0 10px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .card { display: flex; gap: 12px; align-items: center; text-align: left; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--bg); cursor: pointer; }
-  .card:hover { border-color: var(--ink); }
-  .card img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--panel); }
-  .card b { display: block; }
-  .card small { color: var(--ink-2); }
-  .banner { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 18px; border-radius: 12px; background: var(--forest); color: var(--on-forest); margin-bottom: 20px; }
-  .banner span { color: var(--on-forest-2); font-size: 0.875rem; }
-  .banner b { color: var(--on-forest); }
-  .empty { border: 1px dashed var(--line-2); border-radius: 14px; padding: 28px; text-align: center; color: var(--ink-2); }
-  .empty b { display: block; color: var(--ink); font-size: 1.0625rem; margin-bottom: 6px; }
-  aside .share-url { display: block; width: 100%; height: 34px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 10px; margin-top: 8px; background: var(--bg); font: 500 0.75rem var(--mono); }
-  aside p { margin: 0 0 8px; color: var(--ink-2); font-size: 0.8125rem; }
-  .bar { overflow-x: auto; scrollbar-width: none; }    /* on a phone the bar scrolls, never the page */
-  @media (max-width: 1100px) { .bar .who { display: none; } }
-  @media (max-width: 900px) { .bar .bar-link + .bar-link { display: none; } }   /* keep "License offers" */
   @media (max-width: 860px) {
-    .app { grid-template-columns: 1fr; } .how, .pricing { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; }
-    .scan-form { grid-template-columns: 1fr; }
+    .hero-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "form" "preview" "fine" "lead"; padding-block: var(--s-5) var(--s-6); }
+    .scan-form .u-seg { display: flex; width: 100%; }
+    .scan-form .u-seg > label { flex: 1; }
+    #scan-btn { flex-basis: 100%; }
   }
+
+  /* ---- landing sections */
+  .band { padding-block: var(--s-7); }
+  .band + .band { border-top: 1px solid var(--border); }
+  .section-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--s-2); margin-bottom: var(--s-3); }
+  .section-h small { color: var(--text-2); }
+  .scan-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s-3); }
+  .scan-card { display: flex; gap: var(--s-3); align-items: center; min-height: 64px; padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-3);
+               background: var(--surface); color: var(--text); text-align: start; cursor: pointer; }
+  .scan-card:hover { border-color: var(--border-strong); background: var(--surface-2); }
+  .scan-card b { display: block; }
+  .scan-card small { color: var(--text-2); }
+  .how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5); }
+  .how h3 { font-size: var(--fs-lg); margin-block: var(--s-2) var(--s-1); }
+  .how p { color: var(--text-2); }
+  .sides h2 { max-width: 30ch; margin-block: var(--s-2) var(--s-5); }
+  .sides h2 em { font: italic 500 1.04em/1.1 var(--serif); color: var(--accent); }
+  .sides-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+  .side { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .side ul { margin: 0; padding: 0; list-style: none; color: var(--text-2); flex: 1; display: grid; gap: var(--s-2); }
+  .side li b { color: var(--text); font-weight: 600; }
+  .sides-foot { margin-top: var(--s-4); color: var(--text-2); font-size: var(--fs-sm); }
+  .pricing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+  .price h3 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); font-size: var(--fs-lg); }
+  .price h3 > span { font: 600 var(--fs-xl) var(--sans); font-variant-numeric: tabular-nums; }
+  .price.pro { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+  .price ul, .ticks { margin: var(--s-3) 0 0; padding: 0; list-style: none; color: var(--text-2); display: grid; gap: 6px; }
+  .price li, .ticks li { padding-inline-start: 18px; position: relative; }
+  .price li::before, .ticks li::before { content: ""; position: absolute; inset-inline-start: 2px; top: 0.6em; width: 8px; height: 2px; background: var(--accent); }
+  @media (max-width: 860px) { .how, .sides-grid, .pricing { grid-template-columns: minmax(0, 1fr); } .band { padding-block: var(--s-6); } }
+
+  /* ---- the report */
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--s-6); align-items: start; padding-block: var(--s-5) var(--s-8); }
+  #result { display: grid; gap: var(--s-4); min-width: 0; }
+  .banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--s-4);
+            border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface-2); }
+  .banner p { flex: 1 1 280px; color: var(--text-2); font-size: var(--fs-sm); }
+  .banner p b { color: var(--text); font-size: var(--fs-md); }
+  .banner .u-row { --gap: var(--s-2); }
+  #present[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+  .profile { display: flex; gap: var(--s-4); align-items: center; }
+  .profile h1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+  .profile h1:focus { outline: none; }
+  .profile h1:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
+  .stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2) var(--s-5); margin: 0; padding: var(--s-3) 0; list-style: none;
+           border-block: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-sm); }
+  .stats b { font: 600 var(--fs-xl) var(--sans); font-variant-numeric: tabular-nums; margin-inline-end: 4px; color: var(--text-2); }
+  .stats a { color: inherit; text-decoration: none; }
+  .stats a:hover b { text-decoration: underline; }
+  .note { color: var(--text-2); font-size: var(--fs-sm); }
+
+  .brand { overflow: hidden; }
+  .brand + .brand { margin-top: var(--s-3); }
+  .brand-h { font: inherit; letter-spacing: 0; }
+  .brand-head { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "title status chev" "sub status chev";
+                gap: 4px var(--s-3); align-items: center; padding: var(--s-4); border: 0; background: none; color: var(--text); text-align: start; cursor: pointer; min-height: 64px; }
+  button.brand-head:hover { background: var(--surface-2); }
+  button.brand-head:focus-visible { outline-offset: -2px; }
+  .brand-title { grid-area: title; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s-3); }
+  .brand-name { font-size: var(--fs-lg); font-weight: 600; }
+  .cat { font: 500 var(--fs-xs) var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+  .brand-sub { grid-area: sub; display: flex; flex-wrap: wrap; gap: 2px var(--s-3); font-size: var(--fs-sm); color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .brand-head > .u-pill { grid-area: status; }
+  .chev { grid-area: chev; width: 9px; height: 9px; border-inline-end: 2px solid var(--text-2); border-block-end: 2px solid var(--text-2); transform: translateY(-2px) rotate(45deg); margin-inline: 4px; }
+  .brand.open .chev { transform: translateY(2px) rotate(225deg); }
+  .brand.locked .brand-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title status" "sub status"; cursor: default; }
+  .brand.locked .brand-name b { filter: blur(6px); user-select: none; }
+  .st-past { background: var(--tagged-soft); color: var(--tagged-text); }
+  .st-sponsored { background: var(--sponsored-soft); color: var(--sponsored-text); }
+  .brand-body { border-top: 1px solid var(--border); padding: var(--s-4); display: grid; gap: var(--s-4); container-type: inline-size; }
+  .receipts { display: grid; gap: var(--s-3); justify-items: start; }
+  .receipts > .u-receipt { width: 100%; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .panel { border: 1px solid var(--border); border-radius: var(--r-3); padding: var(--s-4); background: var(--surface-2); display: grid; gap: var(--s-3); }
+  .panel h4 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-size: var(--fs-md); }
+  .panel h4:focus { outline: none; }
+  .panel h4:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .panel p { color: var(--text-2); }
+  .verdict-active { background: var(--ok-soft); color: var(--ok-text); }
+  .verdict-some { background: var(--tagged-soft); color: var(--tagged-text); }
+  .tiers { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-3); }
+  .tiers i { display: block; height: 100%; background: var(--accent); }
+  .tiers i:nth-child(2) { opacity: 0.8; } .tiers i:nth-child(3) { opacity: 0.6; } .tiers i:nth-child(4) { opacity: 0.4; }
+  .examples { margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--text-2); display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+  .pitch-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: var(--s-4); align-items: start; }
+  .pitch-cites { display: grid; gap: var(--s-2); }
+  .pitch-cites .u-receipt { background: var(--surface); }
+  .u-textarea.grow { field-sizing: content; min-height: 12lh; max-height: 70vh; overflow: auto; }
+  .pitch .u-input { font-weight: 600; }
+  @container (max-width: 620px) { .pitch-grid { grid-template-columns: minmax(0, 1fr); } }
+  .upsell { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--s-3); padding: var(--s-4); border: 1px dashed var(--accent);
+            border-radius: var(--r-3); background: var(--accent-soft); }
+  .upsell b { display: block; }
+  .upsell span { color: var(--text-2); font-size: var(--fs-sm); }
+
+  .side-col { display: grid; gap: var(--s-3); }
+  .box { padding: var(--s-4); display: grid; gap: var(--s-2); justify-items: start; }
+  .box-h { font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+  .box p, .box small { color: var(--text-2); font-size: var(--fs-sm); }
+  .rate-v { font: 600 var(--fs-2xl)/1.15 var(--sans); color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .hist { list-style: none; margin: 0; padding: 0; width: 100%; }
+  .hist li + li { border-top: 1px solid var(--border); }
+  .hist button { display: block; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; background: none; color: var(--text); text-align: start; cursor: pointer; border-radius: var(--r-1); font-size: var(--fs-sm); }
+  .hist button:hover { background: var(--surface-2); }
+  .hist small { display: block; color: var(--text-2); }
+  .share-url { font: 500 var(--fs-xs) var(--mono); min-height: 34px; }
+  #report { display: grid; gap: var(--s-2); width: 100%; }
+  @media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 600px) {
-    .bar { padding: 0 14px; gap: 10px; } .bar .who, .wordmark small { display: none; }
-    .hero { padding: 44px 18px 52px; } .how, .recent { padding-left: 18px; padding-right: 18px; } .app { padding: 18px; }
-    .brand-head { grid-template-columns: 1fr; } .receipt { grid-template-columns: 48px 1fr; } .receipt img { width: 48px; height: 72px; }
+    .brand-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title chev" "sub chev" "status chev"; }
+    .brand-head > .u-pill { justify-self: start; }
+    .brand.locked .brand-head { grid-template-areas: "title title" "sub sub" "status status"; }
+    .profile { align-items: flex-start; }
   }
+
+  .dlg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
+  .u-dialog .u-error:empty { display: none; }
+}
 </style>
 </head>
 <body>
-<header class="bar">
-  <a class="wordmark" href="/creators/">Receipts <small>by Unprompted</small></a>
-  <div class="grow"></div>
-  <a class="bar-link" href="/creators/licenses">License offers</a>
-  <a class="bar-link" href="/creators/roster">For managers</a>
-  <a class="bar-link" href="/brands/">For brands</a>
-  <div id="account"></div>
+<header class="u-bar">
+  <a class="u-logo" href="/creators/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <span class="grow"></span>
+  <nav class="no-present" aria-label="Main">
+    <a class="u-bar-link" href="/creators/licenses">License offers</a>
+    <a class="u-bar-link" href="/creators/roster">For managers</a>
+    <a class="u-bar-link" href="/brands/">For brands</a>
+  </nav>
+  <button class="u-btn u-btn-ghost u-btn-sm cmdk-btn" type="button" id="cmdk" aria-label="Commands (Ctrl+K)">Commands <kbd class="u-kbd">Ctrl</kbd><kbd class="u-kbd">K</kbd></button>
+  <div id="account" class="no-present"></div>
 </header>
 
 <main id="landing">
-  <section class="hero"><div class="hero-in">
-    <div class="eyebrow">For TikTok and Instagram creators</div>
-    <h1>The brands you already talk about <em>should be paying you.</em></h1>
-    <p class="lead">Paste your handle. We read your videos' transcripts and find every brand you've said, tagged or featured, split unpaid mentions from ads, and give you the receipt: quote, timestamp, frame, views. Then pitch with proof.</p>
-    <form class="scan-form" id="scan-form">
-      <div class="seg" role="group" aria-label="Platform">
-        <button type="button" data-platform="tiktok" aria-pressed="true">TikTok</button>
-        <button type="button" data-platform="instagram" aria-pressed="false">Instagram</button>
+  <section class="hero">
+    <div class="u-container hero-grid">
+      <div class="hero-head">
+        <span class="u-eyebrow">For TikTok and Instagram creators</span>
+        <h1 class="u-h1">The brands you already talk about <em>should be paying you.</em></h1>
       </div>
-      <input id="handle" placeholder="@yourhandle" autocomplete="off" spellcheck="false" required>
-      <button class="btn btn-primary" type="submit" id="scan-btn">Find my brands</button>
-    </form>
-    <div class="miss" id="miss" hidden></div>
-    <div class="fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="btn-link" type="button" id="sample">See a sample report</button></div>
-  </div></section>
-  <section class="recent" id="recent" hidden><div class="section-h"><h3>Your scans</h3><small>pick up where you left off</small></div><div class="cards" id="recent-list"></div></section>
-  <section class="how">
-    <div><div class="n">01</div><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></div>
-    <div><div class="n">02</div><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></div>
-    <div><div class="n">03</div><h3>Pitch with proof</h3><p>See which brands are paying creators this quarter, then send a pitch that quotes your own words back to them.</p></div>
+      <p class="u-lead hero-lead">Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer the brands that want to pay to run your videos as ads.</p>
+      <div class="hero-form">
+        <form class="scan-form" id="scan-form">
+          <label class="u-label" for="handle">Your handle or profile link</label>
+          <input class="u-input u-input-lg" id="handle" placeholder="@yourhandle or paste your profile link" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="go" required aria-describedby="handle-hint">
+          <div class="scan-controls">
+            <div class="u-seg" data-u-seg role="radiogroup" aria-label="Platform">
+              <label><input type="radio" name="platform" value="tiktok" checked>TikTok</label>
+              <label><input type="radio" name="platform" value="instagram">Instagram</label>
+            </div>
+            <button class="u-btn u-btn-primary u-btn-lg" type="submit" id="scan-btn">Find my brands</button>
+          </div>
+          <p class="u-hint" id="handle-hint" aria-live="polite">A profile link picks the platform for you.</p>
+        </form>
+        <div class="scan-status u-progress" id="scan-status" hidden>
+          <div class="u-row"><span id="scan-who"></span><span class="u-stamp" id="scan-clock" aria-hidden="true"></span></div>
+          <div class="u-progress-bar indeterminate"><b></b></div>
+          <span class="u-progress-text" id="scan-stage" role="status" aria-live="polite"></span>
+        </div>
+        <div class="miss u-well" id="miss" role="status" hidden></div>
+      </div>
+      <div class="fine hero-fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="u-btn u-btn-ghost u-btn-sm linkish" type="button" id="sample">See a sample report</button></div>
+      <section class="preview u-card" id="preview" aria-labelledby="preview-h" aria-busy="true">
+        <div class="preview-head"><span class="u-eyebrow" id="preview-h">Sample report</span><span class="u-pill u-pill-warn">Fixture data, made up to show the format</span></div>
+        <div class="u-stack" id="preview-body" style="--gap: var(--s-3)"></div>
+      </section>
+    </div>
   </section>
-  <section class="pricing">
-    <div class="price"><h3>Free <span>$0</span></h3><ul><li>1 scan a week</li><li>Top 3 brands with full receipts</li><li>Counts for everything else</li></ul></div>
-    <div class="price pro"><h3>Pro <span>$<span data-price>29</span>/mo</span></h3><ul><li>Every brand, every receipt</li><li>Who's paying creators for each brand right now</li><li>Pitch drafts with your rate range</li><li>50 scans a week, re-scan anytime</li></ul></div>
+
+  <section class="band" id="recent" hidden aria-labelledby="recent-h">
+    <div class="u-container">
+      <div class="section-h"><h2 class="u-h3" id="recent-h">Your scans</h2><small>pick up where you left off</small></div>
+      <div class="scan-cards" id="recent-list"></div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="How it works">
+    <div class="u-container how">
+      <div><span class="u-eyebrow">01</span><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></div>
+      <div><span class="u-eyebrow">02</span><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></div>
+      <div><span class="u-eyebrow">03</span><h3>Get paid, two ways</h3><p>Pitch the brands paying creators now with a draft that quotes your own words, or accept a licence request when a brand wants to run one of your videos as an ad.</p></div>
+    </div>
+  </section>
+
+  <section class="band sides" aria-labelledby="sides-h">
+    <div class="u-container">
+      <span class="u-eyebrow">One place for both sides of the deal</span>
+      <h2 class="u-h2" id="sides-h">You don't have to go hunting. <em>Brands that watch their own name find you.</em></h2>
+      <div class="sides-grid">
+        <div class="side u-card u-card-pad">
+          <h3 class="u-h3">If you create</h3>
+          <ul>
+            <li><b>A receipt for every mention.</b> Quote, timestamp, frame and views, on a public page you can drop into a pitch or media kit.</li>
+            <li><b>An inbox for licence offers.</b> A brand asks to run one of your videos as a paid ad for 30 days. You see the price, then accept, counter or decline. Set a minimum and auto-yes or auto-no brands, and requests answer themselves.</li>
+            <li><b>You keep ownership, and 85%.</b> The brand pays before the ad goes live. You never post anything new, and nothing is exclusive.</li>
+            <li><b>A weekly email, only when something needs you:</b> offers waiting, licences ending, money owed. Never an empty one.</li>
+          </ul>
+          <a class="u-btn u-btn-sm" href="/creators/licenses">Open my offers</a>
+        </div>
+        <div class="side u-card u-card-pad">
+          <h3 class="u-h3">If you're a brand</h3>
+          <ul>
+            <li><b>Find the creators already saying your name.</b> Ranked as advocates, with the exact quote and frame, including mentions no caption or hashtag tool sees.</li>
+            <li><b>Watch weekly.</b> Save a search and get a report of new on-camera mentions each week.</li>
+            <li><b>License a clip in one click.</b> Request a 30-day Spark Ad or partnership-ad licence with the price up front. The creator consents, so there's no chasing and no unlicensed reuse.</li>
+            <li><b>Month-to-month, no contracts.</b> Pay per licence, and renew with one click a week before it ends.</li>
+          </ul>
+          <a class="u-btn u-btn-sm" href="/brands/">Search my brand</a>
+        </div>
+      </div>
+      <p class="sides-foot">Manage several creators? The <a href="/creators/roster">manager seat</a> sends a Monday report across your whole roster.</p>
+    </div>
+  </section>
+
+  <section class="band" aria-label="Pricing">
+    <div class="u-container pricing">
+      <div class="price u-card u-card-pad"><h3>Free <span>$0</span></h3><ul><li>1 scan a week</li><li>Top 3 brands with full receipts</li><li>Counts for everything else</li><li>Licence inbox: always free</li></ul></div>
+      <div class="price pro u-card u-card-pad"><h3>Pro <span>$<span data-price>29</span>/mo</span></h3><ul><li>Every brand, every receipt</li><li>Who's paying creators for each brand right now</li><li>Pitch drafts with your rate range</li><li>50 scans a week, re-scan anytime</li></ul></div>
+    </div>
   </section>
 </main>
 
-<main id="app" class="app" hidden>
-  <section id="result"></section>
-  <aside>
-    <div class="box rate" id="rate"></div>
-    <div class="box"><h4>Your scans</h4><ul class="hist" id="history"></ul><button class="btn btn-quiet btn-sm" id="new-scan" style="margin-top:10px">New scan</button></div>
-    <div class="box" id="share-box"><h4>Receipt page</h4><p>A public, read-only page of this report to drop in a pitch or your media kit.</p><button class="btn btn-quiet btn-sm" id="share">Copy public link</button><input class="share-url" id="share-url" readonly hidden></div>
-    <div class="box"><h4>Brand missing?</h4><form id="report"><input placeholder="Brand we didn't catch" required maxlength="80"><button class="btn btn-quiet btn-sm" type="submit">Tell us</button></form></div>
+<main id="app" class="app u-container" hidden>
+  <section id="result" aria-label="Report"></section>
+  <aside class="side-col" aria-label="Report tools">
+    <div class="box u-card" id="rate"></div>
+    <div class="box u-card" id="share-box">
+      <h2 class="box-h">Receipt page</h2>
+      <p>A public, read-only page of this report to drop in a pitch or your media kit. Brands can put it on a projector in present mode.</p>
+      <button class="u-btn u-btn-sm" type="button" id="share">Copy public link</button>
+      <input class="u-input share-url" id="share-url" readonly hidden aria-label="Public link to this report">
+      <button class="u-btn u-btn-ghost u-btn-sm" type="button" id="share-present" hidden>Copy present-mode link</button>
+    </div>
+    <div class="box u-card no-present">
+      <h2 class="box-h">Your scans</h2>
+      <ul class="hist" id="history"></ul>
+      <button class="u-btn u-btn-sm" type="button" id="new-scan">New scan</button>
+    </div>
+    <div class="box u-card no-present">
+      <h2 class="box-h">Brand missing?</h2>
+      <form id="report">
+        <label class="sr-only" for="report-text">Brand we didn't catch</label>
+        <input class="u-input" id="report-text" placeholder="Brand we didn't catch" required maxlength="80" dir="auto">
+        <button class="u-btn u-btn-sm" type="submit">Tell us</button>
+      </form>
+    </div>
   </aside>
 </main>
 
-<dialog id="auth">
-  <h3 id="auth-title">Create your account</h3>
-  <p>Free scan, no card. We'll save your receipts here.</p>
+<dialog id="auth" class="u-dialog" aria-labelledby="auth-title">
   <form id="auth-form">
-    <label>Email</label><input name="email" type="email" required autocomplete="email">
-    <label>Password</label><input name="password" type="password" required minlength="8" autocomplete="new-password">
-    <div class="err" id="auth-err"></div>
-    <div class="row"><button class="btn-link" type="button" id="auth-toggle">I already have an account</button><span class="grow"></span><button class="btn btn-primary" type="submit" id="auth-submit">Continue</button></div>
+    <div class="u-dialog-body">
+      <div class="dlg-head"><h2 class="u-h3" id="auth-title">Create your account</h2><button class="u-btn u-btn-ghost u-btn-sm u-btn-icon" type="button" aria-label="Close" id="auth-close">×</button></div>
+      <p class="u-muted">Free scan, no card. We'll save your receipts here.</p>
+      <div class="u-field"><label class="u-label" for="auth-email">Email</label><input class="u-input" id="auth-email" name="email" type="email" required autocomplete="email"></div>
+      <div class="u-field"><label class="u-label" for="auth-password">Password</label><input class="u-input" id="auth-password" name="password" type="password" required minlength="8" autocomplete="new-password"><span class="u-hint">At least 8 characters.</span></div>
+      <p class="u-error" id="auth-err" role="alert"></p>
+    </div>
+    <div class="u-dialog-foot"><button class="u-btn u-btn-ghost" type="button" id="auth-toggle">I already have an account</button><span class="u-grow"></span><button class="u-btn u-btn-primary" type="submit" id="auth-submit">Continue</button></div>
   </form>
 </dialog>
 
-<dialog id="upgrade">
-  <h3>Go Pro, $<span data-price>29</span>/month</h3>
-  <p id="upgrade-why">Unlock every brand, the sponsor check and pitch drafts.</p>
-  <ul class="price" style="list-style:none;border:0;padding:0;margin:0 0 8px">
-    <li>Every brand in your scan, every receipt</li><li>Sponsor activity check for any brand</li><li>Pitch drafts that quote your own video</li><li>50 scans a week</li>
-  </ul>
-  <div class="err" id="upgrade-err"></div>
-  <div class="row"><button class="btn-link" type="button" id="upgrade-close">Not now</button><span class="grow"></span><button class="btn btn-primary" id="upgrade-go">Continue to checkout</button></div>
+<dialog id="upgrade" class="u-dialog" aria-labelledby="upgrade-title">
+  <div class="u-dialog-body">
+    <h2 class="u-h3" id="upgrade-title">Go Pro, $<span data-price>29</span>/month</h2>
+    <p id="upgrade-why" class="u-muted">Unlock every brand, the sponsor check and pitch drafts.</p>
+    <ul class="ticks" id="upgrade-list">
+      <li>Every brand in your scan, every receipt</li><li>Sponsor activity check for any brand</li><li>Pitch drafts that quote your own video</li><li>50 scans a week</li>
+    </ul>
+    <p class="u-hint" id="upgrade-err" role="status" aria-live="polite"></p>
+  </div>
+  <div class="u-dialog-foot"><button class="u-btn u-btn-ghost" type="button" id="upgrade-close">Not now</button><button class="u-btn u-btn-primary" type="button" id="upgrade-go">Continue to checkout</button></div>
 </dialog>
 
 <script>
+const { h } = U;
 const $ = (s, el = document) => el.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n ?? 0);
-const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-const date = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const num = (n) => U.fmt(n ?? 0, 'compact');
+const date = (iso) => U.date(iso);
 const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram' };
 const STATUS = { unpaid: 'Unpaid mentions', 'past-sponsor': 'Past sponsor, still mentioning', 'sponsored-only': 'Sponsored only' };
+const STATUS_CLASS = { unpaid: 'u-pill-ok', 'past-sponsor': 'st-past', 'sponsored-only': 'st-sponsored' };
 const VERDICT = { active: 'Actively paying creators', some: 'Some paid posts', quiet: 'Quiet lately' };
+const TOP_RECEIPTS = 3;
 
 const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {}, reserved: false,
-  offer: { arm: 'a', plan: 'pro', name: 'Pro', price: 29, checkout: false } };
+  offer: { arm: 'a', plan: 'pro', name: 'Pro', price: 29, checkout: false }, history: [], more: new Set(), sampleData: null, previewLoading: false, shareUrl: '' };
 
 async function api(path, body, method) {
   const res = await fetch('/api/creators' + path, body === undefined ? { method: method || 'GET' }
@@ -290,6 +367,8 @@ async function api(path, body, method) {
   if (!res.ok) { const e = new Error(data.error || res.statusText); e.status = res.status; e.data = data; throw e; }
   return data;
 }
+const toast = (msg, kind) => U.toast(msg, kind ? { kind } : {});
+
 // ---- the packaging test (backend/packaging.py): which offer this browser sees. Offer (a) is the page as written.
 const PLAN_NAME = { free: 'Free', open: 'Free', pro: 'Pro', leads: 'Weekly leads', roster: 'Roster' };
 const OFFER_COPY = {
@@ -313,28 +392,37 @@ function applyOffer() {
   const c = OFFER_COPY[S.offer.arm];
   if (!c) return;
   $('#fine > span').textContent = c.fine;
-  $('.pricing').innerHTML = c.cards.map(([t, p, items], i) => `<div class="price${i ? ' pro' : ''}"><h3>${esc(t)} <span>${esc(p)}</span></h3><ul>${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('');
+  $('.pricing').replaceChildren(...c.cards.map(([t, p, items], i) => h('div', { class: `price u-card u-card-pad${i ? ' pro' : ''}` },
+    h('h3', {}, t, ' ', h('span', {}, p)), h('ul', {}, ...items.map((x) => h('li', {}, x))))));
   if (c.bullets) {
-    $('#upgrade h3').textContent = `${S.offer.name}, $${S.offer.price}/month`;
-    $('#upgrade ul').innerHTML = c.bullets.map((x) => `<li>${esc(x)}</li>`).join('');
+    $('#upgrade-title').textContent = `${S.offer.name}, $${S.offer.price}/month`;
+    $('#upgrade-list').replaceChildren(...c.bullets.map((x) => h('li', {}, x)));
   }
 }
 const upgradeWhy = () => OFFER_COPY[S.offer.arm]?.why || 'Unlock every brand, the sponsor check and pitch drafts.';
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), Math.min(8000, 2200 + msg.length * 35)); }
+
+function avatar(src, size = 40) {
+  const ph = () => h('span', { class: 'avatar', style: { '--size': `${size}px` }, 'aria-hidden': 'true' });
+  if (!src) return ph();
+  return h('img', { class: 'avatar', src, alt: '', width: size, height: size, loading: 'lazy', style: { '--size': `${size}px` }, onerror: (e) => e.target.replaceWith(ph()) });
+}
 
 // ---- account bar
 function renderAccount() {
   const el = $('#account');
-  if (!S.user) { el.innerHTML = `<button class="btn btn-quiet btn-sm" id="signin">Sign in</button>`; $('#signin').onclick = () => openAuth('login'); return; }
+  if (!S.user) { el.replaceChildren(h('button', { class: 'u-btn u-btn-sm', type: 'button', id: 'signin', onclick: () => openAuth('login') }, 'Sign in')); return; }
   const paid = !['free', 'open'].includes(S.user.plan);
-  el.innerHTML = `<span class="who">${esc(S.user.email)}</span> <span class="plan ${paid ? 'pro' : ''}">${esc(PLAN_NAME[S.user.plan] || 'Free')}</span>
-    ${paid ? (S.user.billing ? `<button class="btn btn-quiet btn-sm" id="portal">Billing</button>` : '')
-      : S.offer.plan ? `<button class="btn btn-primary btn-sm" id="up">${S.offer.arm === 'a' ? 'Go Pro' : esc(S.offer.name)}</button>` : ''}
-    <button class="btn btn-quiet btn-sm" id="signout">Sign out</button>`;
-  el.style.display = 'flex'; el.style.gap = '10px'; el.style.alignItems = 'center';
-  $('#signout').onclick = async () => { await api('/logout', {}); S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory(); };
-  if ($('#up')) $('#up').onclick = () => openUpgrade();
-  if ($('#portal')) $('#portal').onclick = async () => { try { location.href = (await api('/billing/portal', {})).url; } catch (e) { toast(e.message); } };
+  el.replaceChildren(
+    h('span', { class: 'who' }, S.user.email),
+    h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[S.user.plan] || 'Free'),
+    paid ? (S.user.billing ? h('button', { class: 'u-btn u-btn-sm', type: 'button', id: 'portal', onclick: openPortal }, 'Billing') : null)
+      : S.offer.plan ? h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', id: 'up', onclick: () => openUpgrade() }, S.offer.arm === 'a' ? 'Go Pro' : S.offer.name) : null,
+    h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', id: 'signout', onclick: signOut }, 'Sign out'));
+}
+async function openPortal() { try { location.href = (await api('/billing/portal', {})).url; } catch (e) { toast(e.message, 'error'); } }
+async function signOut() {
+  try { await api('/logout', {}); } catch (e) { toast(e.message, 'error'); return; }
+  S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory();
 }
 
 // ---- auth
@@ -342,83 +430,145 @@ function openAuth(mode) {
   S.mode = mode;
   $('#auth-title').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
   $('#auth-toggle').textContent = mode === 'signup' ? 'I already have an account' : 'Create an account instead';
+  $('#auth-password').setAttribute('autocomplete', mode === 'signup' ? 'new-password' : 'current-password');
   $('#auth-err').textContent = '';
-  $('#auth').showModal();
+  if (!$('#auth').open) $('#auth').showModal();
 }
 $('#auth-toggle').onclick = () => openAuth(S.mode === 'signup' ? 'login' : 'signup');
+$('#auth-close').onclick = () => $('#auth').close();
 $('#auth-form').onsubmit = async (e) => {
   e.preventDefault();
-  const f = new FormData(e.target); $('#auth-submit').disabled = true;
+  const f = new FormData(e.target), submit = $('#auth-submit');
+  submit.disabled = true; submit.setAttribute('aria-busy', 'true');
   try {
     const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', { email: f.get('email'), password: f.get('password') });
     S.user = user; $('#auth').close(); renderAccount();
     if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); } else loadHistory();
   } catch (err) { $('#auth-err').textContent = err.message; }
-  $('#auth-submit').disabled = false;
+  submit.disabled = false; submit.removeAttribute('aria-busy');
 };
 
-// ---- upgrade
+// ---- upgrade (the dialog sells S.offer's plan: checkout, the dev switch, or a reservation)
+function upgradeMsg(text, error) { const m = $('#upgrade-err'); m.className = error ? 'u-error' : 'u-hint'; m.textContent = text; }
 function openUpgrade(why) {
   if (!S.user) { openAuth('signup'); return; }
   if (!S.offer.plan) { toast(why || 'Receipts is free on your account.'); return; }   // offer (b): nothing to buy
   $('#upgrade-why').textContent = why || upgradeWhy();
-  $('#upgrade-err').textContent = '';
+  upgradeMsg('');
   const go = $('#upgrade-go'), name = S.offer.name;
   go.disabled = false;
   if (S.offer.checkout) go.textContent = 'Continue to checkout';
   else if (S.billing.devSwitch) go.textContent = `Switch to ${name} (dev)`;
-  else if (S.reserved) { go.disabled = true; go.textContent = 'Reserved'; $('#upgrade-err').textContent = reservedCopy(); }
+  else if (S.reserved) { go.disabled = true; go.textContent = 'Reserved'; upgradeMsg(reservedCopy()); }
   else go.textContent = `Reserve ${name} at $${S.offer.price}/mo`;
-  $('#upgrade').showModal();
+  if (!$('#upgrade').open) $('#upgrade').showModal();
 }
 const reservedCopy = () => `Checkout opens in a few days. You're first in line at $${S.offer.price}/mo and we'll email ${S.user.email}.`;
 $('#upgrade-close').onclick = () => $('#upgrade').close();
 $('#upgrade-go').onclick = async () => {
   const go = $('#upgrade-go');
+  go.setAttribute('aria-busy', 'true');
   try {
     if (S.offer.checkout) { location.href = (await api('/billing/checkout', {})).url; return; }
-    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: S.offer.plan })).user; $('#upgrade').close(); renderAccount(); toast(`You're on ${S.offer.name}`); if (S.scan) await openScan(S.scan.id); return; }
+    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: S.offer.plan })).user; $('#upgrade').close(); renderAccount(); toast(`You're on ${S.offer.name}`, 'ok'); if (S.scan) await openScan(S.scan.id); return; }
     await api('/billing/interest', { scan: S.scan ? S.scan.id : null });
     S.reserved = true; go.disabled = true; go.textContent = 'Reserved';
-    $('#upgrade-err').textContent = reservedCopy();
-  } catch (e) { $('#upgrade-err').textContent = e.message; }
+    upgradeMsg(reservedCopy());
+  } catch (e) { upgradeMsg(e.message, true); }
+  finally { go.removeAttribute('aria-busy'); }
 };
 async function paywalled(err, why) { if (err.status === 402) { openUpgrade(why || err.message); return true; } if (err.status === 401) { openAuth('login'); return true; } return false; }
 
+// ---- handle field: "@name", "name" or a pasted profile link (the link also picks the platform)
+const HANDLE_URL = /(?:https?:\/\/)?(?:www\.|m\.|vm\.)?(tiktok|instagram)\.com\/@?([A-Za-z0-9._]+)/i;
+const NOT_A_PROFILE = new Set(['p', 'reel', 'reels', 'tv', 'stories', 'explore', 't']);
+const HANDLE_HINT = 'A profile link picks the platform for you.';
+function parseHandle(raw) {
+  raw = String(raw || '').trim();
+  const m = raw.match(HANDLE_URL), short = /\bvm\.tiktok\.com\//i.test(raw);
+  let platform = null;
+  if (m) { platform = m[1].toLowerCase(); raw = m[2]; }
+  const handle = raw.split('?')[0].trim().replace(/^\/+|\/+$/g, '').replace(/^@+/, '');
+  return { platform, handle, link: !!m, short, post: !!m && NOT_A_PROFILE.has(handle.toLowerCase()) };
+}
+function handleProblem(p) {
+  if (p.short) return 'Short links don’t include the handle. Paste your @handle or your profile link.';
+  if (p.post) return 'That’s a post link. Paste your profile link or @handle instead.';
+  return '';
+}
+function setPlatform(p) {
+  S.platform = p;
+  for (const r of $$('#scan-form input[name="platform"]')) {
+    const on = r.value === p;
+    if (r.checked !== on) { r.checked = on; if (on) r.dispatchEvent(new Event('change', { bubbles: true })); }   // moves the sliding thumb
+  }
+}
+$('#scan-form').addEventListener('change', (e) => { if (e.target.name === 'platform') S.platform = e.target.value; });
+$('#handle').addEventListener('input', () => {
+  const p = parseHandle($('#handle').value), hint = $('#handle-hint'), problem = handleProblem(p);
+  if (problem) hint.textContent = problem;
+  else if (p.link && p.handle) { setPlatform(p.platform); hint.textContent = `${PLATFORM[p.platform]} profile: we'll scan @${p.handle}.`; }
+  else if (hint.textContent !== HANDLE_HINT) hint.textContent = HANDLE_HINT;
+});
+$('#scan-form').onsubmit = (e) => {
+  e.preventDefault();
+  const p = parseHandle($('#handle').value), problem = handleProblem(p);
+  if (problem) { $('#handle-hint').textContent = problem; $('#handle').focus(); return; }
+  if (p.platform) setPlatform(p.platform);
+  if (p.handle) startScan(S.platform, p.handle);
+};
+$('#new-scan').onclick = newScan;
+function newScan() { showLanding(); window.scrollTo({ top: 0 }); $('#handle').focus(); }
+
 // ---- scanning
-function setPlatform(p) { S.platform = p; for (const x of document.querySelectorAll('.seg button')) x.setAttribute('aria-pressed', x.dataset.platform === p); }
-for (const b of document.querySelectorAll('.seg button')) b.onclick = () => setPlatform(b.dataset.platform);
-$('#scan-form').onsubmit = (e) => { e.preventDefault(); const h = $('#handle').value.trim().replace(/^@/, ''); if (h) startScan(S.platform, h); };
-$('#new-scan').onclick = showLanding;
 function startScan(platform, handle) {
   if (!S.user) { S.pending = { platform, handle }; openAuth('signup'); return; }
   runScan(platform, handle);
 }
-async function runScan(platform, handle) {
-  const btn = $('#scan-btn'), inp = $('#handle'); $('#miss').hidden = true; btn.disabled = inp.disabled = true; btn.innerHTML = '<span class="spinner"></span> Reading transcripts';
-  try { const scan = await api('/scans', { platform, handle }); showScan(scan); loadHistory(); }
-  catch (e) { if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!(await paywalled(e))) toast(e.message); }
-  btn.disabled = inp.disabled = false; btn.textContent = 'Find my brands';
+// The scan is one request, so the status names what it is doing, in order, without inventing counts.
+const STAGES = [[0, 'Reading your latest videos…'], [3, 'Reading transcripts, captions, hashtags and @mentions…'], [7, 'Matching 300+ brands…'],
+  [12, 'Pulling the receipts: quote, timestamp, frame…'], [22, 'Still reading. Accounts with lots of videos take a little longer.']];
+function scanProgress(platform, handle) {
+  const box = $('#scan-status'), stage = $('#scan-stage'), clockEl = $('#scan-clock'), t0 = Date.now();
+  $('#scan-who').textContent = `@${handle} · ${PLATFORM[platform] || platform}`;
+  box.hidden = false;
+  let last = -1;
+  const tick = () => {
+    const s = (Date.now() - t0) / 1000;
+    let i = 0;
+    for (let k = 0; k < STAGES.length; k++) if (s >= STAGES[k][0]) i = k;
+    if (i !== last) { last = i; stage.textContent = STAGES[i][1]; }
+    clockEl.textContent = `${Math.floor(s)}s`;
+  };
+  tick();
+  const timer = setInterval(tick, 1000);
+  return () => { clearInterval(timer); box.hidden = true; };
 }
-async function openScan(id) { try { showScan(await api('/scans/' + id)); } catch (e) { toast(e.message); } }
+async function runScan(platform, handle) {
+  const btn = $('#scan-btn'), inp = $('#handle'); $('#miss').hidden = true;
+  btn.disabled = inp.disabled = true; btn.setAttribute('aria-busy', 'true');
+  const done = scanProgress(platform, handle);
+  try { const scan = await api('/scans', { platform, handle }); done(); showScan(scan, true); loadHistory(); }
+  catch (e) { done(); if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!(await paywalled(e))) toast(e.message, 'error'); }
+  btn.disabled = inp.disabled = false; btn.removeAttribute('aria-busy');
+}
+async function openScan(id) { try { showScan(await api('/scans/' + id), true); } catch (e) { toast(e.message, 'error'); } }
 async function loadHistory() {
   const rows = S.user ? await api('/scans').catch(() => []) : [];
-  $('#history').innerHTML = rows.length ? rows.map((r) => `<li><button data-id="${r.id}"><b>@${esc(r.handle)}</b> · ${PLATFORM[r.platform]}<small>${r.brands} brands · ${date(r.createdAt)}</small></button></li>`).join('') : '<li><small>No scans yet.</small></li>';
+  S.history = rows;
+  $('#history').replaceChildren(...(rows.length ? rows.map((r) => h('li', {}, h('button', { type: 'button', 'data-id': r.id, onclick: () => openScan(+r.id) },
+    h('b', {}, h('bdi', {}, '@' + r.handle)), ` · ${PLATFORM[r.platform]}`, h('small', {}, `${r.brands} brands · ${date(r.createdAt)}`))))
+    : [h('li', {}, h('small', {}, 'No scans yet.'))]));
   $('#recent').hidden = !rows.length;
-  $('#recent-list').innerHTML = rows.slice(0, 6).map((r) => `<button class="card" data-id="${r.id}"><img src="${esc(r.pfp || '')}" alt=""><span><b>@${esc(r.handle)}</b><small>${PLATFORM[r.platform]} · ${r.brands} brands · ${date(r.createdAt)}</small></span></button>`).join('');
-  for (const b of document.querySelectorAll('#history button, #recent-list button')) b.onclick = () => openScan(+b.dataset.id);
+  $('#recent-list').replaceChildren(...rows.slice(0, 6).map((r) => h('button', { class: 'scan-card', type: 'button', 'data-id': r.id, onclick: () => openScan(+r.id) },
+    avatar(r.pfp, 40), h('span', {}, h('b', {}, h('bdi', {}, '@' + r.handle)), h('small', {}, `${PLATFORM[r.platform]} · ${r.brands} brands · ${date(r.createdAt)}`)))));
 }
-const PLATFORM_LABEL = { tiktok: 'TikTok', instagram: 'Instagram' };
 function showMiss(e) {
-  const box = $('#miss'); box.replaceChildren();
-  const msg = document.createElement('span'); msg.textContent = e.message; box.append(msg);
-  for (const s of e.data.suggestions) {
-    const c = document.createElement('button'); c.className = 'chip'; c.type = 'button';
-    c.innerHTML = `@${s.handle}<small>${num(s.followers)} · ${PLATFORM_LABEL[s.platform]}</small>`;
-    c.onclick = () => { setPlatform(s.platform); $('#handle').value = '@' + s.handle; startScan(s.platform, s.handle); };
-    box.append(c);
-  }
-  box.hidden = false; box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  const box = $('#miss');
+  box.replaceChildren(h('span', {}, e.message), ...e.data.suggestions.map((s) => h('button', { class: 'chip', type: 'button', onclick: () => {
+    setPlatform(s.platform); $('#handle').value = '@' + s.handle; startScan(s.platform, s.handle);
+  } }, h('bdi', {}, '@' + s.handle), h('small', {}, `${num(s.followers)} · ${PLATFORM[s.platform]}`))));
+  box.hidden = false; box.scrollIntoView({ block: 'nearest', behavior: U.reduced() ? 'auto' : 'smooth' });
 }
 // The pricing test's visit (packaging.py). Brands opening a shared receipt page aren't prospects: they join only if they
 // go on to the landing.
@@ -427,111 +577,251 @@ async function visit(body) {
   const v = await api('/visit', body || {}).catch(() => null);
   if (v) { S.offer = v.offer; applyOffer(); if (S.user) renderAccount(); }
 }
-function showLanding() { if (!S.visited) visit(); document.title = 'Receipts by Unprompted'; $('#app').hidden = true; $('#landing').hidden = false; S.scan = null; if (!['/', '/creators/'].includes(location.pathname)) history.replaceState({}, '', '/creators/'); }
+function showLanding() {
+  if (!S.visited) visit();
+  document.title = 'Receipts by Unprompted'; $('#app').hidden = true; $('#landing').hidden = false; S.scan = null;
+  if (!['/', '/creators/'].includes(location.pathname)) history.replaceState({}, '', '/creators/');
+  if (!S.sampleData) loadPreview();
+}
 
-function showScan(scan) {
-  S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {};
+// ---- the sample report preview under the hero (fixture data, labelled as such)
+const mentionCount = (b) => (b.spoken || 0) + (b.tagged || 0) + (b.sponsored || 0);
+function receiptData(r, p) {
+  const q = r.quote || {};
+  return { quote: q, frame: q.frame, url: r.url, platform: p.platform, handle: p.handle, views: r.views, publishedAt: r.publishedAt, kind: r.kind, caption: r.caption };
+}
+async function loadPreview() {
+  if (S.previewLoading || S.sampleData) return;
+  S.previewLoading = true;
+  const body = $('#preview-body'), sec = $('#preview');
+  sec.setAttribute('aria-busy', 'true');
+  const skel = setTimeout(() => { if (!S.sampleData) body.replaceChildren(...[70, 100, 90, 45].map((w) => h('span', { class: 'u-skel skel-line', style: { width: `${w}%` }, 'aria-hidden': 'true' }, '.'))); }, 300);
+  try { S.sampleData = await api('/sample'); renderPreview(S.sampleData); }
+  catch {
+    body.replaceChildren(h('p', { class: 'u-hint' }, 'The sample report didn’t load.'),
+      h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => loadPreview() }, 'Try again'));
+  }
+  clearTimeout(skel); S.previewLoading = false; sec.removeAttribute('aria-busy');
+}
+function renderPreview(s) {
+  const p = s.profile, open = s.brands.filter((b) => !b.locked);
+  const top = open.slice(0, 2).map((b) => (b.receipts || []).find((r) => r.kind === 'spoken') || (b.receipts || [])[0]).filter(Boolean);
+  $('#preview-body').replaceChildren(
+    h('div', { class: 'preview-receipts' }, ...top.map((r) => U.receipt(receiptData(r, p), { size: 'sm', spot: true }))),
+    h('div', { class: 'preview-who' }, avatar(p.pfp, 40), h('div', {}, h('b', {}, h('bdi', {}, '@' + p.handle)),
+      h('small', {}, `${PLATFORM[p.platform]} · ${num(p.followers)} followers · ${p.videos} videos read · ${s.totalBrands} brands`))),
+    h('div', { class: 'chips', role: 'list', 'aria-label': 'Brands this creator talks about' }, ...open.slice(0, 6).map((b) => h('span', { role: 'listitem' },
+      h('button', { type: 'button', class: 'r-chip', 'aria-label': `${b.brand}: ${mentionCount(b)} mentions. Open in the sample report`, onclick: () => openSample(s.brands.indexOf(b)) },
+        b.spoken ? h('span', { class: 'tick', 'aria-hidden': 'true', title: 'Said on camera' }) : null, h('bdi', {}, b.brand), h('b', {}, String(mentionCount(b))))))),
+    h('div', { class: 'u-row' }, h('button', { class: 'u-btn', type: 'button', id: 'preview-open', onclick: () => openSample() }, 'See the full sample'),
+      h('span', { class: 'u-hint' }, 'A made-up creator in the real format.')));
+}
+function openSample(i) {
+  if (!S.sampleData) { openShared('/sample'); return; }
+  showScan(S.sampleData, true);
+  if (i != null && i >= 0) openBrand(i);
+}
+
+// ---- the report: a proof kit built for a 30-second skim
+function showScan(scan, focus) {
+  S.scan = scan; S.open = new Set([scan.brands.findIndex((b) => !b.locked)].filter((i) => i >= 0)); S.panels = {}; S.more = new Set(); S.shareUrl = '';
   $('#landing').hidden = true; $('#app').hidden = false; $('#miss').hidden = true;
   render(); window.scrollTo({ top: 0 });
+  if (focus) $('#result-h')?.focus({ preventScroll: true });
 }
+const presentUrl = (base) => { const u = new URL(base, location.origin); u.searchParams.set('present', '1'); return u.toString(); };
+function presentControls(s) {
+  const base = s.sample ? '/creators/?sample=1' : location.pathname;
+  return [h('button', { class: 'u-btn u-btn-sm', type: 'button', id: 'present', 'aria-pressed': String(!!U.prefs.present), onclick: () => U.setPref('present', !U.prefs.present) }, 'Present'),
+    h('button', { class: 'u-btn u-btn-ghost u-btn-sm no-present', type: 'button', id: 'present-link', onclick: () => U.copy(presentUrl(base), 'Present-mode link copied') }, 'Copy present link')];
+}
+document.addEventListener('u:prefs', (e) => { const b = $('#present'); if (b) b.setAttribute('aria-pressed', String(!!e.detail.present)); });
+
 function render() {
   const s = S.scan, p = s.profile, free = s.plan === 'free', ro = !!s.shared;
   const locked = s.brands.filter((b) => b.locked).length;
   document.title = ro ? `@${p.handle}'s brand receipts · Receipts by Unprompted` : 'Receipts by Unprompted';
-  $('#result').innerHTML = `
-    ${s.sample ? `<div class="banner"><div><b>Sample report</b> <span>on fixture data, unlocked as Pro. Yours takes about ten seconds.</span></div><button class="btn btn-primary btn-sm" id="cta">Get my receipts, free</button></div>`
-      : ro ? `<div class="banner"><div><b>@${esc(p.handle)}'s brand receipts</b> <span>verified from ${p.videos} ${PLATFORM[p.platform]} videos with Receipts by Unprompted.</span></div><button class="btn btn-primary btn-sm" id="cta">Get yours, free</button></div>` : ''}
-    <div class="profile">
-      <img class="pfp" src="${esc(p.pfp || '')}" alt="">
-      <div><h2>${esc(p.name || '@' + p.handle)} <span class="tag ${s.source}">${s.source === 'demo' ? 'Demo data' : s.source === 'public' ? 'Public data' : 'Live'}</span></h2>
-      <div class="meta"><a href="${esc(p.url)}" target="_blank" rel="noopener">@${esc(p.handle)} on ${PLATFORM[p.platform]}</a><span>${num(p.followers)} followers</span><span>${p.videos} videos read</span><span>${p.window ? date(p.window[0]) + ' – ' + date(p.window[1]) : ''}</span></div></div>
-    </div>
-    <div class="stats">
-      <div class="stat"><b>${s.totalBrands}</b><span>brands you mention</span></div>
-      <div class="stat"><b>${s.unpaidBrands}</b><span>never paid you</span></div>
-      <div class="stat"><b>${num(p.medianViews)}</b><span>median views</span></div>
-      <div class="stat"><b>${p.medianEr ?? '–'}%</b><span>median engagement</span></div>
-    </div>
-    ${s.sample ? `<p class="locked-note">Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.</p>`
-      : s.source === 'demo' ? `<p class="locked-note">Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn't.</p>`
-      : s.source === 'public' ? `<p class="locked-note">Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. ${free && S.offer.arm === 'a' ? 'Pro scans use our full transcript index: up to 100 videos, every spoken mention, frame-level receipts.' : ['pro', 'roster'].includes(s.plan) ? 'Our transcript index doesn\'t cover this creator yet, so older videos aren\'t included.' : ''}</p>` : ''}
-    <div class="section-h"><h3>${ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'}</h3><small>unpaid mentions rank above past sponsors</small></div>
-    ${s.brands.length ? s.brands.map((b, i) => b.locked ? lockedCard(b, i) : brandCard(b, i)).join('')
-      : `<div class="empty"><b>No catalog brand in these ${p.videos} videos</b>We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don't track yet, tell us in the sidebar and we'll add it.</div>`}
-    ${free && locked && !ro && S.offer.plan ? `<div class="upsell"><div><b>${locked} more brand${locked === 1 ? '' : 's'} hidden</b><span>${S.offer.arm === 'c'
-      ? 'Weekly leads shows every brand and receipt, checks who’s paying, and emails you the brands paying creators every Monday.'
-      : 'Pro shows every brand and receipt, checks who’s paying, and drafts the pitch.'}</span></div><button class="btn btn-primary" id="upsell">${S.offer.arm === 'a' ? 'Go Pro' : esc(S.offer.name)}, $${S.offer.price}/mo</button></div>` : ''}`;
-  $('#cta') && ($('#cta').onclick = () => { showLanding(); $('#handle').focus(); });
+  const cta = h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', id: 'cta', onclick: () => { showLanding(); $('#handle').focus(); } }, s.sample ? 'Get my receipts, free' : 'Get yours, free');
+  const banner = s.sample
+    ? h('div', { class: 'banner' }, h('p', {}, h('b', {}, 'Sample report'), ' on fixture data, unlocked as Pro. Yours takes about ten seconds.'), h('div', { class: 'u-row' }, ...presentControls(s), cta))
+    : ro ? h('div', { class: 'banner' }, h('p', {}, h('b', {}, h('bdi', {}, '@' + p.handle), '’s brand receipts'), ` verified from ${p.videos} ${PLATFORM[p.platform]} videos with Receipts by Unprompted.`),
+      h('div', { class: 'u-row' }, ...presentControls(s), cta)) : null;
+  const srcLabel = s.source === 'demo' ? 'Demo data' : s.source === 'public' ? 'Public data' : 'Live';
+  const identity = h('div', { class: 'profile' }, avatar(p.pfp, 64), h('div', { class: 'u-stack', style: { '--gap': '4px' } },
+    h('h1', { class: 'u-h2', id: 'result-h', tabindex: '-1' }, h('bdi', {}, p.name || '@' + p.handle), h('span', { class: `u-pill ${s.source === 'demo' ? 'u-pill-warn' : 'u-pill-ok'}` }, srcLabel)),
+    h('div', { class: 'meta' },
+      p.url ? h('a', { href: p.url, target: '_blank', rel: 'noopener' }, h('bdi', {}, '@' + p.handle), ` on ${PLATFORM[p.platform]} ↗`) : h('span', {}, h('bdi', {}, '@' + p.handle), ` on ${PLATFORM[p.platform]}`),
+      h('span', {}, p.followers ? `${num(p.followers)} followers` : 'followers unavailable'),
+      h('span', {}, `${p.videos} videos read`),
+      p.window ? h('span', {}, `${date(p.window[0])} – ${date(p.window[1])}`) : h('span', {}, 'dates unavailable'),
+      s.sample ? h('span', { class: 'u-stamp' }, 'fixture data') : s.createdAt ? h('span', { class: 'u-stamp', title: date(s.createdAt) }, `updated ${U.ago(s.createdAt)}`) : null)));
+  const stat = (v, label, href) => h('li', {}, href ? h('a', { href }, h('b', {}, v), label) : [h('b', {}, v), label]);
+  const stats = h('ul', { class: 'stats', 'aria-label': 'Summary' },
+    stat(String(s.totalBrands), 'brands you mention', s.brands.length ? '#brands' : null),
+    stat(String(s.unpaidBrands), 'never paid you', s.brands.length ? '#brands' : null),
+    stat(p.medianViews != null ? num(p.medianViews) : '–', p.medianViews != null ? 'median views' : 'median views unavailable'),
+    stat(p.medianEr != null ? `${p.medianEr}%` : '–', p.medianEr != null ? 'median engagement' : 'engagement unavailable'),
+    h('li', { class: 'u-computed-tag' }, 'Computed'));
+  const note = s.sample ? 'Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.'
+    : s.source === 'demo' ? 'Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn\'t.'
+    : s.source === 'public' ? `Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. ${free && S.offer.arm === 'a' ? 'Pro scans use our full transcript index: up to 100 videos, every spoken mention, frame-level receipts.' : ['pro', 'roster'].includes(s.plan) ? 'Our transcript index doesn\'t cover this creator yet, so older videos aren\'t included.' : ''}` : '';
+  const chips = s.brands.length ? h('div', { class: 'chips', role: 'list', 'aria-label': 'Brands you talk about, with mention counts' }, ...s.brands.map((b, i) => b.locked
+    ? h('span', { role: 'listitem', class: 'r-chip locked' }, h('span', { class: 'blur', 'aria-hidden': 'true' }, 'Hidden'), h('span', { class: 'sr-only' }, 'Hidden brand'), ` ${b.category}`, h('b', {}, String(mentionCount(b))))
+    : h('span', { role: 'listitem' }, h('button', { type: 'button', class: 'r-chip', 'aria-label': `${b.brand}: ${mentionCount(b)} mention${mentionCount(b) === 1 ? '' : 's'}. Show receipts`, onclick: () => openBrand(i) },
+      b.spoken ? h('span', { class: 'tick', 'aria-hidden': 'true', title: 'Said on camera' }) : null, h('bdi', {}, b.brand), h('b', {}, String(mentionCount(b))))))) : null;
+  const head = h('div', { class: 'section-h' }, h('h2', { class: 'u-h3' }, ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'), h('small', {}, 'unpaid mentions rank above past sponsors'));
+  const list = s.brands.length ? h('div', { id: 'brands' }, ...s.brands.map((b, i) => brandCard(b, i)))
+    : h('div', { class: 'u-empty' }, h('b', {}, `No catalog brand in these ${p.videos} videos`),
+      h('span', {}, 'We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don\'t track yet, tell us in the sidebar and we\'ll add it.'));
+  const upsell = free && locked && !ro && S.offer.plan ? h('div', { class: 'upsell' }, h('div', {}, h('b', {}, `${locked} more brand${locked === 1 ? '' : 's'} hidden`),
+    h('span', {}, S.offer.arm === 'c' ? 'Weekly leads shows every brand and receipt, checks who’s paying, and emails you the brands paying creators every Monday.'
+      : 'Pro shows every brand and receipt, checks who’s paying, and drafts the pitch.')),
+    h('button', { class: 'u-btn u-btn-primary', type: 'button', id: 'upsell', onclick: () => openUpgrade() }, `${S.offer.arm === 'a' ? 'Go Pro' : S.offer.name}, $${S.offer.price}/mo`)) : null;
+  $('#result').replaceChildren(...[banner, identity, stats, note ? h('p', { class: 'note' }, note) : null, chips, head, list, upsell].filter(Boolean));
+  autoGrow($('#result'));
+
   $('#rate').hidden = $('#share-box').hidden = ro; $('#new-scan').textContent = ro ? 'Scan my own handle' : 'New scan';
-  $('#share-url').hidden = true;
-  $('#rate').innerHTML = `<h4>Your rate range</h4><b>$${s.rate.low.toLocaleString()} – $${s.rate.high.toLocaleString()}</b><small>per dedicated video, +$${s.rate.usage.toLocaleString()} for 30-day usage</small><small style="margin-top:6px">${esc(s.rate.basis)}. Rule of thumb; edit before you send.</small>`;
-  if ($('#upsell')) $('#upsell').onclick = () => openUpgrade();
-  for (const h of $('#result').querySelectorAll('.brand:not(.locked) .brand-head')) h.onclick = () => { const i = +h.dataset.i; S.open.has(i) ? S.open.delete(i) : S.open.add(i); render(); };
-  for (const b of $('#result').querySelectorAll('[data-act]')) b.onclick = (e) => { e.stopPropagation(); action(b.dataset.act, +b.dataset.i, b); };
-  for (const b of $('#result').querySelectorAll('[data-copy]')) b.onclick = () => { navigator.clipboard.writeText($(b.dataset.copy).value); toast('Copied'); };
+  $('#share-url').hidden = true; $('#share-present').hidden = true;
+  $('#rate').replaceChildren(h('h2', { class: 'box-h' }, 'Your rate range'),
+    h('b', { class: 'rate-v' }, `$${s.rate.low.toLocaleString()} – $${s.rate.high.toLocaleString()}`),
+    h('small', {}, `per dedicated video, +$${s.rate.usage.toLocaleString()} for 30-day usage`),
+    h('small', {}, `${s.rate.basis}. Rule of thumb; edit before you send.`), h('span', { class: 'u-computed-tag' }, 'Computed'));
 }
 function counts(b) {
-  return [b.spoken && `${b.spoken} said on camera`, b.tagged && `${b.tagged} tagged`, b.sponsored && `${b.sponsored} disclosed ad${b.sponsored > 1 ? 's' : ''}`, b.organicViews && `${num(b.organicViews)} unpaid views`].filter(Boolean).map((t) => `<span>${t}</span>`).join('');
-}
-function lockedCard(b, i) {
-  return `<article class="brand locked"><div class="brand-head"><div><div class="brand-name"><b>${'Hidden brand'}</b><span class="cat">${esc(b.category)}</span></div><div class="brand-sub">${counts(b)}</div></div><span class="status ${b.status}">${STATUS[b.status]}</span></div></article>`;
+  return [b.spoken && `${b.spoken} said on camera`, b.tagged && `${b.tagged} tagged`, b.sponsored && `${b.sponsored} disclosed ad${b.sponsored > 1 ? 's' : ''}`,
+    b.organicViews && `${num(b.organicViews)} unpaid views`].filter(Boolean).map((t) => h('span', {}, t));
 }
 function brandCard(b, i) {
-  const open = S.open.has(i), P = S.panels[i] || {};
-  return `<article class="brand"><div class="brand-head" data-i="${i}">
-      <div><div class="brand-name"><b>${esc(b.brand)}</b><span class="cat">${esc(b.category)}</span></div><div class="brand-sub">${counts(b)}<span>last ${date(b.lastMention)}</span></div></div>
-      <span class="status ${b.status}">${STATUS[b.status]}</span></div>
-    ${open ? `<div class="brand-body">
-      ${b.receipts.map(receipt).join('')}
-      ${S.scan.shared ? '' : `<div class="actions">
-        ${S.offer.arm === 'b' ? '' : `<button class="btn btn-quiet btn-sm" data-act="activity" data-i="${i}">Who's paying for ${esc(b.brand)} right now?</button>`}
-        <button class="btn btn-primary btn-sm" data-act="pitch" data-i="${i}">Draft my pitch</button>
-      </div>`}
-      ${P.activity ? activityPanel(P.activity) : ''}${P.pitch ? pitchPanel(P.pitch, i) : ''}</div>` : ''}</article>`;
+  const status = h('span', { class: `u-pill ${STATUS_CLASS[b.status] || ''}` }, STATUS[b.status]);
+  if (b.locked) {
+    return h('article', { class: 'brand u-card locked', id: `brand-${i}` }, h('div', { class: 'brand-head' },
+      h('span', { class: 'brand-title' }, h('span', { class: 'brand-name' }, h('b', {}, 'Hidden brand')), h('span', { class: 'cat' }, b.category)),
+      h('span', { class: 'brand-sub' }, ...counts(b)), status));
+  }
+  const open = S.open.has(i), P = S.panels[i] || {}, ro = !!S.scan.shared;
+  const headBtn = h('button', { type: 'button', class: 'brand-head', 'aria-expanded': String(open), 'aria-controls': open ? `brand-body-${i}` : null, 'data-i': i, onclick: () => toggleBrand(i) },
+    h('span', { class: 'brand-title' }, h('span', { class: 'brand-name' }, h('bdi', {}, b.brand)), h('span', { class: 'cat' }, b.category)),
+    h('span', { class: 'brand-sub' }, ...counts(b), b.lastMention ? h('span', {}, `last ${date(b.lastMention)}`) : null),
+    status, h('span', { class: 'chev', 'aria-hidden': 'true' }));
+  const body = open ? h('div', { class: 'brand-body', id: `brand-body-${i}` }, receiptsList(b, i),
+    ro ? null : h('div', { class: 'actions' },
+      S.offer.arm === 'b' ? null : h('button', { class: 'u-btn u-btn-sm', type: 'button', 'data-act': 'activity', onclick: (e) => action('activity', i, e.currentTarget) },
+        'Who\'s paying for ', h('bdi', {}, b.brand), ' right now?'),
+      h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', 'data-act': 'pitch', onclick: (e) => action('pitch', i, e.currentTarget) }, 'Draft my pitch')),
+    P.activity ? activityPanel(P.activity) : null, P.pitch ? pitchPanel(P.pitch, i, b) : null) : null;
+  return h('article', { class: `brand u-card${open ? ' open' : ''}`, id: `brand-${i}` }, h('h3', { class: 'brand-h' }, headBtn), body);
 }
-function receipt(r) {
-  const q = r.quote || {}; let text = esc(q.text || r.caption || '');
-  if (q.hit && q.text) { const a = Math.max(0, q.hit[0] - 120), z = Math.min(q.text.length, q.hit[1] + 120);
-    text = (a ? '…' : '') + esc(q.text.slice(a, q.hit[0])) + '<mark>' + esc(q.text.slice(q.hit[0], q.hit[1])) + '</mark>' + esc(q.text.slice(q.hit[1], z)) + (z < q.text.length ? '…' : ''); }
-  return `<div class="receipt"><a href="${esc(r.url)}" target="_blank" rel="noopener"><img src="${esc(q.frame || '')}" alt=""></a>
-    <div><div class="q">${text}</div><div class="r-meta"><span class="kind kind-${r.kind}">${r.kind === 'spoken' ? 'said on camera' : r.kind}</span>${q.start != null ? `<span class="ts">${clock(q.start)}</span>` : ''}<span>${num(r.views)} views</span><span>${date(r.publishedAt)}</span><a href="${esc(r.url)}" target="_blank" rel="noopener">Open video</a></div></div></div>`;
+function receiptsList(b, i) {
+  const all = b.receipts || [], showAll = S.more.has(i), shown = showAll ? all : all.slice(0, TOP_RECEIPTS), ro = !!S.scan.shared, p = S.scan.profile;
+  return h('div', { class: 'receipts' }, ...shown.map((r) => U.receipt(receiptData(r, p), { actions: ro ? null : [
+    h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: () => U.copy(receiptText(r, p), 'Receipt copied') }, 'Copy receipt')] })),
+    all.length > TOP_RECEIPTS ? h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', 'data-more': '', 'aria-expanded': String(showAll),
+      onclick: () => { showAll ? S.more.delete(i) : S.more.add(i); updateCard(i, '[data-more]'); } }, showAll ? `Show the top ${TOP_RECEIPTS}` : `Show all ${all.length} receipts`) : null);
+}
+function receiptText(r, p) {
+  const q = r.quote || {}, said = (q.core || q.text || r.caption || '').trim();
+  return `${said ? `“${said}” ` : ''}@${p.handle} on ${PLATFORM[p.platform]}${q.start != null ? ` at ${U.clock(q.start)}` : ''}: ${r.url}`;
+}
+function updateCard(i, focusSel = '.brand-head') {
+  const old = $(`#brand-${i}`);
+  if (!old) return null;
+  const hadFocus = old.contains(document.activeElement);
+  const next = brandCard(S.scan.brands[i], i);
+  old.replaceWith(next);
+  autoGrow(next);
+  if (hadFocus) ($(focusSel, next) || $('.brand-head', next))?.focus({ preventScroll: true });
+  return next;
+}
+function toggleBrand(i) { S.open.has(i) ? S.open.delete(i) : S.open.add(i); updateCard(i); }
+function openBrand(i) {
+  if (!S.scan || S.scan.brands[i]?.locked) return;
+  S.open.add(i);
+  const card = updateCard(i);
+  if (!card) return;
+  card.scrollIntoView({ block: 'start', behavior: U.reduced() ? 'auto' : 'smooth' });
+  $('.brand-head', card)?.focus({ preventScroll: true });
 }
 function activityPanel(a) {
-  const total = Object.values(a.tiers).reduce((x, y) => x + y, 0) || 1;
-  return `<div class="panel"><h4>Sponsor check <span class="verdict ${a.verdict}">${VERDICT[a.verdict]}</span>${a.source === 'demo' ? '<span class="tag demo">demo</span>' : ''}</h4>
-    <div>${a.sponsored >= 100 ? '100+' : a.sponsored} disclosed creator post${a.sponsored === 1 ? '' : 's'} about ${esc(a.brand)} in the last ${a.windowDays} days, from ${a.creators} creator${a.creators === 1 ? '' : 's'}${a.lastPaid ? `, latest ${date(a.lastPaid)}` : ''}.</div>
-    ${a.creators ? `<div class="tiers">${['nano', 'micro', 'mid', 'macro'].map((t) => `<i style="width:${a.tiers[t] / total * 100}%" title="${t}: ${a.tiers[t]}"></i>`).join('')}</div>
-    <small style="color:var(--ink-2)">${['nano', 'micro', 'mid', 'macro'].map((t) => `${a.tiers[t]} ${t}`).join(' · ')} (by followers: &lt;10K, &lt;100K, &lt;500K, more)</small>` : ''}
-    ${a.examples.length ? `<ul class="examples">${a.examples.map((e) => `<li>@${esc(e.handle)} (${num(e.followers)}) · ${num(e.views)} views · ${date(e.publishedAt)}${e.url && e.url !== '#demo' ? ` · <a href="${esc(e.url)}" target="_blank" rel="noopener">open</a>` : ''}</li>`).join('')}</ul>` : ''}</div>`;
+  const total = Object.values(a.tiers).reduce((x, y) => x + y, 0) || 1, TIERS = ['nano', 'micro', 'mid', 'macro'];
+  return h('section', { class: 'panel', 'data-panel': 'activity', 'aria-label': 'Sponsor check' },
+    h('h4', { tabindex: '-1' }, 'Sponsor check', h('span', { class: `u-pill verdict-${a.verdict}` }, VERDICT[a.verdict]), a.source === 'demo' ? h('span', { class: 'u-pill u-pill-warn' }, 'demo') : null,
+      h('span', { class: 'u-computed-tag' }, 'Computed')),
+    h('p', {}, `${a.sponsored >= 100 ? '100+' : a.sponsored} disclosed creator post${a.sponsored === 1 ? '' : 's'} about `, h('bdi', {}, a.brand),
+      ` in the last ${a.windowDays} days, from ${a.creators} creator${a.creators === 1 ? '' : 's'}${a.lastPaid ? `, latest ${date(a.lastPaid)}` : ''}.`),
+    a.creators ? [h('div', { class: 'tiers', role: 'img', 'aria-label': TIERS.map((t) => `${a.tiers[t]} ${t}`).join(', ') },
+      ...TIERS.map((t) => h('i', { style: { width: `${(a.tiers[t] / total) * 100}%` }, title: `${t}: ${a.tiers[t]}` }))),
+      h('small', { class: 'u-hint' }, `${TIERS.map((t) => `${a.tiers[t]} ${t}`).join(' · ')} (by followers: <10K, <100K, <500K, more)`)] : null,
+    a.examples.length ? h('ul', { class: 'examples' }, ...a.examples.map((e) => h('li', {}, h('bdi', {}, '@' + e.handle), ` (${num(e.followers)}) · `,
+      e.url && e.url !== '#demo' ? h('a', { href: e.url, target: '_blank', rel: 'noopener' }, `${num(e.views)} views ↗`) : `${num(e.views)} views`, ` · ${date(e.publishedAt)}`))) : null);
 }
-function pitchPanel(p, i) {
-  return `<div class="panel pitch"><h4>Pitch draft</h4><input id="subj-${i}" value="${esc(p.subject)}"><textarea id="body-${i}">${esc(p.body)}</textarea>
-    <div class="actions"><button class="btn btn-quiet btn-sm" data-copy="#body-${i}">Copy body</button><button class="btn btn-quiet btn-sm" data-copy="#subj-${i}">Copy subject</button><span class="locked-note" style="align-self:center">Edit the rate and the ask before sending.</span></div></div>`;
+function pitchPanel(pt, i, b) {
+  const subj = h('input', { class: 'u-input', id: `subj-${i}`, value: pt.subject, dir: 'auto', oninput: (e) => { pt.subject = e.target.value; } });
+  const body = h('textarea', { class: 'u-textarea grow', id: `body-${i}`, dir: 'auto', oninput: (e) => { pt.body = e.target.value; grow(e.target); } }, pt.body);
+  const cited = (b.receipts || [])[0];
+  return h('section', { class: 'panel pitch', 'data-panel': 'pitch', 'aria-labelledby': `pitch-h-${i}` },
+    h('h4', { id: `pitch-h-${i}`, tabindex: '-1' }, 'Pitch draft'),
+    h('div', { class: 'pitch-grid' },
+      cited ? h('div', { class: 'pitch-cites' }, h('span', { class: 'u-label' }, 'The receipt this pitch quotes'), U.receipt(receiptData(cited, S.scan.profile), { size: 'sm' })) : null,
+      h('div', { class: 'u-stack', style: { '--gap': 'var(--s-3)' } },
+        h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: `subj-${i}` }, 'Subject'), subj),
+        h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: `body-${i}` }, 'Message'), body),
+        h('div', { class: 'actions' },
+          h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => U.copy(`Subject: ${subj.value}\n\n${body.value}`, 'Pitch copied') }, 'Copy pitch'),
+          h('button', { class: 'u-btn u-btn-sm', type: 'button', 'data-copy': `#body-${i}`, onclick: () => U.copy(body.value, 'Body copied') }, 'Copy body'),
+          h('button', { class: 'u-btn u-btn-sm', type: 'button', 'data-copy': `#subj-${i}`, onclick: () => U.copy(subj.value, 'Subject copied') }, 'Copy subject')),
+        h('p', { class: 'u-hint' }, 'Edit the rate and the ask before sending.'))));
 }
+const fieldSizing = window.CSS && CSS.supports && CSS.supports('field-sizing', 'content');
+function grow(ta) { if (fieldSizing) return; ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight + 2}px`; }
+function autoGrow(root) { if (!fieldSizing && root) requestAnimationFrame(() => $$('textarea.grow', root).forEach(grow)); }
 async function action(act, i, btn) {
-  const b = S.scan.brands[i]; btn.disabled = true;
+  const b = S.scan.brands[i]; btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   try {
     const out = await api(`/scans/${S.scan.id}/brands/${encodeURIComponent(b.brand)}/${act}`, {});
-    S.panels[i] = { ...(S.panels[i] || {}), [act]: out }; render();
-  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message); }
-  btn.disabled = false;
+    S.panels[i] = { ...(S.panels[i] || {}), [act]: out };
+    const card = updateCard(i);
+    $(`[data-panel="${act}"] h4`, card)?.focus({ preventScroll: false });
+  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message, 'error'); }
+  btn.disabled = false; btn.removeAttribute('aria-busy');
 }
 $('#share').onclick = async () => {
+  const btn = $('#share');
+  btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   try {
     const { url } = await api(`/scans/${S.scan.id}/share`, {});
-    const out = $('#share-url'); out.value = url; out.hidden = false;
-    await navigator.clipboard.writeText(url).then(() => toast('Public link copied')).catch(() => { out.select(); toast('Link ready, copy it below'); });
-  } catch (e) { toast(e.message); }
+    const out = $('#share-url'); out.value = url; out.hidden = false; S.shareUrl = url; $('#share-present').hidden = false;
+    await navigator.clipboard.writeText(url).then(() => toast('Public link copied', 'ok')).catch(() => { out.select(); toast('Link ready, copy it below'); });
+  } catch (e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.removeAttribute('aria-busy');
 };
+$('#share-present').onclick = () => { if (S.shareUrl) U.copy(presentUrl(S.shareUrl), 'Present-mode link copied'); };
 async function openShared(path) {
-  try { showScan(await api(path)); } catch (e) { toast(e.message); showLanding(); }
+  try { showScan(await api(path)); } catch (e) { toast(e.message, 'error'); showLanding(); }
 }
-$('#sample').onclick = () => openShared('/sample');
-$('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#report input'); try { await api('/report', { text: inp.value, scan: S.scan?.id }); inp.value = ''; toast('Thanks, noted'); } catch (err) { toast(err.message); } };
+$('#sample').onclick = () => openSample();
+$('#report').onsubmit = async (e) => {
+  e.preventDefault(); const inp = $('#report-text');
+  try { await api('/report', { text: inp.value, scan: S.scan?.id }); inp.value = ''; toast('Thanks, noted', 'ok'); } catch (err) { toast(err.message, 'error'); }
+};
+
+// ---- command palette and shortcuts
+$('#cmdk').onclick = () => U.palette.open();
+U.palette.add({ id: 'r-new', label: 'New scan', hint: 'Scan a TikTok or Instagram handle', group: 'Receipts', shortcut: '/', keywords: 'scan handle search', run: newScan });
+U.palette.add({ id: 'r-scans', search: () => S.history.map((r) => ({ id: `r-scan-${r.id}`, label: `Open scan: @${r.handle}`, group: 'Your scans',
+  hint: `${PLATFORM[r.platform]} · ${r.brands} brands · ${date(r.createdAt)}`, keywords: `${r.name || ''} ${r.platform}`, run: () => openScan(+r.id) })) });
+U.palette.add({ id: 'r-sample', label: 'Sample report', hint: 'A made-up creator in the real format', group: 'Receipts', keywords: 'example demo', run: () => openSample() });
+U.palette.add({ id: 'r-licenses', label: 'License offers', hint: 'Brands asking to run your videos as ads', group: 'Go to', keywords: 'licence inbox offers', run: () => { location.href = '/creators/licenses'; } });
+U.palette.add({ id: 'r-roster', label: 'Roster for managers', group: 'Go to', keywords: 'manager monday report', run: () => { location.href = '/creators/roster'; } });
+U.palette.add({ id: 'r-account', search: () => (S.user ? [{ id: 'r-signout', label: 'Sign out', hint: S.user.email, group: 'Account', run: signOut }]
+  : [{ id: 'r-signin', label: 'Sign in', group: 'Account', run: () => openAuth('login') }]) });
+U.keys.add('/', newScan, { label: 'New scan' });
 
 // ---- boot
 (async () => {
   if (/^#search=\d+$/.test(location.hash)) { location.replace('/brands/' + location.hash); return; }
+  const shared = location.pathname.match(/^\/creators\/r\/([A-Za-z0-9_-]+)$/);
+  if (shared) $('#landing').hidden = true;                  // a shared receipt page: no landing flash while it loads
+  else if (new URLSearchParams(location.search).get('sample') !== '1') loadPreview();   // the sample receipt at first paint
   const me = await api('/me').catch(() => ({ user: null, billing: { enabled: false, price: 29 } }));
   S.user = me.user; S.billing = me.billing;
   for (const el of document.querySelectorAll('[data-price]')) el.textContent = S.billing.price;
@@ -541,11 +831,10 @@ $('#report').onsubmit = async (e) => { e.preventDefault(); const inp = $('#repor
   if (S.billing.demo) $('#fine').insertAdjacentHTML('beforeend', ` <span>Demo mode, try:</span> <button class="chip" type="button" data-demo="maya.eats">@maya.eats</button> <button class="chip" type="button" data-demo="sami.lifts">@sami.lifts</button>`);
   for (const c of document.querySelectorAll('[data-demo]')) c.onclick = () => { $('#handle').value = '@' + c.dataset.demo; startScan(S.platform, c.dataset.demo); };
   renderAccount(); loadHistory();
-  const shared = location.pathname.match(/^\/creators\/r\/([A-Za-z0-9_-]+)$/);
   if (shared) openShared('/shared/' + shared[1]);
   const q = new URLSearchParams(location.search);
   if (q.get('sample') === '1') openShared('/sample');
-  if (q.get('upgraded') === '1') { toast(S.user && S.user.plan !== 'free' ? `You're on ${PLAN_NAME[S.user.plan] || 'Pro'}` : 'Payment received, your plan updates in a moment'); history.replaceState({}, '', '/creators/'); }
+  if (q.get('upgraded') === '1') { toast(S.user && S.user.plan !== 'free' ? `You're on ${PLAN_NAME[S.user.plan] || 'Pro'}` : 'Payment received, your plan updates in a moment', 'ok'); history.replaceState({}, '', '/creators/'); }
 })();
 </script>
 </body>

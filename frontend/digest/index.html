@@ -5,178 +5,308 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your weekly watch · Unprompted</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
 <style>
-  :root {
-    --forest: oklch(0.26 0.055 160); --forest-2: oklch(0.315 0.06 160); --on-forest: oklch(0.97 0.01 160); --on-forest-2: oklch(0.81 0.035 160);
-    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
-    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
-    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
-  main { max-width: 680px; margin: 0 auto; padding: 40px 20px 60px; }
-  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
-  .brand a { color: var(--ink); text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
-  .brand span { font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px 28px; }
-  h1 { margin: 0 0 6px; font: italic 500 1.75rem/1.2 var(--serif); letter-spacing: -0.01em; text-wrap: pretty; }
-  .sub { margin: 0 0 18px; color: var(--ink-2); }
-  .pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; background: var(--moss-soft); color: var(--moss); vertical-align: 2px; }
-  .pill.paused, .pill.pending { background: var(--coral-soft); color: var(--coral); }
-  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0 0 20px; font-size: 0.875rem; }
-  dt { color: var(--ink-2); } dd { margin: 0; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .btn { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.875rem var(--sans); cursor: pointer; }
-  a.btn { display: inline-flex; align-items: center; text-decoration: none; }
-  .btn-primary { background: var(--lime); border-color: transparent; }
-  .btn-danger { color: var(--coral); }
-  .btn:disabled { opacity: 0.5; cursor: default; }
-  h2 { margin: 30px 0 10px; font-size: 1rem; }
-  .runs { list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
-  .runs li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-  .runs a { color: var(--moss); }
-  iframe { width: 100%; height: 720px; border: 1px solid var(--line); border-radius: 12px; background: #f3f6f4; }
-  .muted { color: var(--ink-2); font-size: 0.875rem; }
-  .err { color: var(--coral); }
-  #seeding { margin-top: 18px; }
-  #seeding h2 { margin: 0 0 6px; }
-  #seeding textarea { width: 100%; min-height: 110px; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: 0.875rem/1.5 var(--mono); resize: vertical; }
-  #seeding textarea:focus-visible, #seeding input:focus-visible { outline: 2px solid var(--moss); outline-offset: 1px; }
-  .tally { margin: 0 0 10px; }
-  .tally b { color: var(--moss); }
-  .gifts { list-style: none; margin: 12px 0 0; padding: 0; font-size: 0.875rem; }
-  .gifts li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-  .gifts a { color: var(--moss); }
-  footer { margin-top: 28px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } }
+
+  .page { width: min(720px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  .page > * { min-width: 0; }
+  #card { display: grid; gap: var(--s-4); }
+  #card h1 { font-size: var(--fs-2xl); letter-spacing: -0.02em; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+  #card h1 .u-pill { letter-spacing: 0; }
+  .sub { color: var(--text-2); max-width: 62ch; }
+  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-5); margin: 0; font-size: var(--fs-sm); }
+  .facts dt { color: var(--text-2); }
+  .facts dd { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--s-2); }
+  @media (max-width: 480px) { .facts { grid-template-columns: minmax(0, 1fr); gap: 2px; } .facts dd { margin-bottom: var(--s-2); } }
+  .latest { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-4); border-radius: var(--r-2); background: var(--surface-2); font-size: var(--fs-sm); }
+  .latest a { font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+  .actions .u-btn { min-height: 44px; }
+  .u-error:empty { display: none; }
+
+  .block { display: grid; gap: var(--s-3); }
+  .block h2, #seeding h2 { font-size: var(--fs-lg); }
+  .rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); }
+  .rows:empty { display: none; }
+  .rows > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); padding: var(--s-3) var(--s-4); border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+  .rows > li:first-child { border-top: 0; }
+  .rows .who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s-3); min-width: 0; }
+  .rows .who b { font-weight: 600; }
+  .rows .end { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+  .rows a { font-weight: 500; }
+  .rows .count { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .run-date { font-variant-numeric: tabular-nums; }
+
+  /* gifted creators */
+  #seeding { display: grid; gap: var(--s-3); }
+  .tally { display: grid; gap: var(--s-2); }
+  .tally-num { font-size: var(--fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .tally-num small { font-size: var(--fs-md); font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+  .tally p { font-size: var(--fs-sm); color: var(--text-2); }
+  #gift-list { font: var(--fs-sm)/1.55 var(--mono); min-height: 120px; }
+  .file-btn { position: relative; }
+  .file-btn:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .gifts > li .who { flex: 1 1 260px; }
+  .gifts > li .end { flex: 0 1 auto; }
+
+  iframe { width: 100%; height: 720px; border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface-2); }
+  @media (max-width: 600px) { iframe { height: 560px; } }
+
+  .terms { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-4); margin: 0; font-size: var(--fs-sm); }
+  .terms dt { color: var(--text-2); }
+  .terms dd { margin: 0; }
+  .u-dialog .u-hint:empty { display: none; }
+  .u-dialog-foot { flex-wrap: wrap; }
+  .u-dialog-foot .u-btn { min-height: 44px; }
+
+  footer { font: 400 var(--fs-xs)/1.5 var(--mono); color: var(--text-2); }
   footer a { color: inherit; }
+}
 </style>
 </head>
 <body>
-<main>
-  <div class="brand"><a href="/brands/">Unprompted</a><span>Weekly watch</span></div>
-  <section class="card" id="card"><p class="muted">Loading your watch…</p></section>
-  <section class="card" id="seeding" hidden></section>
-  <h2 id="lic-h" hidden>License requests</h2>
-  <ol class="runs" id="licenses"></ol>
-  <h2 id="runs-h" hidden>Past weekly checks</h2>
-  <ol class="runs" id="runs"></ol>
-  <h2 id="preview-h" hidden>Latest email</h2>
-  <iframe id="preview" title="Latest digest email" hidden sandbox></iframe>
+<header class="u-bar">
+  <a class="u-logo" href="/brands/">Un<mark>prompted</mark><small>Weekly watch</small></a>
+  <span class="grow"></span>
+  <a class="u-bar-link" href="/brands/">Dashboard</a>
+</header>
+<main class="page">
+  <section class="u-card u-card-pad" id="card" aria-busy="true"><p class="u-muted">Loading your watch…</p></section>
+  <section class="u-card u-card-pad" id="seeding" hidden aria-labelledby="seeding-h"></section>
+  <section class="block">
+    <h2 id="lic-h" hidden>License requests</h2>
+    <ol class="rows" id="licenses" aria-labelledby="lic-h"></ol>
+  </section>
+  <section class="block">
+    <h2 id="runs-h" hidden>Past weekly checks</h2>
+    <ol class="rows" id="runs" aria-labelledby="runs-h"></ol>
+  </section>
+  <section class="block">
+    <h2 id="preview-h" hidden>Latest email</h2>
+    <iframe id="preview" title="Latest digest email" hidden sandbox></iframe>
+  </section>
   <footer>Search and transcripts by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a> · Unprompted is a community tool built on Oriane's API</footer>
 </main>
 <script>
+  const { h } = U;
   const $ = (s) => document.querySelector(s);
   const token = location.pathname.split('/').pop();
   const q = new URLSearchParams(location.search);
   const PLATFORM = { all: 'Instagram and TikTok', instagram: 'Instagram', tiktok: 'TikTok' };
   const LANG = { any: 'any language', en: 'English', ar: 'Arabic' };
-  const LICENSE = { requested: 'contacting the creator', contacted: 'creator contacted', accepted: 'creator accepted', declined: 'creator declined', live: 'live' };
-  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-  function h(tag, attrs, ...kids) {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs || {})) { if (k === 'hidden') el.hidden = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v); }
-    el.append(...kids.filter((k) => k != null));
-    return el;
-  }
+  const LICENSE = { requested: 'contacting the creator', contacted: 'creator contacted', accepted: 'creator accepted', declined: 'creator declined', live: 'live', ended: 'ended' };
+  const LICENSE_PILL = { contacted: 'u-pill-warn', accepted: 'u-pill-ok', declined: 'u-pill-danger', live: 'u-pill-live' };
+  const WATCH = { active: ['Watching', 'u-pill-ok'], paused: ['Paused', 'u-pill-warn'], pending: ['Confirm your email', 'u-pill-warn'] };
+  const when = (iso) => iso ? U.date(iso) : '—';
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   async function api(path, method = 'GET') {
     const res = await fetch(path, method === 'GET' ? {} : { method, headers: { 'Content-Type': 'application/json' }, body: '{}' });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || 'Something went wrong.');
     return body;
   }
+  // A freshness stamp: the date, with "3 days ago" beside it.
+  const stamp = (iso) => iso ? h('span', { class: 'u-stamp', title: U.date(iso) }, U.ago(iso)) : null;
+
+  // A confirmation dialog that waits for the server; errors stay in the dialog.
+  function decide({ title, lead, terms = [], confirm, danger, run, after, waiting = 'Working…' }) {
+    const id = `dlg-${Math.random().toString(36).slice(2, 8)}`;
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const wait = h('p', { class: 'u-hint', role: 'status' });
+    const ok = h('button', { class: `u-btn ${danger ? 'u-btn-danger' : 'u-btn-primary'}`, type: 'button' }, confirm);
+    const cancel = h('button', { class: 'u-btn', type: 'button' }, 'Cancel');
+    const dlg = h('dialog', { class: 'u-dialog', 'aria-labelledby': id },
+      h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title), lead ? h('p', { class: 'u-muted' }, lead) : null,
+        terms.length ? h('dl', { class: 'terms' }, ...terms.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null, err, wait),
+      h('div', { class: 'u-dialog-foot' }, cancel, ok));
+    let busy = false;
+    const close = () => { if (!busy) dlg.close(); };
+    cancel.addEventListener('click', close);
+    dlg.addEventListener('cancel', (e) => { if (busy) e.preventDefault(); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+    dlg.addEventListener('close', () => dlg.remove());
+    ok.addEventListener('click', async () => {
+      if (busy) return;
+      busy = true; err.textContent = ''; wait.textContent = waiting;
+      ok.setAttribute('aria-busy', 'true'); cancel.disabled = true; dlg.setAttribute('aria-busy', 'true');
+      try { await run(); busy = false; dlg.close(); if (after) after(); }
+      catch (ex) {
+        busy = false; err.textContent = ex.message; wait.textContent = '';
+        ok.removeAttribute('aria-busy'); cancel.disabled = false; dlg.removeAttribute('aria-busy');
+      }
+    });
+    document.body.append(dlg);
+    dlg.showModal();
+  }
+
   // Gifted creators (seeding.py): the gifting list, and which of them posted about the brand after it shipped.
   function seeding(d) {
     const box = $('#seeding'), s = d.seeding;
     if (!s) { box.hidden = true; return; }
     box.hidden = false;
-    const text = h('textarea', { id: 'gift-list', 'aria-label': 'Gifting list', placeholder: 'One creator per line: handle or profile URL, platform, ship date, tracked\n@maya.eats, tiktok, 2026-09-14\nhttps://www.instagram.com/sami.lifts, 2026-09-20, yes' });
-    const file = h('input', { type: 'file', accept: '.csv,.txt,text/csv,text/plain', 'aria-label': 'Upload a CSV', onchange: async (e) => {
-      const f = e.target.files[0]; if (f) text.value = (await f.text()).slice(0, 200000);
+    const text = h('textarea', { id: 'gift-list', class: 'u-textarea', spellcheck: 'false', dir: 'auto', placeholder: 'One creator per line: handle or profile URL, platform, ship date, tracked\n@maya.eats, tiktok, 2026-09-14\nhttps://www.instagram.com/sami.lifts, 2026-09-20, yes' });
+    const msg = h('p', { class: 'u-hint', role: 'status' });
+    const file = h('input', { type: 'file', class: 'sr-only', accept: '.csv,.txt,text/csv,text/plain', 'aria-label': 'Upload a CSV', onchange: async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      text.value = (await f.text()).slice(0, 200000);
+      const lines = text.value.split(/\r?\n/).filter((l) => l.trim()).length;
+      msg.className = 'u-hint';
+      msg.textContent = `Loaded ${f.name}: ${lines} ${lines === 1 ? 'line' : 'lines'}. Check them, then press Add creators.`;
     } });
-    const msg = h('p', { class: 'muted', role: 'status' });
     const post = async (path, body) => {
       const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error || 'Something went wrong.');
       return out;
     };
-    const add = h('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
-      add.disabled = true; msg.textContent = 'Adding, and checking TikTok creators now…';
+    const add = h('button', { class: 'u-btn u-btn-primary', type: 'button', onclick: async () => {
+      if (add.getAttribute('aria-busy') === 'true') return;
+      add.setAttribute('aria-busy', 'true'); msg.className = 'u-hint'; msg.textContent = 'Adding, and checking TikTok creators now…';
       try {
         const out = await post(`/api/digests/${token}/gifts`, { text: text.value });
         seeding({ ...d, seeding: out.seeding });
         $('#seeding .status-line').textContent = `Added ${out.added}.` + (out.skipped.length ? ` Skipped ${out.skipped.length}: ` + out.skipped.slice(0, 5).map((x) => `line ${x.line} (${x.reason})`).join(', ') : '');
-      } catch (ex) { msg.textContent = ex.message; msg.className = 'err'; add.disabled = false; }
+        U.toast(`Added ${out.added} gifted ${out.added === 1 ? 'creator' : 'creators'}`, { kind: 'ok' });
+        $('#gift-list').focus();
+      } catch (ex) { msg.textContent = ex.message; msg.className = 'u-error'; add.removeAttribute('aria-busy'); }
     } }, 'Add creators');
-    const clear = s.gifted ? h('button', { class: 'btn', type: 'button', onclick: async (e) => {
-      if (!confirm('Remove the whole gifting list?')) return;
-      e.target.disabled = true;
-      try { seeding({ ...d, seeding: (await post(`/api/digests/${token}/gifts/clear`, {})).seeding }); } catch (ex) { msg.textContent = ex.message; }
-    } }, 'Clear list') : null;
-    const tally = s.gifted ? h('p', { class: 'tally' }, h('b', {}, `${s.posted} of ${s.gifted}`), ' gifted creators have posted',
-      s.spokenOnly ? `, ${s.spokenOnly} of them only on camera (no tag to track)` : '', '.',
-      s.tracked ? ` Your own tracking had ${s.tracked}` + (s.multiple > 1 ? `: we found ${s.multiple}× as many.` : '.') : '') :
-      h('p', { class: 'sub', style: 'margin:0 0 6px' }, `Paste the creators you sent ${d.brand} to. Each weekly check looks for their first post about it after it shipped, including the ones that only say it on camera.`);
-    const list = s.gifts.length ? h('ul', { class: 'gifts' }, ...s.gifts.slice(0, 200).map((g) => h('li', {},
-      h('span', {}, h('b', {}, `@${g.handle}`), ` · ${g.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · shipped ${when(g.shippedOn)}${g.tracked ? ' · you tracked it' : ''}`),
-      g.videoId ? h('span', {}, `${g.kind === 'spoken' ? 'Said it on camera' : g.kind === 'tagged' ? 'Tagged' : 'Disclosed post'} ${when(g.postedOn)} `, g.url ? h('a', { href: g.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null,
-        g.licenseUrl ? h('a', { href: g.licenseUrl, style: 'margin-left:10px' }, 'License for ads') : null)
-        : h('span', { class: 'muted' }, g.checkedAt ? `No post yet (checked ${when(g.checkedAt)})` : 'Checked in the next weekly run')))) : null;
-    box.replaceChildren(h('h2', {}, 'Gifted creators'), tally, h('p', { class: 'muted status-line' }), text,
-      h('div', { class: 'actions' }, file, add, clear), msg, list);
+    const clear = s.gifted ? h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => decide({
+      title: 'Remove the whole gifting list?', danger: true,
+      lead: `All ${s.gifted} gifted creators and what we found for them come off this watch. Weekly checks stop looking for their posts.`,
+      confirm: 'Clear list', waiting: 'Clearing…', after: () => $('#gift-list')?.focus(),
+      run: async () => { seeding({ ...d, seeding: (await post(`/api/digests/${token}/gifts/clear`, {})).seeding }); U.toast('Gifting list cleared', { kind: 'ok' }); },
+    }) }, 'Clear list') : null;
+    const pct = s.gifted ? Math.round((s.posted / s.gifted) * 100) : 0;
+    const tally = s.gifted ? h('div', { class: 'tally' },
+      h('span', { class: 'tally-num' }, `${s.posted} of ${s.gifted} `, h('small', {}, 'gifted creators have posted')),
+      h('div', { class: 'u-progress-bar', style: { '--pct': pct }, role: 'img', 'aria-label': `${pct}% have posted` }, h('b', {})),
+      h('p', {}, s.spokenOnly ? `${s.spokenOnly} of them only on camera (no tag to track).` : 'None of them only on camera so far.',
+        s.tracked ? ` Your own tracking had ${s.tracked}` + (s.multiple > 1 ? `: we found ${s.multiple}× as many.` : '.') : '')) :
+      h('p', { class: 'sub' }, `Paste the creators you sent ${d.brand} to. Each weekly check looks for their first post about it after it shipped, including the ones that only say it on camera.`);
+    const KIND = { spoken: ['Said it on camera', 'u-kind-spoken'], tagged: ['Tagged', 'u-kind-tagged'] };
+    const list = s.gifts.length ? h('ul', { class: 'rows gifts', 'aria-label': 'Gifted creators' }, ...s.gifts.slice(0, 200).map((g) => {
+      const [label, cls] = KIND[g.kind] || ['Disclosed post', 'u-kind-sponsored'];
+      return h('li', {},
+        h('span', { class: 'who' }, h('b', {}, h('bdi', {}, `@${g.handle}`)), h('span', { class: 'u-muted' }, `${g.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · shipped ${when(g.shippedOn)}${g.tracked ? ' · you tracked it' : ''}`)),
+        g.videoId ? h('span', { class: 'end' }, h('span', { class: `u-kind ${cls}` }, label), h('span', { class: 'u-stamp' }, when(g.postedOn)),
+          g.url ? h('a', { href: g.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null,
+          g.licenseUrl ? h('a', { href: g.licenseUrl }, 'License for ads') : null)
+          : h('span', { class: 'end u-muted' }, g.checkedAt ? `No post yet (checked ${when(g.checkedAt)})` : 'Checked in the next weekly run'));
+    })) : null;
+    box.replaceChildren(h('h2', { id: 'seeding-h' }, 'Gifted creators'), tally, h('p', { class: 'u-hint status-line', role: 'status' }),
+      h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'gift-list' }, 'Gifting list: paste it, or upload a CSV'), text),
+      h('div', { class: 'actions' }, add, h('label', { class: 'u-btn file-btn' }, 'Upload a CSV', file), clear), msg,
+      s.gifts.length > 200 ? h('p', { class: 'u-hint' }, `Showing the first 200 of ${s.gifts.length}.`) : null, list);
   }
-  function render(d) {
+
+  // The watch itself: status, what it listens for, freshness, and pause / resume / stop.
+  let current = null;
+  function setWatch(action) {
+    const prev = current, paused = action === 'pause';
+    U.optimistic({
+      apply: () => renderWatch({ ...prev, status: paused ? 'paused' : 'active' }, true),
+      send: () => api(`/api/digests/${token}/${action}`, 'POST').then((d) => { renderWatch(d, true); return d; }),
+      revert: () => renderWatch(prev, true),
+      done: paused ? `Paused. No ${prev.brand} reports until you resume.` : `Resumed. Watching ${prev.brand} again.`,
+      undo: () => setWatch(paused ? 'resume' : 'pause'),
+    }).catch(() => {});
+  }
+  function renderWatch(d, refocus) {
+    current = d;
     const card = $('#card');
-    if (d.status === 'unsubscribed') {
-      card.replaceChildren(h('h1', {}, 'Stopped watching.'), h('p', { class: 'sub' }, `No more ${d.brand} reports to ${d.email}. `, h('a', { href: '/brands/' }, 'Run a new search'), ' any time.'));
-      return;
-    }
-    const act = (label, action, cls = '') => h('button', { class: `btn ${cls}`, type: 'button', onclick: async (e) => {
-      e.target.disabled = true;
-      try { render(await api(`/api/digests/${token}/${action}`, 'POST')); } catch (err) { card.append(h('p', { class: 'err' }, err.message)); e.target.disabled = false; }
+    card.removeAttribute('aria-busy');
+    const act = (label, action, cls = '') => h('button', { class: `u-btn ${cls}`, type: 'button', id: 'toggle', onclick: async (e) => {
+      const b = e.currentTarget;
+      if (b.getAttribute('aria-busy') === 'true') return;
+      b.setAttribute('aria-busy', 'true');
+      try { render(await api(`/api/digests/${token}/${action}`, 'POST')); U.toast(`You’re watching ${d.brand}`, { kind: 'ok' }); $('#toggle')?.focus(); }
+      catch (err) { card.append(h('p', { class: 'u-error', role: 'alert' }, err.message)); b.removeAttribute('aria-busy'); }
     } }, label);
-    const unsubscribe = h('button', { class: 'btn btn-danger', type: 'button', onclick: (e) => {
-      e.target.replaceWith(h('span', { class: 'muted' }, 'Stop all ', d.brand, ' reports? ', act('Yes, stop', 'unsubscribe', 'btn-danger')));
-    } }, 'Stop watching');
-    const status = { active: 'Watching', paused: 'Paused', pending: 'Confirm your email' }[d.status];
+    const toggle = (label, action, cls = '') => h('button', { class: `u-btn ${cls}`, type: 'button', id: 'toggle', onclick: () => setWatch(action) }, label);
+    const unsubscribe = h('button', { class: 'u-btn u-btn-danger', type: 'button', id: 'stop', onclick: () => decide({
+      title: `Stop watching ${d.brand}?`, danger: true,
+      lead: `No more ${d.brand} reports to ${d.email}. This removes the watch; you can start a new one from any search.`,
+      confirm: 'Yes, stop', waiting: 'Stopping…',
+      run: async () => { render(await api(`/api/digests/${token}/unsubscribe`, 'POST')); U.toast(`Stopped watching ${d.brand}`, { kind: 'ok' }); },
+    }) }, 'Stop watching');
+    const [status, pill] = WATCH[d.status] || [d.status, ''];
     // Due a week after the last check; a new watch is due on the next scheduler pass.
     const next = d.lastRunAt ? when(new Date(d.lastRunAt).getTime() + d.every * 864e5) : 'Due now (first check)';
+    const latest = (d.runs || [])[0];
+    const dash = latest && latest.searchId ? `/brands/#search=${latest.searchId}` : null;
     card.replaceChildren(
-      h('h1', {}, 'Weekly watch: ', d.brand, ' ', h('span', { class: `pill ${d.status}` }, status)),
+      h('h1', {}, h('span', {}, 'Weekly watch: ', h('bdi', {}, d.brand)), h('span', { class: `u-pill ${pill}` }, status)),
       h('p', { class: 'sub' }, d.status === 'pending'
         ? (d.mail ? `We emailed ${d.email} a confirmation link. Nothing is sent until you click it.` : 'Mail isn\'t configured on this server yet, so confirm here:')
         : d.status === 'paused' ? 'Paused. Resume whenever you want the next one.'
         : `Every ${d.every} days we search Oriane for new videos mentioning ${d.brand} and email ${d.email} a report of the ones you haven't seen. Weeks with nothing new send no email.`),
-      h('dl', {},
-        h('dt', {}, 'Listening for'), h('dd', {}, [d.brand, ...(d.params.variants || [])].join(', ')),
+      latest ? h('p', { class: 'latest' }, latest.newCount
+        ? [h('span', { class: 'u-pill u-pill-ok' }, 'New since last week'),
+           dash ? h('a', { href: dash }, `${latest.newCount} new ${latest.newCount === 1 ? 'mention' : 'mentions'}`) : h('b', {}, `${latest.newCount} new`)]
+        : h('span', {}, 'Nothing new since the week before'),
+        h('span', { class: 'u-muted' }, `in the check on ${when(latest.createdAt)}`), stamp(latest.createdAt)) : null,
+      h('dl', { class: 'facts' },
+        h('dt', {}, 'Listening for'), h('dd', { dir: 'auto' }, [d.brand, ...(d.params.variants || [])].join(', ')),
         h('dt', {}, 'Where'), h('dd', {}, `${PLATFORM[d.params.platform]}, ${LANG[d.params.lang]}`),
         h('dt', {}, 'Saved'), h('dd', {}, when(d.createdAt)),
-        h('dt', {}, 'Last checked'), h('dd', {}, when(d.lastRunAt)),
+        h('dt', {}, 'Last checked'), h('dd', {}, d.lastRunAt ? [when(d.lastRunAt), stamp(d.lastRunAt)] : 'Not checked yet'),
         d.status === 'active' ? h('dt', {}, 'Next check') : null, d.status === 'active' ? h('dd', {}, next) : null),
       h('div', { class: 'actions' },
-        d.status === 'pending' ? act('Start watching', 'confirm', 'btn-primary') : d.status === 'paused' ? act('Resume', 'resume', 'btn-primary') : act('Pause', 'pause'),
+        d.status === 'pending' ? act('Start watching', 'confirm', 'u-btn-primary') : d.status === 'paused' ? toggle('Resume', 'resume', 'u-btn-primary') : toggle('Pause', 'pause'),
         unsubscribe));
+    if (refocus) $('#toggle')?.focus();
+  }
+  function render(d) {
+    const card = $('#card');
+    if (d.status === 'unsubscribed') {
+      current = d;
+      card.removeAttribute('aria-busy');
+      card.replaceChildren(h('h1', {}, 'Stopped watching.'), h('p', { class: 'sub' }, `No more ${d.brand} reports to ${d.email}. `, h('a', { href: '/brands/' }, 'Run a new search'), ' any time.'));
+      for (const id of ['#seeding', '#lic-h', '#runs-h', '#preview-h']) $(id).hidden = true;
+      $('#licenses').replaceChildren(); $('#runs').replaceChildren(); preview(null);
+      return;
+    }
+    renderWatch(d);
     $('#lic-h').hidden = !d.licenses.length;
-    $('#licenses').replaceChildren(...d.licenses.map((l) => h('li', {},
-      h('span', {}, `@${l.handle} · ${l.days} days · ~$${l.priceUsd} · ${LICENSE[l.status] || l.status}`), h('a', { href: l.url }, 'Details →'))));
+    $('#licenses').replaceChildren(...d.licenses.map((l) => {
+      const dated = l.status === 'live' && l.expiresAt ? `until ${when(l.expiresAt)}` : l.status === 'ended' && l.expiresAt ? when(l.expiresAt) : `since ${when(l.createdAt)}`;
+      return h('li', {},
+        h('span', { class: 'who' }, h('b', {}, h('bdi', {}, `@${l.handle}`)), h('span', { class: 'u-muted' }, `${l.days} days · ~$${l.priceUsd}`)),
+        h('span', { class: 'end' }, h('span', { class: `u-pill ${LICENSE_PILL[l.status] || ''}` }, `${cap(LICENSE[l.status] || l.status)} · ${dated}`),
+          h('a', { href: l.url }, 'Details →')));
+    }));
     seeding(d);
     $('#runs-h').hidden = !d.runs.length;
-    $('#runs').replaceChildren(...d.runs.map((r) => h('li', {},
-      h('span', {}, when(r.createdAt), ' · ', r.newCount ? `${r.newCount} new` : 'nothing new', r.newCount && !r.sent ? ' (not emailed: mail not configured)' : ''),
-      r.searchId ? h('a', { href: `/brands/#search=${r.searchId}` }, 'Dashboard →') : null)));
+    $('#runs').replaceChildren(...d.runs.map((r, i) => {
+      const dash = r.searchId ? `/brands/#search=${r.searchId}` : null;
+      const count = r.newCount ? `${r.newCount} new` : 'nothing new';
+      return h('li', {},
+        h('span', { class: 'who' }, h('b', { class: 'run-date' }, when(r.createdAt)), stamp(r.createdAt), i === 0 ? h('span', { class: 'u-pill' }, 'Latest') : null),
+        h('span', { class: 'end' },
+          r.newCount && dash ? h('a', { class: 'count', href: dash }, count) : h('span', { class: r.newCount ? 'count' : 'u-muted' }, count),
+          r.newCount && !r.sent ? h('span', { class: 'u-muted' }, '(not emailed: mail not configured)') : null,
+          r.searchId ? h('a', { href: `/brands/#search=${r.searchId}` }, 'Dashboard →') : null));
+    }));
     $('#preview-h').hidden = !d.latestHtml;
     preview(d.latestHtml);
   }
   function renderSample(d) {
     document.title = 'Sample weekly report · Unprompted';
-    $('#card').replaceChildren(
+    const card = $('#card');
+    card.removeAttribute('aria-busy');
+    card.replaceChildren(
+      h('span', { class: 'u-eyebrow' }, 'Sample'),
       h('h1', {}, 'Sample weekly report'),
-      h('p', { class: 'sub' }, `${d.newCount} new ${d.newCount === 1 ? 'creator mention' : 'creator mentions'} of ${d.brand}.`),
+      h('p', { class: 'sub' }, `${d.newCount} new ${d.newCount === 1 ? 'creator mention' : 'creator mentions'} of ${d.brand}.`, d.createdAt ? ' ' : '', stamp(d.createdAt)),
       h('p', { class: 'sub' }, 'Watch a search on the dashboard and this lands in your inbox every 7 days, with only the mentions you haven\'t seen.'),
-      h('div', { class: 'actions' }, h('a', { class: 'btn btn-primary', href: '/brands/' }, 'Get this for your brand')));
+      h('div', { class: 'actions' }, h('a', { class: 'u-btn u-btn-primary u-btn-lg', href: '/brands/' }, 'Get this for your brand')));
     $('#runs-h').hidden = true;
     $('#runs').replaceChildren();
     $('#preview-h').textContent = 'Email preview';
@@ -185,7 +315,7 @@
   }
   let latestHtml = null;
   // A fresh iframe each time: on a back/forward navigation the browser restores the old frame's own history entry
-  // instead of loading srcdoc, which leaves the preview blank.
+  // instead of loading srcdoc, which leaves the preview blank. The email is shown in a sandbox: no scripts, no forms.
   function preview(html) {
     latestHtml = html;
     const old = $('#preview');
@@ -201,10 +331,13 @@
         return;
       }
       let d = await api(`/api/digests/${token}`);
-      if (q.get('confirm') === '1' && d.status === 'pending') d = await api(`/api/digests/${token}/confirm`, 'POST');
+      const confirming = q.get('confirm') === '1' && d.status === 'pending';
+      if (confirming) d = await api(`/api/digests/${token}/confirm`, 'POST');
       render(d);
-      if (q.get('unsubscribe') === '1') document.querySelector('.btn-danger')?.click();
+      if (confirming && d.status === 'active') U.toast(`Confirmed. You’re watching ${d.brand}.`, { kind: 'ok' });
+      if (q.get('unsubscribe') === '1') document.getElementById('stop')?.click();
     } catch (err) {
+      $('#card').removeAttribute('aria-busy');
       $('#card').replaceChildren(h('h1', {}, 'This link isn\'t valid any more.'), h('p', { class: 'sub' }, err.message, ' ', h('a', { href: '/brands/' }, 'Start a new search'), '.'));
     }
   })();

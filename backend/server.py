@@ -584,6 +584,43 @@ def load(sid):
             "checks": {"%s:%s" % (c["platform"], c["handle"]): {**c["result"], "createdAt": c["createdAt"]} for c in checks}}
 
 
+SHOWCASE = {}   # search id -> (loaded at, payload): the landing's real receipts, cached for 10 minutes
+
+
+def showcase():
+    """GET /api/showcase: real receipts for the brand landing's hero, from the one saved search the operator picks
+    (SHOWCASE_SEARCH_ID). Searches are private, so nothing is shown unless that setting names one."""
+    sid = os.environ.get("SHOWCASE_SEARCH_ID", "").strip()
+    if not sid.isdigit():
+        return {"receipts": []}
+    hit = SHOWCASE.get(sid)
+    if hit and time.time() - hit[0] < 600:
+        return hit[1]
+    data = load(int(sid))
+    said = [v for v in data["videos"] if v["kind"] in ("spoken", "tagged") and v["quote"]]
+    said.sort(key=lambda v: (v["kind"] != "spoken", -(v["views"] or 0)))
+    out = {"brand": data["search"]["brand"], "searchedAt": data["search"]["createdAt"], "analyzed": len(data["videos"]),
+           "creators": len(data["creators"]), "spokenOnly": sum(v["kind"] == "spoken" for v in data["videos"]),
+           "receipts": [{"handle": v["handle"], "platform": v["platform"], "url": v["url"], "views": v["views"], "publishedAt": v["publishedAt"],
+                         "kind": v["kind"], "frame": (v["quote"] or {}).get("frame") or v["thumb"],
+                         "quote": {k: (v["quote"] or {}).get(k) for k in ("text", "hit", "start")}} for v in said[:5]]}
+    SHOWCASE[sid] = (time.time(), out)
+    return out
+
+
+FLAG_REASONS = ("not_a_mention", "wrong_brand", "other")
+
+
+def flag_mention(body, user):
+    """POST /api/feedback: someone says a result isn't a real mention. Recorded for review; nothing is hidden by it."""
+    reason = body.get("reason")
+    if reason not in FLAG_REASONS or not re.fullmatch(r"[A-Za-z0-9_.-]{1,96}", str(body.get("videoId") or "")):
+        raise ApiError(400, "Say which video and why.")
+    creator.track(user["id"] if user else None, "mention_flag", {"search": body.get("searchId"), "video": body["videoId"], "reason": reason,
+                                                                 "note": str(body.get("note") or "")[:300]})
+    return {"ok": True}
+
+
 def list_searches(user=None):
     """The user's 20 latest searches; `watch` is set when they watch that brand and filters (any period)."""
     if not user:
@@ -653,6 +690,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: ops.admin_route(self))
         elif path == "/api/brands/arabic":
             self.api(lambda: {"brands": brands.arabic_spellings()})
+        elif path == "/api/showcase":
+            self.api(showcase)
         elif path.startswith("/api/admin/"):
             self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
@@ -696,6 +735,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: rosters.dispatch(self))
         if self.path.startswith("/api/admin/eval/"):
             return self.api(lambda: eval_mentions.admin_route(self))
+        if self.path == "/api/feedback":
+            return self.api(lambda: flag_mention(digest.read_json(self), creator.current_user(self.headers)))
         if self.path.startswith("/api/admin/"):
             return self.api(lambda: digest.admin(self))
         if not route:

@@ -5,166 +5,263 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Offer for your video · Receipts</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
 <style>
-  :root {
-    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
-    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
-    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
-  main { max-width: 600px; margin: 0 auto; padding: 36px 20px 60px; }
-  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
-  .brand a { color: var(--ink); text-decoration: none; font-weight: 700; }
-  .brand span { font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px 26px 24px; }
-  h1 { margin: 0 0 8px; font: italic 500 1.75rem/1.2 var(--serif); letter-spacing: -0.01em; text-wrap: balance; }
-  .sub { margin: 0 0 18px; color: var(--ink-2); text-wrap: pretty; }
-  .sub b { color: var(--ink); }
-  .amount { display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--lime); color: var(--ink); font-weight: 700; }
-  .video { margin: 0 0 18px; padding: 14px 16px; border-radius: 12px; background: var(--moss-soft); }
-  .video blockquote { margin: 0 0 8px; font: italic 400 1.125rem/1.45 var(--serif); }
-  .video blockquote b { font-style: normal; font-family: var(--sans); font-weight: 600; background: var(--lime); padding: 0 3px; border-radius: 3px; }
-  .video .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.8125rem; color: var(--ink-2); }
-  .video a { color: var(--moss); }
-  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 20px; font-size: 0.875rem; }
-  dt { color: var(--ink-2); } dd { margin: 0; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .btn { height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 0.9375rem var(--sans); cursor: pointer; }
-  .btn.primary { background: var(--lime); border-color: transparent; }
-  .btn.quiet { color: var(--ink-2); }
-  .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
-  .panel { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; }
-  .panel label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.875rem; }
-  .row { display: flex; gap: 8px; align-items: center; }
-  input, textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; width: 100%; }
-  .money { max-width: 160px; }
-  textarea { min-height: 64px; resize: vertical; }
-  .status { margin: 0 0 18px; padding: 14px 16px; border-radius: 12px; background: var(--moss-soft); }
-  .status.declined { background: var(--coral-soft); }
-  .status b { display: block; margin-bottom: 2px; }
-  .steps { margin: 6px 0 12px; padding-left: 20px; font-size: 0.875rem; }
-  .err { color: var(--coral); margin: 10px 0 0; }
-  .claim { margin-top: 18px; font-size: 0.875rem; color: var(--ink-2); }
-  .claim a { color: var(--moss); font-weight: 600; }
-  footer { margin-top: 24px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  .bar-note { font: 500 var(--fs-xs)/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
+  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } }
+
+  .page { width: min(640px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  #card { display: grid; gap: var(--s-5); min-width: 0; }
+  #card:focus { outline: none; }
+  .head { display: grid; gap: var(--s-2); }
+  .head h1 { font-size: var(--fs-2xl); letter-spacing: -0.02em; }
+
+  /* the receipt being licensed: always first */
+  .u-receipt-lg .u-receipt-frame { width: 104px; }
+  @media (max-width: 480px) { .u-receipt-lg .u-receipt-frame { width: 72px; } .u-receipt-lg .u-quote { font-size: var(--fs-lg); } }
+  .u-receipt-actions .u-btn { min-height: 32px; }
+
+  /* the one decision on this screen */
+  .decision { display: grid; gap: var(--s-4); padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); min-width: 0; }
+  @media (max-width: 480px) { .decision { padding: var(--s-4); } }
+  .pay { display: grid; gap: 4px; }
+  .pay .amount { font-size: var(--fs-3xl); font-weight: 600; letter-spacing: -0.025em; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--text); }
+  .pay .amount small { font-size: var(--fs-lg); font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+  .pay p { color: var(--text-2); font-size: var(--fs-sm); max-width: 60ch; }
+  .status-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+  .status-head b { font-size: var(--fs-lg); }
+  .status-text { max-width: 60ch; }
+  .expiry { padding: var(--s-3) var(--s-4); border-radius: var(--r-2); background: var(--surface-2); font-size: var(--fs-sm); }
+  .expiry b { font-weight: 600; }
+  .terms { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-4); margin: 0; font-size: var(--fs-sm); }
+  .terms dt { color: var(--text-2); }
+  .terms dd { margin: 0; }
+  @media (max-width: 480px) { .terms { grid-template-columns: minmax(0, 1fr); gap: 2px; } .terms dd { margin-bottom: var(--s-2); } }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .actions .u-btn { min-height: 44px; height: auto; white-space: normal; text-align: center; }
+  .u-error:empty { display: none; }
+
+  /* last step: the ad code */
+  .step { display: grid; gap: var(--s-3); padding: var(--s-4); border: 1px dashed var(--border-strong); border-radius: var(--r-2); }
+  .step ol { margin: 0; padding-inline-start: 20px; font-size: var(--fs-sm); display: grid; gap: 4px; }
+  .step .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .step .row .u-input { flex: 1 1 200px; min-height: 44px; }
+  .step .u-btn { min-height: 44px; }
+
+  /* dialogs */
+  .money-row { display: flex; align-items: center; gap: var(--s-2); }
+  .money-row .u-input { max-width: 180px; min-height: 44px; font-variant-numeric: tabular-nums; }
+  .u-dialog .u-hint:empty { display: none; }
+  .u-dialog-foot { flex-wrap: wrap; }
+  .u-dialog-foot .u-btn { min-height: 44px; }
+
+  .claim { font-size: var(--fs-sm); color: var(--text-2); }
+  .claim a { font-weight: 600; }
+  footer { font: 400 var(--fs-xs)/1.5 var(--mono); color: var(--text-2); }
+}
 </style>
 </head>
 <body>
-<main>
-  <div class="brand"><a href="/creators/">Receipts by Unprompted</a><span>Offer for your video</span></div>
-  <section class="card" id="card" aria-live="polite"><p class="sub">Loading the offer…</p></section>
+<header class="u-bar">
+  <a class="u-logo" href="/creators/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <span class="grow"></span>
+  <span class="bar-note">Offer for your video</span>
+</header>
+<main class="page">
+  <section id="card" aria-busy="true" tabindex="-1"><p class="u-muted">Loading the offer…</p></section>
   <footer>Unprompted arranges the license and handles payment. Nothing is posted on your account.</footer>
 </main>
 <script>
+  const { h } = U;
   const $ = (s) => document.querySelector(s);
   const token = location.pathname.split('/').pop();
   const api = `/api/licenses/offer/${token}`;
-  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-  const fmt = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K` : String(n);
-  function h(tag, attrs, ...kids) {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null && v !== false) el.setAttribute(k, v === true ? '' : v); }
-    el.append(...kids.filter((k) => k != null));
-    return el;
-  }
+  const CREATOR_SHARE = 0.85;   // licenses.CREATOR_SHARE: what the brand pays for a counter is the ask grossed up by our 15%
+  const when = (iso) => U.date(iso);
+  const usd = (n) => `$${U.fmt(n)}`;
+  const daysLeft = (iso) => Math.ceil((new Date(iso).getTime() - Date.now()) / 864e5);
+  let shown = null;
   async function call(body) {
     const res = await fetch(api, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Something went wrong.');
     return data;
   }
-  // One button that posts an action and re-renders, showing any error under the panel it sits in.
+  const settled = () => $('#card').focus({ preventScroll: true });
+
+  // A decision restated in plain words, in a dialog. It waits for the server (no optimistic UI on money or rights):
+  // the button stays busy until the answer comes back and errors stay in the dialog.
+  function decide({ title, lead, terms = [], body = [], note, confirm, danger, run, after, waiting = 'Sending your answer…' }) {
+    const id = `dlg-${Math.random().toString(36).slice(2, 8)}`;
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const wait = h('p', { class: 'u-hint', role: 'status' });
+    const ok = h('button', { class: `u-btn ${danger ? 'u-btn-danger' : 'u-btn-primary'}`, type: 'submit' }, confirm);
+    const cancel = h('button', { class: 'u-btn', type: 'button' }, 'Cancel');
+    let busy = false;
+    const form = h('form', { method: 'dialog', onsubmit: async (e) => {
+      e.preventDefault();
+      if (busy) return;
+      busy = true; err.textContent = ''; wait.textContent = waiting;
+      ok.setAttribute('aria-busy', 'true'); cancel.disabled = true; dlg.setAttribute('aria-busy', 'true');
+      try {
+        await run();
+        busy = false; dlg.close();
+        if (after) after();
+      } catch (ex) {
+        busy = false; err.textContent = ex.message; wait.textContent = '';
+        ok.removeAttribute('aria-busy'); cancel.disabled = false; dlg.removeAttribute('aria-busy');
+      }
+    } },
+      h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title), lead ? h('p', { class: 'u-muted' }, lead) : null, ...body,
+        terms.length ? h('dl', { class: 'terms' }, ...terms.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null,
+        note ? h('p', { class: 'u-hint' }, note) : null, err, wait),
+      h('div', { class: 'u-dialog-foot' }, cancel, ok));
+    const dlg = h('dialog', { class: 'u-dialog', 'aria-labelledby': id }, form);
+    const close = () => { if (!busy) dlg.close(); };
+    cancel.addEventListener('click', close);
+    dlg.addEventListener('cancel', (e) => { if (busy) e.preventDefault(); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.append(dlg);
+    dlg.showModal();
+    return { dlg, ok };
+  }
+
+  // One inline button that posts an action and re-renders (the ad-code step), busy until the server answers.
   function act(label, cls, body, err) {
-    const b = h('button', { class: `btn ${cls}`, type: 'button', onclick: async () => {
-      b.disabled = true; err.textContent = '';
-      try { render(await call(typeof body === 'function' ? body() : body)); }
-      catch (ex) { err.textContent = ex.message; b.disabled = false; }
+    const b = h('button', { class: `u-btn ${cls}`, type: 'button', onclick: async () => {
+      if (b.getAttribute('aria-busy') === 'true') return;
+      b.setAttribute('aria-busy', 'true'); err.textContent = '';
+      try { render(await call(typeof body === 'function' ? body() : body)); settled(); }
+      catch (ex) { err.textContent = ex.message; b.removeAttribute('aria-busy'); }
     } }, label);
     return b;
   }
-  function quote(v) {
-    const q = v.quote;
-    if (!q) return h('blockquote', {}, v.caption || '');
-    const [a, b] = q.hit;
-    return h('blockquote', { dir: 'auto' }, '“', q.text.slice(0, a), h('b', {}, q.text.slice(a, b)), q.text.slice(b), '”');
+
+  // Status changes after an answer are announced through the toast region.
+  const SAID = { accepted: 'Accepted. Last step: send the ad code.', code: 'Code received. We’ll tell you when the ad goes live.', declined: 'Offer declined',
+                 countered: 'Counter-offer sent', live: 'The ad is live', ended: 'The license has ended', open: 'Offer reopened' };
+  function announce(key) {
+    if (shown !== null && shown !== key) U.toast(SAID[key] || 'Updated', { kind: key === 'declined' ? 'info' : 'ok' });
+    shown = key;
   }
-  const show = (...kids) => $('#card').replaceChildren(...kids.filter((k) => k != null));
+
   function render(o) {
     const v = o.video, tiktok = v.platform === 'tiktok', ad = tiktok ? 'a TikTok Spark Ad' : 'an Instagram partnership ad';
     document.title = `${o.brand} offer · Receipts`;
-    const at = v.quote && v.quote.start != null ? ` at ${Math.floor(v.quote.start / 60)}:${String(Math.floor(v.quote.start % 60)).padStart(2, '0')}` : '';
-    const video = h('div', { class: 'video' }, quote(v), h('div', { class: 'meta' },
-      h('span', {}, `@${v.handle} · ${tiktok ? 'TikTok' : 'Instagram'} · ${fmt(v.views)} views`),
-      v.publishedAt ? h('span', {}, `Posted ${when(v.publishedAt)}`) : null,
-      h('a', { href: v.url, target: '_blank', rel: 'noopener' }, `Watch${at} ↗`)));
-    const terms = h('dl', {},
+    $('#card').removeAttribute('aria-busy');
+    const q = v.quote;
+    const at = q && q.start != null ? ` from ${U.clock(q.start)}` : '';
+    // The exact receipt being licensed: frame, quote, timestamp, platform link.
+    const video = U.receipt({ handle: v.handle, platform: v.platform, url: v.url, views: v.views || null, publishedAt: v.publishedAt, kind: v.kind,
+                              quote: q || undefined, frame: q && q.frame, caption: q ? null : (v.caption || null) },
+      { size: 'lg', actions: [h('a', { class: 'u-btn u-btn-sm', href: v.url, target: '_blank', rel: 'noopener' }, `Watch${at} on ${tiktok ? 'TikTok' : 'Instagram'} ↗`)] });
+    const terms = h('dl', { class: 'terms' },
       h('dt', {}, 'Where'), h('dd', {}, `As ${ad}, run by ${o.brand}`),
       h('dt', {}, 'How long'), h('dd', {}, `${o.days} days, then it stops`),
       h('dt', {}, 'You keep'), h('dd', {}, 'Ownership. No edits beyond captions and cropping. Nothing new to post.'),
       h('dt', {}, 'Payment'), h('dd', {}, `${o.brand} pays upfront; you’re paid within 3 days of the ad going live.`));
     const claim = o.claimed ? null : h('p', { class: 'claim' }, 'Want offers like this sent straight to you? ',
-      h('a', { href: `/creators/licenses?claim=${v.platform}:${encodeURIComponent(v.handle)}` }, `Claim @${v.handle} →`));
-    const err = h('p', { class: 'err', role: 'alert' });
-    const head = h('h1', {}, `${o.brand} wants to run your video as an ad`);
-    const sub = h('p', { class: 'sub' }, 'You get ', h('span', { class: 'amount' }, `$${o.shareUsd}`), ` for ${o.days} days. `,
-      `${o.brand} pays $${o.brandPriceUsd}; Unprompted keeps 15% for arranging it and handling the payment.`);
-    const status = (cls, title, text) => h('div', { class: `status ${cls || ''}` }, h('b', {}, title), text);
+      h('a', { href: `/creators/licenses?claim=${v.platform}:${encodeURIComponent(v.handle)}` }, 'Claim ', h('bdi', {}, `@${v.handle}`), ' →'));
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const head = h('div', { class: 'head' }, h('span', { class: 'u-eyebrow' }, 'Offer for your video'), h('h1', {}, `${o.brand} wants to run your video as an ad`));
+    const status = (pill, cls, title, text, ...more) => h('div', { class: 'decision' },
+      h('div', { class: 'status-head' }, h('span', { class: `u-pill ${cls || ''}` }, pill), title ? h('b', {}, title) : null),
+      h('p', { class: 'status-text' }, text), ...more);
+    const show = (...kids) => $('#card').replaceChildren(...kids.filter((k) => k != null));
 
     if (o.status === 'declined') {
-      show(head, status('declined', 'Declined', o.declineReason || 'You said no to this one. Nothing else happens.'), video, claim);
+      announce('declined');
+      show(head, video, status('Declined', 'u-pill-danger', null, o.declineReason || 'You said no to this one. Nothing else happens.'), claim);
       return;
     }
     if (o.status === 'ended') {
-      show(head, status('', `Ended on ${when(o.expiresAt)}`, o.creatorPaidAt ? `$${o.shareUsd} was paid on ${when(o.creatorPaidAt)}.`
-        : `$${o.shareUsd} is on its way.`), video, claim);
+      announce('ended');
+      show(head, video, status(`Ended ${when(o.expiresAt)}`, '', null, o.creatorPaidAt ? `$${o.shareUsd} was paid on ${when(o.creatorPaidAt)}.`
+        : `$${o.shareUsd} is on its way.`), claim);
       return;
     }
     if (o.status === 'live') {
-      show(head, status('', `Live until ${when(o.expiresAt)}`,
-        o.creatorPaidAt ? `$${o.shareUsd} paid on ${when(o.creatorPaidAt)}.` : `$${o.shareUsd} is on its way: within 3 days of ${when(o.startsAt)}.`), video, claim);
+      announce('live');
+      const left = o.expiresAt ? daysLeft(o.expiresAt) : null;
+      show(head, video, status(`Live until ${when(o.expiresAt)}`, 'u-pill-live', null,
+        o.creatorPaidAt ? `$${o.shareUsd} paid on ${when(o.creatorPaidAt)}.` : `$${o.shareUsd} is on its way: within 3 days of ${when(o.startsAt)}.`,
+        o.expiresAt ? h('p', { class: 'expiry' }, h('b', {}, `Stops ${when(o.expiresAt)}`), left > 0 ? ` · ${left} ${left === 1 ? 'day' : 'days'} left.` : ' · ends today.',
+          o.startsAt ? ` It went live ${when(o.startsAt)}.` : '') : null), claim);
       return;
     }
     if (o.status === 'accepted') {
       if (o.adCode) {
-        show(head, status('', 'Code received', `We’ll tell you when the ad goes live. You’ll get $${o.shareUsd} within 3 days of that.`), video, terms, claim);
+        announce('code');
+        show(head, video, status('Code received', 'u-pill-ok', null, `We’ll tell you when the ad goes live. You’ll get $${o.shareUsd} within 3 days of that.`, terms), claim);
         return;
       }
-      const code = h('input', { id: 'code', autocomplete: 'off', placeholder: tiktok ? 'Paste the ad code' : '' });
+      announce('accepted');
+      const code = h('input', { id: 'code', class: 'u-input', autocomplete: 'off', placeholder: tiktok ? 'Paste the ad code' : '' });
       const step = tiktok
-        ? h('div', { class: 'panel' }, h('label', { for: 'code' }, 'Last step: send the ad code'),
-            h('ol', { class: 'steps' }, h('li', {}, 'In TikTok, open this video’s ad settings and turn on ad authorization.'),
+        ? h('div', { class: 'step' }, h('label', { class: 'u-label', for: 'code' }, 'Last step: send the ad code'),
+            h('ol', {}, h('li', {}, 'In TikTok, open this video’s ad settings and turn on ad authorization.'),
               h('li', {}, `Create a code for ${o.days} days, or the closest option.`), h('li', {}, 'Paste it here.')),
-            h('div', { class: 'row' }, code, act('Send code', 'primary', () => ({ action: 'code', code: code.value }), err)), err)
-        : h('div', { class: 'panel' }, h('b', {}, 'Last step: approve the partnership ad'),
-            h('p', { class: 'sub', style: 'margin:6px 0 12px' }, `${o.brand} will send a partnership ad request in Instagram for this video. Approve it there, then press the button.`),
-            act('I’ve approved it', 'primary', { action: 'code', code: 'approved partnership ad request' }, err), err);
-      show(head, status('', o.brandPaid ? `${o.brand} has paid` : 'You accepted', o.brandPaid
-        ? `Send the code and the ad goes live; your $${o.shareUsd} follows.` : `You get $${o.shareUsd} for ${o.days} days.`), step, video, terms, claim);
+            h('div', { class: 'row' }, code, act('Send code', 'u-btn-primary', () => ({ action: 'code', code: code.value }), err)), err)
+        : h('div', { class: 'step' }, h('b', {}, 'Last step: approve the partnership ad'),
+            h('p', { class: 'u-hint' }, `${o.brand} will send a partnership ad request in Instagram for this video. Approve it there, then press the button.`),
+            h('div', {}, act('I’ve approved it', 'u-btn-primary', { action: 'code', code: 'approved partnership ad request' }, err)), err);
+      show(head, video, status(o.brandPaid ? `${o.brand} has paid` : 'You accepted', 'u-pill-ok', `$${o.shareUsd} for ${o.days} days`, o.brandPaid
+        ? `Send the code and the ad goes live; your $${o.shareUsd} follows.` : `You get $${o.shareUsd} for ${o.days} days.`, step, terms), claim);
       return;
     }
-    // requested / contacted: accept, counter or decline
-    const ask = h('input', { class: 'money', id: 'ask', type: 'number', min: 1, step: 1, inputmode: 'numeric', placeholder: String(o.shareUsd) });
-    const reason = h('textarea', { id: 'reason', maxlength: 300, placeholder: 'Optional: why not (not a fit, already exclusive, …)' });
-    const counter = h('div', { class: 'panel', hidden: true }, h('label', { for: 'ask' }, `How much do you want to receive for ${o.days} days?`),
-      h('div', { class: 'row' }, h('span', {}, '$'), ask, act('Send', 'primary', () => ({ action: 'counter', price: Number(ask.value) }), err)));
-    const decline = h('div', { class: 'panel', hidden: true }, h('label', { for: 'reason' }, 'Decline this offer'), reason,
-      h('div', { style: 'margin-top:8px' }, act('Decline', '', () => ({ action: 'decline', reason: reason.value }), err)));
-    const toggle = (show, hide) => () => { show.hidden = !show.hidden; hide.hidden = true; };
-    const countered = o.counterUsd && o.respondedVia
-      ? status('', `You asked for $${o.counterUsd}`, `We’ve passed it to ${o.brand} and will email you their answer. You can still accept the original offer.`) : null;
-    show(head, sub, countered, video, terms,
-      h('div', { class: 'actions' }, act(`Accept $${o.shareUsd}`, 'primary', { action: 'accept' }, err),
-        h('button', { class: 'btn', type: 'button', onclick: toggle(counter, decline) }, 'Counter'),
-        h('button', { class: 'btn quiet', type: 'button', onclick: toggle(decline, counter) }, 'Decline')),
-      counter, decline, err, claim);
+    // requested / contacted: accept, counter or decline. Each answer confirms in a dialog that restates the terms.
+    const countered = o.counterUsd && o.respondedVia;
+    announce(countered ? 'countered' : 'open');
+    const restate = [['Video', `Your ${tiktok ? 'TikTok' : 'Instagram'} video${q && q.start != null ? `, the moment at ${U.clock(q.start)}` : ''}`],
+      ['Used as', `${ad[0].toUpperCase()}${ad.slice(1)}, run by ${o.brand}`], ['How long', `${o.days} days from the day it goes live, then it stops`],
+      ['You get', `$${o.shareUsd}, within 3 days of the ad going live`], ['You keep', 'Ownership. No edits beyond captions and cropping. Nothing new to post.']];
+    const accept = h('button', { class: 'u-btn u-btn-primary u-btn-lg', type: 'button', onclick: () => decide({
+      title: `Accept $${o.shareUsd} from ${o.brand}?`, lead: `${o.brand} pays $${o.brandPriceUsd}; Unprompted keeps 15% for arranging it and handling the payment.`,
+      terms: [...restate, ['Next', tiktok ? 'You send a Spark Ad code from TikTok (we show you how).' : `You approve ${o.brand}’s partnership ad request in Instagram.`]],
+      confirm: `Accept $${o.shareUsd}`, after: settled, run: async () => render(await call({ action: 'accept' })) }) }, `Accept $${o.shareUsd}`);
+    const counter = h('button', { class: 'u-btn', type: 'button', onclick: () => {
+      const ask = h('input', { class: 'u-input', id: 'ask', type: 'number', min: 1, step: 1, inputmode: 'numeric', placeholder: String(o.shareUsd), required: true });
+      const gross = h('p', { class: 'u-hint', 'aria-live': 'polite' }, 'Whole dollars: what you receive.');
+      const d = decide({ title: 'Counter with your price',
+        body: [h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'ask' }, `How much do you want to receive for ${o.days} days?`),
+          h('div', { class: 'money-row' }, h('span', { 'aria-hidden': 'true' }, '$'), ask), gross)],
+        terms: restate.filter(([k]) => k !== 'You get'),
+        note: `We pass it to ${o.brand} and email you their answer. Until then you can still accept the original $${o.shareUsd}.`,
+        confirm: 'Send counter-offer', waiting: 'Sending your counter-offer…', after: settled,
+        run: async () => render(await call({ action: 'counter', price: Number(ask.value) })) });
+      ask.addEventListener('input', () => {
+        const n = Number(ask.value);
+        gross.textContent = Number.isInteger(n) && n > 0 ? `You get $${U.fmt(n)}; ${o.brand} would pay $${U.fmt(Math.ceil(n / CREATOR_SHARE))}, including our 15%.` : 'Whole dollars, what you receive.';
+        d.ok.textContent = Number.isInteger(n) && n > 0 ? `Ask for $${U.fmt(n)}` : 'Send counter-offer';
+      });
+    } }, 'Counter');
+    const decline = h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => {
+      const reason = h('textarea', { class: 'u-textarea', id: 'reason', maxlength: 300, dir: 'auto', placeholder: 'Optional: why not (not a fit, already exclusive, …)' });
+      decide({ title: 'Decline this offer?', danger: true,
+        lead: `${o.brand} won’t be able to run this video as an ad, and nothing else happens. You can’t undo this from here.`,
+        body: [h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'reason' }, 'Reason (optional, shared with the brand)'), reason)],
+        confirm: 'Decline offer', waiting: 'Declining…', after: settled,
+        run: async () => render(await call({ action: 'decline', reason: reason.value })) });
+    } }, 'Decline');
+    show(head, video,
+      h('div', { class: 'decision' },
+        countered ? h('div', { class: 'status-head' }, h('span', { class: 'u-pill u-pill-warn' }, `You asked for $${o.counterUsd}`), h('span', { class: 'u-stamp' }, `offer made ${when(o.createdAt)}`)) : null,
+        countered ? h('p', { class: 'status-text' }, `We’ve passed it to ${o.brand} and will email you their answer. You can still accept the original offer.`) : null,
+        h('div', { class: 'pay' }, h('span', { class: 'amount' }, `$${o.shareUsd} `, h('small', {}, `for ${o.days} days`)),
+          h('p', {}, `You get $${o.shareUsd}. ${o.brand} pays $${o.brandPriceUsd}; Unprompted keeps 15% for arranging it and handling the payment.`)),
+        terms,
+        h('div', { class: 'actions' }, accept, counter, decline), err),
+      claim);
   }
   call().then(render).catch((ex) => {
-    show(h('h1', {}, 'This offer link isn’t valid.'), h('p', { class: 'sub' }, ex.message));
+    $('#card').removeAttribute('aria-busy');
+    $('#card').replaceChildren(h('div', { class: 'u-empty' }, h('b', {}, 'This offer link isn’t valid.'), h('span', {}, ex.message)));
   });
 </script>
 </body>

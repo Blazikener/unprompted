@@ -5,65 +5,90 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>License a video · Unprompted</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=1">
+<script src="/ui/ui.js?v=1"></script>
 <style>
-  :root {
-    --lime: oklch(0.92 0.19 122); --bg: oklch(0.985 0.005 160); --panel: #fff; --ink: oklch(0.21 0.025 160); --ink-2: oklch(0.46 0.02 160);
-    --line: oklch(0.915 0.01 160); --moss: oklch(0.44 0.12 160); --moss-soft: oklch(0.955 0.03 160); --coral: oklch(0.55 0.2 27); --coral-soft: oklch(0.965 0.03 25);
-    --sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif; --serif: "Newsreader", ui-serif, Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
-  main { max-width: 640px; margin: 0 auto; padding: 40px 20px 60px; }
-  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
-  .brand a { color: var(--ink); text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
-  .brand span { font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px 28px; }
-  h1 { margin: 0 0 6px; font: italic 500 1.75rem/1.2 var(--serif); letter-spacing: -0.01em; text-wrap: pretty; }
-  .sub { margin: 0 0 20px; color: var(--ink-2); text-wrap: pretty; }
-  .video { margin: 0 0 22px; padding: 16px 18px; border-radius: 12px; background: var(--moss-soft); }
-  .video blockquote { margin: 0 0 10px; font: italic 400 1.1875rem/1.45 var(--serif); text-wrap: pretty; }
-  .video blockquote b { font-style: normal; font-family: var(--sans); font-weight: 600; background: var(--lime); padding: 0 3px; border-radius: 3px; }
-  .video .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.8125rem; color: var(--ink-2); }
-  .video a { color: var(--moss); }
-  fieldset { margin: 0 0 16px; padding: 0; border: 0; }
-  legend { margin-bottom: 8px; font-weight: 600; font-size: 0.875rem; }
-  .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .opts label { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
-  .opts label:has(input:checked) { border-color: var(--moss); box-shadow: inset 0 0 0 1px var(--moss); }
-  .opts label:has(input:focus-visible) { outline: 2px solid var(--moss); outline-offset: 2px; }
-  .opts input { position: absolute; opacity: 0; }
-  .opts b { font-size: 1.0625rem; }
-  .opts span { font-size: 0.8125rem; color: var(--ink-2); }
-  label.note { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.875rem; }
-  textarea { width: 100%; min-height: 76px; margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; resize: vertical; }
-  textarea:focus-visible { outline: 2px solid var(--moss); outline-offset: 1px; }
-  .btn { height: 42px; padding: 0 18px; border-radius: 9px; border: 0; background: var(--lime); color: var(--ink); font: 600 0.9375rem var(--sans); cursor: pointer; }
-  .btn:disabled { opacity: 0.5; cursor: default; }
-  .basis { margin: 14px 0 0; font-size: 0.75rem; color: var(--ink-2); }
-  .btn.quiet { background: #fff; border: 1px solid var(--line); }
-  .status { margin: 0 0 6px; padding: 14px 16px; border-radius: 12px; background: var(--moss-soft); }
-  .status b { display: block; margin-bottom: 2px; }
-  .status.declined { background: var(--coral-soft); }
-  .err { color: var(--coral); }
-  .code { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; }
-  .code code { font: 600 1rem var(--mono); padding: 6px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--line); word-break: break-all; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  .back { display: inline-block; margin-top: 18px; color: var(--moss); font-size: 0.875rem; }
-  footer { margin-top: 28px; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  .bar-note { font: 500 var(--fs-xs)/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
+  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } }
+
+  .page { width: min(680px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  #card { display: grid; gap: var(--s-5); min-width: 0; }
+  #card:focus { outline: none; }
+  .head { display: grid; gap: var(--s-2); }
+  .head h1 { font-size: var(--fs-2xl); letter-spacing: -0.02em; }
+  .head p { color: var(--text-2); max-width: 60ch; }
+
+  /* the receipt being licensed: always first */
+  .u-receipt-lg .u-receipt-frame { width: 104px; }
+  @media (max-width: 480px) { .u-receipt-lg .u-receipt-frame { width: 72px; } .u-receipt-lg .u-quote { font-size: var(--fs-lg); } }
+  .u-receipt-actions .u-btn { min-height: 32px; }
+
+  /* the one decision on this screen */
+  .decision { display: grid; gap: var(--s-4); padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); min-width: 0; }
+  @media (max-width: 480px) { .decision { padding: var(--s-4); } }
+  .status-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+  .status-head b { font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
+  .status-text { max-width: 60ch; }
+  .dates { display: flex; flex-wrap: wrap; gap: 4px var(--s-4); font: 400 var(--fs-xs)/1.5 var(--mono); color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .expiry { padding: var(--s-3) var(--s-4); border-radius: var(--r-2); background: var(--surface-2); font-size: var(--fs-sm); }
+  .expiry b { font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .actions .u-btn { min-height: 44px; height: auto; white-space: normal; text-align: center; }
+  .u-error:empty { display: none; }
+
+  /* duration choice: three cards, a native radio group */
+  fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: var(--s-2); font-weight: 600; font-size: var(--fs-sm); }
+  .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+  @media (max-width: 480px) { .opts { grid-template-columns: minmax(0, 1fr); } }
+  .opts label { position: relative; display: grid; gap: 2px; min-height: 64px; padding: var(--s-3) var(--s-4); border: 1px solid var(--border-strong); border-radius: var(--r-2);
+                background: var(--surface); cursor: pointer; transition: border-color var(--dur-instant) var(--ease-out), background-color var(--dur-instant) var(--ease-out); }
+  .opts label:hover { background: var(--surface-2); }
+  .opts label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+  .opts label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .opts input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .opts b { font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
+  .opts span { font-size: var(--fs-sm); color: var(--text-2); }
+  .request-form { display: grid; gap: var(--s-4); }
+  .request-form .u-btn-primary { justify-self: start; min-height: 44px; }
+
+  /* ad code */
+  .code { display: grid; gap: var(--s-2); padding: var(--s-4); border: 1px dashed var(--border-strong); border-radius: var(--r-2); }
+  .code-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+  .code code { font: 600 var(--fs-md) var(--mono); padding: 6px 10px; border-radius: var(--r-2); background: var(--surface-2); border: 1px solid var(--border); word-break: break-all; }
+  .basis { font-size: var(--fs-xs); color: var(--text-2); }
+  .back { justify-self: start; font-size: var(--fs-sm); font-weight: 500; }
+
+  /* confirmation dialogs restate the terms */
+  .terms { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-4); margin: 0; font-size: var(--fs-sm); }
+  .terms dt { color: var(--text-2); }
+  .terms dd { margin: 0; }
+  @media (max-width: 480px) { .terms { grid-template-columns: minmax(0, 1fr); gap: 2px; } .terms dd { margin-bottom: var(--s-2); } }
+  .u-dialog .u-hint:empty { display: none; }
+  .u-dialog-foot { flex-wrap: wrap; }
+  .u-dialog-foot .u-btn { min-height: 44px; }
+
+  footer { font: 400 var(--fs-xs)/1.5 var(--mono); color: var(--text-2); }
   footer a { color: inherit; }
-  @media (max-width: 520px) { .card { padding: 22px 18px; } .opts { grid-template-columns: minmax(0, 1fr); } }
+}
 </style>
 </head>
 <body>
-<main>
-  <div class="brand"><a href="/brands/">Unprompted</a><span>License for ads</span></div>
-  <section class="card" id="card" aria-live="polite"><p class="sub">Loading the video…</p></section>
+<header class="u-bar">
+  <a class="u-logo" href="/brands/">Un<mark>prompted</mark></a>
+  <span class="grow"></span>
+  <span class="bar-note">License for ads</span>
+</header>
+<main class="page">
+  <section id="card" aria-busy="true" tabindex="-1"><p class="u-muted">Loading the video…</p></section>
   <footer>Search and transcripts by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a> · Unprompted is a community tool built on Oriane's API</footer>
 </main>
 <script>
+  const { h } = U;
   const $ = (s) => document.querySelector(s);
   const [, , token, vid] = location.pathname.split('/');
   const api = `/api/digests/${token}/license/${vid}`;
@@ -76,104 +101,204 @@
     live: ['Live', 'The license is active.'],
     ended: ['Ended', 'The license window is over, so the ad should stop.'],
   };
+  const PILL = { requested: '', contacted: 'u-pill-warn', accepted: 'u-pill-ok', declined: 'u-pill-danger', live: 'u-pill-live', ended: '' };
+  const CREATOR_SHARE = 0.85;   // licenses.CREATOR_SHARE: the creator receives 85% of what the brand pays
   const returning = new URLSearchParams(location.search).get('paid') === '1';
-  let polls = 0;
-  const when = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-  const fmt = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K` : String(n);
-  function h(tag, attrs, ...kids) {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs || {})) { if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v != null) el.setAttribute(k, v); }
-    el.append(...kids.filter((k) => k != null));
-    return el;
-  }
+  let polls = 0, shown = null;
+  const when = (iso) => U.date(iso);
+  const usd = (n) => `$${U.fmt(n)}`;
+  const daysLeft = (iso) => Math.ceil((new Date(iso).getTime() - Date.now()) / 864e5);
   async function call(body) {
     const res = await fetch(api, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Something went wrong.');
     return data;
   }
-  function quote(v) {
-    const q = v.quote;
-    if (!q) return h('blockquote', {}, v.caption || 'No quote captured for this video.');
-    const [a, b] = q.hit;
-    return h('blockquote', { dir: 'auto' }, '“', q.text.slice(0, a), h('b', {}, q.text.slice(a, b)), q.text.slice(b), '”');
+
+  // A decision restated in plain words, in a dialog. It waits for the server (no optimistic UI on money or rights):
+  // the button stays busy until the answer comes back, errors stay in the dialog, and run() may return KEEP to leave
+  // it open and busy (on the way to Stripe).
+  const KEEP = Symbol('keep');
+  function decide({ title, lead, terms = [], note, confirm, danger, run, after, waiting = 'Waiting for the server to confirm…' }) {
+    const id = `dlg-${Math.random().toString(36).slice(2, 8)}`;
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const wait = h('p', { class: 'u-hint', role: 'status' });
+    const ok = h('button', { class: `u-btn ${danger ? 'u-btn-danger' : 'u-btn-primary'}`, type: 'button' }, confirm);
+    const cancel = h('button', { class: 'u-btn', type: 'button' }, 'Cancel');
+    const dlg = h('dialog', { class: 'u-dialog', 'aria-labelledby': id },
+      h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title), lead ? h('p', { class: 'u-muted' }, lead) : null,
+        terms.length ? h('dl', { class: 'terms' }, ...terms.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])) : null,
+        note ? h('p', { class: 'u-hint' }, note) : null, err, wait),
+      h('div', { class: 'u-dialog-foot' }, cancel, ok));
+    let busy = false;
+    const close = () => { if (!busy) dlg.close(); };
+    cancel.addEventListener('click', close);
+    dlg.addEventListener('cancel', (e) => { if (busy) e.preventDefault(); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+    dlg.addEventListener('close', () => dlg.remove());
+    ok.addEventListener('click', async () => {
+      if (busy) return;
+      busy = true; err.textContent = ''; wait.textContent = waiting;
+      ok.setAttribute('aria-busy', 'true'); cancel.disabled = true; dlg.setAttribute('aria-busy', 'true');
+      try {
+        if ((await run()) === KEEP) return;
+        busy = false; dlg.close();
+        if (after) after();
+      } catch (ex) {
+        busy = false; err.textContent = ex.message; wait.textContent = '';
+        ok.removeAttribute('aria-busy'); cancel.disabled = false; dlg.removeAttribute('aria-busy');
+      }
+    });
+    document.body.append(dlg);
+    dlg.showModal();
+    return dlg;
   }
+
+  // The exact receipt being licensed: frame, quote, timestamp, platform link.
+  function receiptOf(v) {
+    const q = v.quote;
+    const at = q && q.start != null ? ` from ${U.clock(q.start)}` : '';
+    return U.receipt({ handle: v.handle, platform: v.platform, url: v.url, views: v.views || null, publishedAt: v.publishedAt, kind: v.kind,
+                       label: KIND[v.kind], quote: q || undefined, frame: q && q.frame, caption: q ? null : (v.caption || null) },
+      { size: 'lg', extraMeta: !q && !v.caption ? h('span', { class: 'u-muted' }, 'No quote captured for this video.') : null, actions: [
+        h('a', { class: 'u-btn u-btn-sm', href: v.url, target: '_blank', rel: 'noopener' }, `Watch${at} on ${U.PLATFORM[v.platform] || 'the platform'} ↗`),
+        v.profile ? h('a', { class: 'u-btn u-btn-sm u-btn-ghost', href: v.profile, target: '_blank', rel: 'noopener' }, h('bdi', {}, `@${v.handle}`), ' profile ↗') : null] });
+  }
+
+  // Status changes (after an action, or while polling Stripe) are announced through the toast region.
+  function announce(key, message, kind = 'ok') {
+    if (shown !== null && shown !== key) U.toast(message, { kind });
+    shown = key;
+  }
+
   function render(d) {
-    const v = d.video, platform = v.platform === 'tiktok' ? 'TikTok' : 'Instagram';
-    const at = v.quote && v.quote.start != null ? ` at ${Math.floor(v.quote.start / 60)}:${String(Math.floor(v.quote.start % 60)).padStart(2, '0')}` : '';
-    const video = h('div', { class: 'video' }, quote(v), h('div', { class: 'meta' },
-      h('a', { href: v.profile, target: '_blank', rel: 'noopener' }, `@${v.handle}`),
-      h('span', {}, `${platform} · ${fmt(v.views)} views`), h('span', {}, KIND[v.kind]),
-      v.publishedAt ? h('span', {}, `Posted ${when(v.publishedAt)}`) : null,
-      h('a', { href: v.url, target: '_blank', rel: 'noopener' }, `Watch${at} ↗`)));
+    const v = d.video, tiktok = v.platform === 'tiktok', platform = tiktok ? 'TikTok' : 'Instagram';
+    const usage = tiktok ? 'A TikTok Spark Ad, run from your own ad account' : 'An Instagram partnership ad (branded content), run from your own ad account';
+    const card = $('#card');
+    card.removeAttribute('aria-busy');
     const back = h('a', { class: 'back', href: d.manageUrl }, `← Your weekly ${d.brand} watch`);
     if (d.request) {
       const r = d.request, [title, status] = STATUS[r.status] || [r.status, ''];
-      const err = h('p', { class: 'err', role: 'alert' });
-      // One button that posts an action; a Stripe checkout URL in the answer sends the brand there.
-      const act = (label, body, primary) => {
-        const b = h('button', { class: primary ? 'btn' : 'btn quiet', type: 'button', onclick: async () => {
-          b.disabled = true; err.textContent = '';
-          try {
-            const out = await call(body);
-            if (out.checkoutUrl) { location.href = out.checkoutUrl; return; }
-            render(await call());
-          } catch (ex) { err.textContent = ex.message; b.disabled = false; }
-        } }, label);
-        return b;
-      };
-      let text = status, extra = null;
-      if (r.status === 'accepted' && r.paid) text = 'Paid. Waiting for the creator’s ad code; the ad goes live as soon as it arrives.';
+      const err = h('p', { class: 'u-error', role: 'alert' });
+      const settled = () => { $('#card').focus({ preventScroll: true }); };
+      // One button per action. Money and rights confirm in a dialog that restates the terms and waits for the server;
+      // a Stripe checkout URL in the answer sends the brand there.
+      const act = (label, body, primary, dialog) => h('button', { class: `u-btn ${primary ? 'u-btn-primary' : ''}`, type: 'button', onclick: () => {
+        err.textContent = '';
+        decide({ ...dialog, after: settled, run: async () => {
+          const out = await call(body);
+          if (out.checkoutUrl) { location.href = out.checkoutUrl; return KEEP; }
+          render(await call());
+        } });
+      } }, label);
+      let text = status, extra = null, key = r.status, busy = false;
+      if (r.status === 'accepted' && r.paid) { text = 'Paid. Waiting for the creator’s ad code; the ad goes live as soon as it arrives.'; key = 'paid'; }
       else if (r.status === 'accepted' && returning && polls < 6) {   // back from Stripe before its webhook landed
         text = 'Thanks: confirming your payment with Stripe…';
+        busy = true; key = 'confirming';
         polls += 1;
         setTimeout(() => call().then(render), 2500);
       }
       else if (r.status === 'accepted' && r.payOnline) {
-        text = `The creator agreed. Pay $${r.priceUsd} to start; the ad code is released as soon as it’s paid.`;
-        extra = h('div', { class: 'row' }, act(`Pay $${r.priceUsd}`, { action: 'pay' }, true));
+        text = `The creator agreed. Pay ${usd(r.priceUsd)} to start; the ad code is released as soon as it’s paid.`;
+        extra = h('div', { class: 'actions' }, act(`Pay ${usd(r.priceUsd)}`, { action: 'pay' }, true, {
+          title: `Pay ${usd(r.priceUsd)} for @${v.handle}’s video`,
+          lead: 'Here is exactly what you’re buying. You’ll finish on Stripe’s secure checkout.',
+          terms: [['Video', `@${v.handle} on ${platform}`], ['Use', usage], ['How long', `${r.days} days from the day the ad goes live, then it stops`],
+            ['You pay', `${usd(r.priceUsd)}, once, through Stripe`], ['The creator gets', `${usd(Math.round(r.priceUsd * CREATOR_SHARE))} once the ad is live (Unprompted keeps 15% for arranging it)`],
+            ['Ad code', 'Released to you here as soon as the payment clears'], ['If they back out', 'A decline after you pay is refunded in full']],
+          confirm: `Continue to pay ${usd(r.priceUsd)}`, waiting: 'Opening Stripe checkout…' }));
       } else if (r.status === 'contacted' && r.counterUsd) {
+        key = 'counter';
         text = `The creator asked for $${r.counterUsd} instead, which makes it $${r.priceUsd} for you. Accept and it moves straight to payment.`;
-        extra = h('div', { class: 'row' }, act(`Accept $${r.priceUsd}`, { action: 'accept_counter' }, true), act('Decline', { action: 'decline_counter' }));
+        extra = h('div', { class: 'actions' },
+          act(`Accept $${r.priceUsd}`, { action: 'accept_counter' }, true, {
+            title: `Accept ${usd(r.priceUsd)} for ${r.days} days?`,
+            lead: `@${v.handle} asked to receive ${usd(r.counterUsd)} instead of the first offer.`,
+            terms: [['Video', `@${v.handle} on ${platform}`], ['Use', usage], ['How long', `${r.days} days from the day the ad goes live, then it stops`],
+              ['New price', `${usd(r.priceUsd)} for you`], ['The creator gets', `${usd(r.counterUsd)} once the ad is live`],
+              ['Next', 'It moves straight to payment. Nothing is charged until you pay.']],
+            confirm: `Accept ${usd(r.priceUsd)}` }),
+          act('Decline', { action: 'decline_counter' }, false, {
+            title: 'Decline the counter-offer?', danger: true,
+            lead: `This ends the request for @${v.handle}’s video. Nothing is charged, and the creator is told.`,
+            note: 'To try again later, request the video from a new weekly report.', confirm: 'Decline counter-offer' }));
       } else if (r.status === 'live') text = `The license runs until ${when(r.expiresAt)}.`;
       else if (r.status === 'ended') text = `It ended on ${when(r.expiresAt)}, so the ad should stop.`;
-      else if (r.status === 'declined' && r.refunded) text = 'The creator said no, and your payment was refunded in full.';
-      if (r.renewal && ['requested', 'contacted'].includes(r.status)) text = `Renewal requested. ${text}`;
-      const tiktok = v.platform === 'tiktok';
-      const code = r.adCode && ['live', 'accepted'].includes(r.status) ? h('div', {},
-        h('div', { class: 'code' }, h('span', {}, tiktok ? 'Spark Ad code:' : 'Partnership ad:'), h('code', {}, r.adCode),
-          h('button', { class: 'btn quiet', type: 'button', onclick: (e) => navigator.clipboard?.writeText(r.adCode).then(() => { e.target.textContent = 'Copied'; }) }, 'Copy')),
+      else if (r.status === 'declined' && r.refunded) { text = 'The creator said no, and your payment was refunded in full.'; key = 'refunded'; }
+      if (r.renewal && ['requested', 'contacted'].includes(r.status)) { text = `Renewal requested. ${text}`; key = `renewal-${key}`; }
+      const announceText = { paid: 'Payment confirmed', confirming: 'Confirming your payment…', counter: 'The creator sent a counter-offer', refunded: 'Declined and refunded in full' }[key.replace('renewal-', '')]
+        || (r.renewal && ['requested', 'contacted'].includes(r.status) ? 'Renewal requested' : title);
+      announce(key, announceText, r.status === 'declined' ? 'info' : 'ok');
+
+      // Explicit expiry or renewal line, with dates.
+      const left = r.expiresAt ? daysLeft(r.expiresAt) : null;
+      const expiry = r.status === 'live' && r.expiresAt
+        ? h('p', { class: 'expiry' }, h('b', {}, `Ends ${when(r.expiresAt)}`), ` · ${left > 0 ? `${left} ${left === 1 ? 'day' : 'days'} left` : 'ends today'}. `,
+            r.renewable ? 'You can renew it now for another window.' : 'You can renew it in its last 7 days.')
+        : r.status === 'ended' && r.expiresAt
+          ? h('p', { class: 'expiry' }, h('b', {}, `Ended ${when(r.expiresAt)}`), '. ', r.renewable ? 'You can still renew it for a short while.' : 'The renewal window has closed; request it again from a weekly report.')
+          : ['requested', 'contacted', 'accepted'].includes(r.status)
+            ? h('p', { class: 'expiry' }, h('b', {}, `${r.days} days`), ' from the day the ad goes live. Nothing runs before the creator agrees and you pay.')
+            : null;
+      const dates = h('p', { class: 'dates' }, h('span', {}, `${r.renewal ? 'Renewal requested' : 'Requested'} ${when(r.createdAt)}`),
+        r.startsAt ? h('span', {}, `Started ${when(r.startsAt)}`) : null,
+        r.expiresAt ? h('span', {}, `${r.status === 'ended' ? 'Ended' : 'Ends'} ${when(r.expiresAt)}`) : null);
+
+      const code = r.adCode && ['live', 'accepted'].includes(r.status) ? h('div', { class: 'code' },
+        h('div', { class: 'code-row' }, h('span', {}, tiktok ? 'Spark Ad code:' : 'Partnership ad:'), h('code', {}, r.adCode),
+          h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: () => U.copy(r.adCode, 'Ad code copied') }, 'Copy')),
         h('p', { class: 'basis' }, tiktok ? 'In TikTok Ads Manager, create an ad, choose Spark Ads and paste this code.'
           : 'In Meta Ads Manager, create the ad with partnership ad (branded content) and pick the creator’s approved post.')) : null;
-      const renew = r.renewable ? h('div', { class: 'row' }, act(`Renew for ${r.days} days at $${r.priceUsd}`, { action: 'renew' }, true)) : null;
-      $('#card').replaceChildren(...[
-        h('h1', {}, `@${v.handle}’s video for ${d.brand}`),
-        h('div', { class: `status ${r.status}` }, h('b', {}, `${title}: ${r.days} days at ${r.paid ? '' : '~'}$${r.priceUsd}`), text, extra, code, renew, err),
-        h('p', { class: 'sub' }, `${r.renewal ? 'Renewal requested' : 'Requested'} ${when(r.createdAt)}. Updates go to ${d.email}.`), video, back,
+      const renew = r.renewable ? h('div', { class: 'actions' }, act(`Renew for ${r.days} days at $${r.priceUsd}`, { action: 'renew' }, true, {
+        title: `Renew for ${r.days} days at ${usd(r.priceUsd)}?`,
+        lead: `A new request for the same video, window and price. @${v.handle} answers it like any other.`,
+        terms: [['Video', `@${v.handle} on ${platform}`], ['Use', usage], ['How long', `${r.days} more days from when the renewal goes live`],
+          ['Price', `${usd(r.priceUsd)}, charged only after the creator agrees and you pay`], ['Current window', r.expiresAt ? `${r.status === 'ended' ? 'Ended' : 'Ends'} ${when(r.expiresAt)}` : 'Not started']],
+        confirm: 'Request renewal' })) : null;
+      card.replaceChildren(...[
+        h('div', { class: 'head' }, h('span', { class: 'u-eyebrow' }, 'License for ads'), h('h1', {}, h('bdi', {}, `@${v.handle}`), `’s video for ${d.brand}`)),
+        receiptOf(v),
+        h('div', { class: 'decision', 'aria-busy': busy ? 'true' : null },
+          h('div', { class: 'status-head' }, h('span', { class: `u-pill ${PILL[r.status] || ''}` }, title),
+            h('b', {}, `${r.days} days at ${r.paid ? '' : '~'}$${r.priceUsd}`)),
+          busy ? h('div', { class: 'u-progress' }, h('div', { class: 'u-progress-bar indeterminate' }, h('b', {}))) : null,
+          h('p', { class: 'status-text' }, text), expiry, dates, extra, code, renew, err),
+        h('p', { class: 'u-hint' }, `${r.renewal ? 'Renewal requested' : 'Requested'} ${when(r.createdAt)}. Updates go to ${d.email}.`), back,
       ].filter(Boolean));
       return;
     }
+    shown = 'none';
     const opts = h('div', { class: 'opts' }, ...d.prices.map((p, i) => h('label', {},
       h('input', { type: 'radio', name: 'days', value: p.days, checked: i === 0 ? '' : null }),
       h('b', {}, `~$${p.usd}`), h('span', {}, `${p.days} days`))));
-    const note = h('textarea', { id: 'note', maxlength: '500', placeholder: 'Campaign, markets, start date…' });
-    const err = h('p', { class: 'err', role: 'alert', hidden: '' });
-    const btn = h('button', { class: 'btn', type: 'submit' }, 'Request license');
-    const form = h('form', { onsubmit: async (e) => {
+    const note = h('textarea', { id: 'note', class: 'u-textarea', maxlength: '500', placeholder: 'Campaign, markets, start date…', dir: 'auto' });
+    const err = h('p', { class: 'u-error', role: 'alert', hidden: '' });
+    const btn = h('button', { class: 'u-btn u-btn-primary u-btn-lg', type: 'submit' }, 'Request license');
+    const form = h('form', { class: 'request-form', onsubmit: async (e) => {
       e.preventDefault();
-      btn.disabled = true;
+      if (btn.getAttribute('aria-busy') === 'true') return;
+      btn.setAttribute('aria-busy', 'true');
       err.hidden = true;
-      try { render(await call({ days: Number(form.elements.days.value), note: note.value })); }
-      catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; }
+      try {
+        const out = await call({ days: Number(form.elements.days.value), note: note.value });
+        shown = null;   // the toast below says it better than the status title
+        render(out);
+        U.toast(`Request sent. We’re contacting @${v.handle}.`, { kind: 'ok' });
+        $('#card').focus({ preventScroll: true });
+      }
+      catch (ex) { err.textContent = ex.message; err.hidden = false; btn.removeAttribute('aria-busy'); }
     } }, h('fieldset', {}, h('legend', {}, 'How long should the ad run?'), opts),
-      h('label', { class: 'note', for: 'note' }, 'Note for the creator (optional)'), note, err, btn);
-    $('#card').replaceChildren(
-      h('h1', {}, `Run @${v.handle}’s video as an ad`),
-      h('p', { class: 'sub' }, `License this video for ${d.brand} as a TikTok Spark Ad or Instagram partnership ad. We contact @${v.handle}, confirm their price and terms, and only then send you the final offer. Nothing is charged now.`),
-      video, form, h('p', { class: 'basis' }, d.basis), back);
+      h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'note' }, 'Note for the creator (optional)'), note), err, btn);
+    card.replaceChildren(
+      h('div', { class: 'head' }, h('span', { class: 'u-eyebrow' }, 'License for ads'), h('h1', {}, 'Run ', h('bdi', {}, `@${v.handle}`), '’s video as an ad'),
+        h('p', {}, `License this video for ${d.brand} as a TikTok Spark Ad or Instagram partnership ad. We contact @${v.handle}, confirm their price and terms, and only then send you the final offer. Nothing is charged now.`)),
+      receiptOf(v),
+      h('div', { class: 'decision' }, form, h('p', { class: 'basis' }, d.basis)), back);
   }
   call().then(render).catch((ex) => {
-    $('#card').replaceChildren(h('h1', {}, 'This link isn’t valid any more.'), h('p', { class: 'sub' }, ex.message, ' ', h('a', { href: '/brands/' }, 'Go to Unprompted'), '.'));
+    $('#card').removeAttribute('aria-busy');
+    $('#card').replaceChildren(h('div', { class: 'u-empty' }, h('b', {}, 'This link isn’t valid any more.'), h('span', {}, ex.message, ' ', h('a', { href: '/brands/' }, 'Go to Unprompted'), '.')));
   });
 </script>
 </body>

@@ -1,8 +1,15 @@
-// Landing hero: a slowly turning drum of creator videos. A lime listening beam scans each column as it passes; now and
-// then a video says the brand out loud, the drum slows, that video pops forward and shows its receipt (quote,
-// timestamp, kind). Illustrative only: the quotes are templates around whatever is typed in the Brand field.
-// One draw call for all tiles (instanced, drawn in the shader), no post-processing, paused when off screen.
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+// Landing hero decoration: a slowly turning drum of creator videos, inside the dark "cinema" panel beside the headline.
+// A lime listening beam scans each column as it passes; now and then a video says the brand out loud, the drum slows,
+// that video pops forward and shows its receipt (quote, timestamp, kind). Illustrative only: the quotes are templates
+// around whatever is typed in the Brand field, and the panel says so.
+//
+// Demoted on purpose (reports/Interactive UI overhaul for Unprompted.md, B8): the page imports this module only after
+// window 'load', on wide screens with a fine pointer, never under reduced motion (OS setting or the in-app toggle);
+// three.js itself is imported inside start(), so nothing here competes with the headline for first paint. The page
+// shows a visible Pause button (WCAG 2.2.2). One draw call for all tiles (instanced, drawn in the shader), no
+// post-processing, stopped when off screen, paused or hidden.
+const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+let THREE;
 
 const COLS = 22, ROWS = 7, R = 4.1, TILE_W = 0.92, TILE_H = 1.62, PAD = 0.03, ROW_GAP = 1.86;
 const FOV = 32, DIST = 15, GLOW = 0.32;
@@ -153,24 +160,28 @@ function popAt(age) {
 }
 
 /**
- * Start the hero on `canvas` (inside the landing section). `brandInput` is the Brand field the quotes use, `receipt`
- * is the DOM card that follows a popped tile, `reduced` is a prefers-reduced-motion MediaQueryList: when it matches,
- * one still frame is drawn and nothing moves. Returns false when WebGL isn't available, so the CSS wave stays.
+ * Start the drum on `canvas` (inside the hero's cinema panel). `brandInput` is the Brand field the quotes use,
+ * `receipt` is the DOM card that follows a popped tile, `reduced()` says whether motion should stay off (checked on
+ * every refresh), `paused` is the starting pause state. Resolves to a controller, or null when motion is off, three.js
+ * can't load or WebGL isn't available (the panel's static poster stays).
  */
-export function start(canvas, { brandInput, receipt, reduced }) {
+export async function start(canvas, { brandInput, receipt, reduced = () => false, paused: startPaused = false }) {
+  if (reduced()) return null;
+  try { THREE = THREE || await import(THREE_URL); } catch { return null; }
+  if (reduced() || !canvas.isConnected) return null;
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
   } catch {
-    return false;
+    return null;
   }
-  const landing = canvas.parentElement;
+  const stage = canvas.parentElement;
   renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 60);
   camera.position.set(0, 0.4, DIST);
 
-  const drum = new THREE.Group();            // placed and tilted per layout
+  const drum = new THREE.Group();            // placed and scaled per layout
   const spin = new THREE.Group();
   drum.add(spin);
   scene.add(drum);
@@ -230,7 +241,7 @@ export function start(canvas, { brandInput, receipt, reduced }) {
   scene.add(glow);
 
   // Dust drifting up through the projector light, mostly in front of the drum.
-  const dustN = 220, dust = new Float32Array(dustN * 3), dustSeed = new Float32Array(dustN);
+  const dustN = 160, dust = new Float32Array(dustN * 3), dustSeed = new Float32Array(dustN);
   for (let i = 0; i < dustN; i++) {
     const a = -1.7 + Math.random() * 3, rr = R + 0.4 + Math.random() * 3.2;
     dust.set([rr * Math.sin(a), -7 + Math.random() * 14, rr * Math.cos(a)], i * 3);
@@ -246,8 +257,8 @@ export function start(canvas, { brandInput, receipt, reduced }) {
   dustPts.renderOrder = 3;
   drum.add(dustPts);
 
-  // ---- layout: the drum sits right of the headline. Narrow screens have no room for it, so the CSS wave stays.
-  let w = 0, h = 0, narrow = false;
+  // ---- layout: the drum fills its panel, centred. A panel too small to read stays on the static poster.
+  let w = 0, h = 0, narrow = true;
   const tilt = { x: 0.06, z: -0.1 }, pointer = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
   function layout() {
     w = canvas.clientWidth; h = canvas.clientHeight;
@@ -257,11 +268,10 @@ export function start(canvas, { brandInput, receipt, reduced }) {
     uniforms.uDpr.value = renderer.getPixelRatio();
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    const halfH = DIST * Math.tan(THREE.MathUtils.degToRad(FOV / 2)), halfW = halfH * camera.aspect;
-    narrow = w < 760 || camera.aspect < 1.15;
-    landing.classList.toggle('has-3d', !narrow);
-    drum.scale.setScalar(Math.min(1, Math.max(0.82, camera.aspect / 1.5)));
-    drum.position.set(halfW * 0.56, 0.2, 0);
+    narrow = w < 240 || h < 240;
+    stage.classList.toggle('has-3d', !narrow && !reduced());
+    drum.scale.setScalar(Math.min(1, Math.max(0.6, camera.aspect * 0.92)));
+    drum.position.set(0, 0.1, 0);
     if (narrow) receipt.classList.remove('on');
   }
 
@@ -276,7 +286,7 @@ export function start(canvas, { brandInput, receipt, reduced }) {
     const rows = [];
     for (let r = 0; r < ROWS; r++) {
       const y = project(c, r, 0, 0, 0).y / h;
-      if (y > 0.27 && y < 0.54) rows.push(r);   // beside the headline, clear of the top bar
+      if (y > 0.22 && y < 0.6) rows.push(r);   // the middle of the panel, clear of the caption and the Pause button
     }
     return rows;
   }
@@ -311,15 +321,15 @@ export function start(canvas, { brandInput, receipt, reduced }) {
     const right = project(hit.c, hit.r, TILE_W / 2 + 0.05, TILE_H / 2 - 0.1, pops[hit.i] * 0.9);
     const left = project(hit.c, hit.r, -TILE_W / 2 - 0.05, TILE_H / 2 - 0.1, pops[hit.i] * 0.9);
     const rw = receipt.offsetWidth, rh = receipt.offsetHeight;
-    // Right of the video; left only if that stays clear of the headline column (masked up to 64%); else hug the edge.
-    let x = right.x + 14;
-    if (x + rw > w - 16) x = left.x - 14 - rw > w * 0.64 ? left.x - 14 - rw : w - 16 - rw;
-    const y = Math.min(Math.max(right.y, 16), h - rh - 16);
+    // Right of the video; left of it when the right runs out of panel; else hug the nearer edge.
+    let x = right.x + 12;
+    if (x + rw > w - 12) x = left.x - 12 - rw >= 12 ? left.x - 12 - rw : Math.max(12, w - 12 - rw);
+    const y = Math.min(Math.max(right.y, 12), h - rh - 56);
     receipt.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
   }
 
   // ---- loop
-  let angle = SCAN + 0.09, speed = SPIN, last = 0, raf = 0, visible = true, running = false;
+  let angle = SCAN + 0.09, speed = SPIN, last = 0, raf = 0, visible = true, running = false, paused = !!startPaused;
   const prevD = Array.from({ length: COLS }, (_, c) => wrap((c / COLS) * Math.PI * 2 + angle - SCAN));
   let first = true;
   function frame(nowMs) {
@@ -367,54 +377,43 @@ export function start(canvas, { brandInput, receipt, reduced }) {
     raf = running ? requestAnimationFrame(frame) : 0;
   }
 
-  // One still frame for reduced motion: a video at the beam, popped, with its receipt.
+  // One still frame: shown while paused, so the panel never goes blank.
   function still() {
-    drum.rotation.set(tilt.x, 0, tilt.z);
-    camera.position.x = 0;
+    spin.rotation.y = uniforms.uSpin.value = angle;
+    if (!running && !last) drum.rotation.set(tilt.x, 0, tilt.z);
     camera.lookAt(0, 0.2, 0);
-    const at = (c) => {                       // turn column c under the beam
-      angle = SCAN - (c / COLS) * Math.PI * 2;
-      spin.rotation.y = uniforms.uSpin.value = angle;
-      scene.updateMatrixWorld();
-    };
-    // Column 0, or the half-row-staggered column 1 when 0 has no video beside the headline.
-    if (hit) at(hit.c); else for (let c = 0; c < 2 && !hit; c++) { at(c); trigger(c, 0); }
-    if (hit) {
-      pops[hit.i] = 1;
-      heard[hit.i] = 1;
-      for (const i of [3, 17, 40, 61, 88]) heard[i] = 0.8;
-      popAttr.needsUpdate = heardAttr.needsUpdate = true;
-      placeGlow(hit.i);
-      receipt.classList.add('on');
-      mark.textContent = brandText();
-      placeReceipt();
-    }
+    scene.updateMatrixWorld();
     renderer.render(scene, camera);
   }
 
   function run() {
-    const want = visible && !document.hidden && !reduced.matches && w > 0 && !narrow;
+    const off = reduced();
+    if (off) {                                // motion turned off while running: stop, drop the drum, keep the poster
+      hit = null; pops.fill(0); popAttr.needsUpdate = true; glow.visible = false; receipt.classList.remove('on');
+      stage.classList.remove('has-3d');
+    } else if (w > 0 && !narrow) stage.classList.add('has-3d');
+    const want = visible && !document.hidden && !off && !paused && w > 0 && !narrow;
     if (want && !running) { running = true; last = 0; raf = requestAnimationFrame(frame); }
     if (!want && running) { running = false; cancelAnimationFrame(raf); }
-    if (reduced.matches && w > 0 && !narrow) still();
+    if (!want && !off && w > 0 && !narrow) still();
   }
 
-  new ResizeObserver(() => { layout(); if (!running) run(); }).observe(canvas);
+  new ResizeObserver(() => { layout(); run(); }).observe(canvas);
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; run(); }).observe(canvas);
   document.addEventListener('visibilitychange', run);
-  reduced.addEventListener('change', () => {
-    if (!reduced.matches) { hit = null; pops.fill(0); popAttr.needsUpdate = true; glow.visible = false; receipt.classList.remove('on'); }
-    run();
-  });
   addEventListener('pointermove', (e) => {
     if (!running) return;
     pointer.x = e.clientX / innerWidth - 0.5;
     pointer.y = e.clientY / innerHeight - 0.5;
   }, { passive: true });
   brandInput.addEventListener('input', () => { if (hit && !running) mark.textContent = brandText(); });
-  canvas.addEventListener('webglcontextlost', () => { running = false; cancelAnimationFrame(raf); landing.classList.remove('has-3d'); });
+  canvas.addEventListener('webglcontextlost', () => { running = false; cancelAnimationFrame(raf); stage.classList.remove('has-3d'); receipt.classList.remove('on'); });
 
   layout();
   run();
-  return true;
+  return {
+    setPaused(p) { paused = !!p; run(); },
+    paused: () => paused,
+    refresh: run,
+  };
 }
