@@ -375,6 +375,7 @@
         <p class="u-lead hero-lead" data-reveal>Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer the brands that want to pay to run your videos as ads.</p>
         <div class="hero-form" data-reveal>
         <form class="scan-form" id="scan-form">
+          <section id="role-notice" class="role-notice u-card u-card-pad" role="status" aria-live="polite" hidden></section>
           <label class="u-label" for="handle">Your handle or profile link</label>
           <input class="u-input u-input-lg" id="handle" placeholder="@yourhandle or paste your profile link" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="go" required aria-describedby="handle-hint">
           <div class="scan-controls">
@@ -580,6 +581,7 @@
     <div class="u-dialog-body">
       <div class="dlg-head"><h2 class="u-h3" id="auth-title">Create your account</h2><button class="u-btn u-btn-ghost u-btn-sm u-btn-icon" type="button" aria-label="Close" id="auth-close">×</button></div>
       <p class="u-muted">Free scan, no card. We'll save your receipts here.</p>
+      <p class="u-hint" id="auth-role-links" hidden></p>
       <div class="u-field"><label class="u-label" for="auth-email">Email</label><input class="u-input" id="auth-email" name="email" type="email" required autocomplete="email"></div>
       <div class="u-field"><label class="u-label" for="auth-password">Password</label><input class="u-input" id="auth-password" name="password" type="password" required minlength="8" autocomplete="new-password"><span class="u-hint">At least 8 characters.</span></div>
       <p class="u-error" id="auth-err" role="alert"></p>
@@ -629,6 +631,27 @@ async function api(path, body, method) {
   return data;
 }
 const toast = (msg, kind) => U.toast(msg, kind ? { kind } : {});
+function showCreatorRoleNotice(role) {
+  const name = role || 'different';
+  const notice = $('#role-notice');
+  notice.replaceChildren(
+    h('strong', {}, `You're signed in with a ${name} account.`),
+    h('p', {}, 'Scanning your own videos needs a creator account.'),
+    h('div', { class: 'u-row' },
+      h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/dashboard' }, 'Go to your dashboard'),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out')));
+  notice.hidden = false;
+}
+function handleCreatorRoleError(err) {
+  if (err.status !== 403 || !err.data?.role) return false;
+  showCreatorRoleNotice(err.data.role);
+  return true;
+}
+function canUseCreatorFeatures() {
+  if (!S.user || S.user.role === 'creator') return true;
+  showCreatorRoleNotice(S.user.role);
+  return false;
+}
 
 // ---- the packaging test (backend/packaging.py): which offer this browser sees. Offer (a) is the page as written.
 const PLAN_NAME = { free: 'Free', open: 'Free', pro: 'Pro', leads: 'Weekly leads', roster: 'Roster' };
@@ -695,12 +718,17 @@ async function openPortal() { try { location.href = (await api('/billing/portal'
 async function signOut() {
   try { await api('/logout', {}); } catch (e) { toast(e.message, 'error'); return; }
   S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory();
+  $('#role-notice').hidden = true;
 }
 
 // ---- auth
 function openAuth(mode) {
   S.mode = mode;
-  $('#auth-title').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
+  $('#auth-title').textContent = mode === 'signup' ? 'Create your creator account' : 'Welcome back';
+  const links = $('#auth-role-links');
+  links.hidden = mode !== 'signup';
+  if (mode === 'signup') links.replaceChildren('Brand or manager? Sign up on the ',
+    h('a', { href: '/brands/' }, 'Brands'), ' / ', h('a', { href: '/creators/roster' }, 'Managers'), ' page.');
   $('#auth-toggle').textContent = mode === 'signup' ? 'I already have an account' : 'Create an account instead';
   $('#auth-password').setAttribute('autocomplete', mode === 'signup' ? 'new-password' : 'current-password');
   $('#auth-err').textContent = '';
@@ -713,11 +741,13 @@ $('#auth-form').onsubmit = async (e) => {
   const f = new FormData(e.target), submit = $('#auth-submit');
   submit.disabled = true; submit.setAttribute('aria-busy', 'true');
   try {
-    const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', { email: f.get('email'), password: f.get('password') });
+    const payload = { email: f.get('email'), password: f.get('password') };
+    if (S.mode === 'signup') payload.role = 'creator';
+    const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', payload);
     S.user = user; $('#auth').close(); renderAccount();
     if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); }
     else if (S.upgradePlan) { loadHistory(); openUpgrade(); }
-    else { loadHistory(); location.href = '/dashboard?as=creator'; }
+    else { loadHistory(); location.href = '/dashboard'; }
   } catch (err) { $('#auth-err').textContent = err.message; }
   submit.disabled = false; submit.removeAttribute('aria-busy');
 };
@@ -816,6 +846,7 @@ function newScan() { showLanding(); window.scrollTo({ top: 0 }); $('#handle').fo
 
 // ---- scanning
 function startScan(platform, handle) {
+  if (!canUseCreatorFeatures()) return;
   if (!S.user) { S.pending = { platform, handle }; openAuth('signup'); return; }
   runScan(platform, handle);
 }
@@ -839,16 +870,20 @@ function scanProgress(platform, handle) {
   return () => { clearInterval(timer); box.hidden = true; };
 }
 async function runScan(platform, handle) {
+  if (!canUseCreatorFeatures()) return;
   const btn = $('#scan-btn'), inp = $('#handle'); $('#miss').hidden = true;
   btn.disabled = inp.disabled = true; btn.setAttribute('aria-busy', 'true');
   const done = scanProgress(platform, handle);
   try { const scan = await api('/scans', { platform, handle }); done(); showScan(scan, true); loadHistory(); }
-  catch (e) { done(); if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!(await paywalled(e))) toast(e.message, 'error'); }
+  catch (e) { done(); if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!handleCreatorRoleError(e) && !(await paywalled(e))) toast(e.message, 'error'); }
   btn.disabled = inp.disabled = false; btn.removeAttribute('aria-busy');
 }
-async function openScan(id) { try { showScan(await api('/scans/' + id), true); } catch (e) { toast(e.message, 'error'); } }
+async function openScan(id) {
+  if (!canUseCreatorFeatures()) return;
+  try { showScan(await api('/scans/' + id), true); } catch (e) { if (!handleCreatorRoleError(e)) toast(e.message, 'error'); }
+}
 async function loadHistory() {
-  const rows = S.user ? await api('/scans').catch(() => []) : [];
+  const rows = S.user?.role === 'creator' ? await api('/scans').catch((e) => { handleCreatorRoleError(e); return []; }) : [];
   S.history = rows;
   $('#history').replaceChildren(...(rows.length ? rows.map((r) => h('li', {}, h('button', { type: 'button', 'data-id': r.id, onclick: () => openScan(+r.id) },
     h('b', {}, h('bdi', {}, '@' + r.handle)), ` · ${PLATFORM[r.platform]}`, h('small', {}, `${r.brands} brands · ${date(r.createdAt)}`))))
@@ -1070,23 +1105,25 @@ const fieldSizing = window.CSS && CSS.supports && CSS.supports('field-sizing', '
 function grow(ta) { if (fieldSizing) return; ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight + 2}px`; }
 function autoGrow(root) { if (!fieldSizing && root) requestAnimationFrame(() => $$('textarea.grow', root).forEach(grow)); }
 async function action(act, i, btn) {
+  if (!canUseCreatorFeatures()) return;
   const b = S.scan.brands[i]; btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   try {
     const out = await api(`/scans/${S.scan.id}/brands/${encodeURIComponent(b.brand)}/${act}`, {});
     S.panels[i] = { ...(S.panels[i] || {}), [act]: out };
     const card = updateCard(i);
     $(`[data-panel="${act}"] h4`, card)?.focus({ preventScroll: false });
-  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message, 'error'); }
+  } catch (e) { if (!handleCreatorRoleError(e) && !(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message, 'error'); }
   btn.disabled = false; btn.removeAttribute('aria-busy');
 }
 $('#share').onclick = async () => {
+  if (!canUseCreatorFeatures()) return;
   const btn = $('#share');
   btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   try {
     const { url } = await api(`/scans/${S.scan.id}/share`, {});
     const out = $('#share-url'); out.value = url; out.hidden = false; S.shareUrl = url; $('#share-present').hidden = false;
     await navigator.clipboard.writeText(url).then(() => toast('Public link copied', 'ok')).catch(() => { out.select(); toast('Link ready, copy it below'); });
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { if (!handleCreatorRoleError(e)) toast(e.message, 'error'); }
   btn.disabled = false; btn.removeAttribute('aria-busy');
 };
 $('#share-present').onclick = () => { if (S.shareUrl) U.copy(presentUrl(S.shareUrl), 'Present-mode link copied'); };
@@ -1175,7 +1212,7 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
     history.replaceState({}, '', '/creators/');
   } else if (q.get('upgrade') === '1') { openUpgrade(); history.replaceState({}, '', '/creators/'); }
   else if (q.get('signin') === '1') {
-    if (S.user) location.replace('/dashboard?as=creator');
+    if (S.user) location.replace('/dashboard');
     else { openAuth('login'); history.replaceState({}, '', '/creators/'); }
   } else if (q.has('scan')) {
     const parsed = parseHandle(q.get('scan'));
@@ -1191,7 +1228,7 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
     history.replaceState({}, '', '/creators/');
     openScan(scanId);
   } else if (S.user && ['/', '/creators/'].includes(location.pathname) && !location.search && !location.hash && q.get('home') !== '1') {
-    location.replace('/dashboard?as=creator');
+    location.replace('/dashboard');
   }
 })();
 </script>

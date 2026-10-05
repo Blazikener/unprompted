@@ -286,6 +286,7 @@ def subscribe(body, user=None):
     params = {"variants": variants, "platform": p["platform"], "lang": p["lang"]}
     if p.get("about"):
         params["about"] = p["about"]
+    brand_user = user if user and user["role"] == "brand" else None
     search_id = body.get("searchId")
     with connect() as db:
         db.execute("SELECT pg_advisory_xact_lock(471478344)")
@@ -300,7 +301,7 @@ def subscribe(body, user=None):
                 ensure_active_capacity(db)
             d = db.execute("INSERT INTO digests (email, brand, params, token, confirmed_at, user_id) VALUES (%s, %s, %s, %s, %s, %s)"
                            " RETURNING *", (email, brand, Jsonb(params), secrets.token_urlsafe(16),
-                                            None if mail_configured() else now(), user["id"] if user else None)).fetchone()
+                                            None if mail_configured() else now(), brand_user["id"] if brand_user else None)).fetchone()
         elif d["paused_at"]:
             if d["confirmed_at"]:
                 ensure_active_capacity(db)
@@ -309,8 +310,8 @@ def subscribe(body, user=None):
             db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s"
                        " ON CONFLICT DO NOTHING", (d["id"], search_id))
     mailed = send(email, *confirm_mail(d)) if not d["confirmed_at"] else False
-    if user:
-        creator.track(user["id"], "digest_subscribe", {"digest": d["id"], "brand": brand})
+    if brand_user:
+        creator.track(brand_user["id"], "digest_subscribe", {"digest": d["id"], "brand": brand})
     return {**row_view(d), "created": created, "mailed": mailed}
 
 

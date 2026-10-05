@@ -122,9 +122,23 @@
   async function call(path, body) {
     const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    if (!res.ok) {
+      const error = new Error(data.error || 'Something went wrong.'); error.status = res.status; error.data = data;
+      if (res.status === 403 && data.role) showRoleNotice(data.role);
+      throw error;
+    }
     return data;
   }
+  function showRoleNotice(role) {
+    $('#app').removeAttribute('aria-busy');
+    $('#app').replaceChildren(h('section', { class: 'role-notice u-card u-card-pad', role: 'status' },
+      h('strong', {}, `You're signed in with a ${role || 'different'} account.`),
+      h('p', {}, 'License offers and handle verification are for creator accounts.'),
+      h('div', { class: 'u-row' },
+        h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/dashboard' }, 'Go to your dashboard'),
+        h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out'))));
+  }
+  async function signOut() { await call('/api/creators/logout', {}); location.href = '/'; }
   const brands = (s) => s.split(',').map((b) => b.trim()).filter(Boolean);
   // Busy until the server answers; a second press while busy does nothing.
   async function pending(btn, work) {
@@ -163,8 +177,13 @@
     const pw = h('input', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password', class: 'u-input', id: 'pw' });
     const err = h('p', { class: 'u-error', role: 'alert' });
     const submit = h('button', { class: 'u-btn u-btn-primary' }, 'Create account');
+    const title = h('h2', {}, 'Create your creator account');
+    const roleLinks = h('p', { class: 'u-hint' }, 'Brand or manager? Sign up on the ',
+      h('a', { href: '/brands/' }, 'Brands'), ' / ', h('a', { href: '/creators/roster' }, 'Managers'), ' page.');
     const toggle = h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => {
       signup = !signup;
+      title.textContent = signup ? 'Create your creator account' : 'Sign in to see your offers';
+      roleLinks.hidden = !signup;
       submit.textContent = signup ? 'Create account' : 'Sign in';
       toggle.textContent = signup ? 'I already have an account' : 'Create an account';
       pw.autocomplete = signup ? 'new-password' : 'current-password';
@@ -172,15 +191,20 @@
     const form = h('form', { onsubmit: async (e) => {
       e.preventDefault(); err.textContent = '';
       await pending(submit, async () => {
-        try { await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value }); load(); }
+        try {
+          await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value, ...(signup ? { role: 'creator' } : {}) });
+          const query = new URLSearchParams(location.search);
+          if (!query.has('claim') && query.get('connect') !== 'done') location.href = '/dashboard';
+          else load();
+        }
         catch (ex) { err.textContent = ex.message; }
       });
     } }, h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'email' }, 'Email'), email),
       h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'pw' }, 'Password'), pw, h('span', { class: 'u-hint' }, 'At least 8 characters.')),
       h('div', { class: 'row' }, submit, toggle), err);
     $('#app').removeAttribute('aria-busy');
-    $('#app').replaceChildren(h('section', { class: 'sec signin' }, h('div', { class: 'sec-head' }, h('h2', {}, 'Sign in to see your offers')),
-      h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
+    $('#app').replaceChildren(h('section', { class: 'sec signin' }, h('div', { class: 'sec-head' }, title),
+      roleLinks, h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
   }
 
   function handles(d) {
@@ -409,6 +433,7 @@
     try {
       const me = await call('/api/creators/me');
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
+      if (me.user.role !== 'creator') { showRoleNotice(me.user.role); return; }
       call('/api/creators/visit', { page: 'inbox' }).catch(() => {});   // a return visit, for the packaging test's week-4 count
       $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
         h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
@@ -421,7 +446,10 @@
       const d = await call('/api/licenses/mine');
       render(d);
       if (connected && d.payouts.online) U.toast(d.payouts.payoutsEnabled ? 'Payouts are on' : 'Stripe still needs a few details to turn payouts on', { kind: d.payouts.payoutsEnabled ? 'ok' : 'info' });
-    } catch (ex) { $('#app').removeAttribute('aria-busy'); $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, ex.message)); }
+    } catch (ex) {
+      if (ex.status === 403 && ex.data?.role) { showRoleNotice(ex.data.role); return; }
+      $('#app').removeAttribute('aria-busy'); $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, ex.message));
+    }
   }
   load();
 </script>

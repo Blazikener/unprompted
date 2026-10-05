@@ -566,6 +566,10 @@
 }
 
 @layer page {
+  .role-notice { display: grid; gap: var(--s-2); border-color: var(--border-strong); background: var(--surface-2); }
+  .role-notice p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
+  .role-notice[hidden] { display: none; }
+  .role-notice .u-row { flex-wrap: wrap; }
   @media (max-width: 400px) {
     body.u-stage > header.u-bar { height: auto; min-height: 64px; flex-wrap: wrap; gap: var(--s-2); padding-block: var(--s-2); }
     body.u-stage > header.u-bar > .grow { display: none; }

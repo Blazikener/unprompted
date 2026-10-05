@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
   stripe_subscription text,
   created_at          timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role text;
 CREATE TABLE IF NOT EXISTS sessions (
   token      text PRIMARY KEY,                  -- sha256 of the cookie value
   user_id    int NOT NULL REFERENCES users ON DELETE CASCADE,
@@ -82,6 +83,32 @@ CREATE TABLE IF NOT EXISTS events (                -- funnel: scan, paywall, che
   data       jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+"""
+
+ROLE_MIGRATION = """
+UPDATE users u SET role = CASE
+  WHEN EXISTS (SELECT 1 FROM rosters r WHERE r.user_id = u.id) THEN 'manager'
+  WHEN NOT EXISTS (SELECT 1 FROM scans s WHERE s.user_id = u.id)
+    AND (
+      EXISTS (SELECT 1 FROM searches s WHERE s.user_id = u.id)
+      OR EXISTS (SELECT 1 FROM checks c WHERE c.user_id = u.id)
+      OR EXISTS (SELECT 1 FROM digests d WHERE d.user_id = u.id)
+    ) THEN 'brand'
+  ELSE 'creator'
+END
+WHERE role IS NULL;
+ALTER TABLE users ALTER COLUMN role SET DEFAULT 'creator';
+ALTER TABLE users ALTER COLUMN role SET NOT NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'users'::regclass AND conname = 'users_role_check'
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('creator', 'brand', 'manager'));
+  END IF;
+END
+$$;
 """
 
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram"}
@@ -463,8 +490,11 @@ def plan_of(user):
 
 def public_user(u):
     import packaging
-    return {"id": u["id"], "email": u["email"], "plan": u["plan"], "limits": PLANS[plan_of(u)], "billing": bool(u.get("stripe_customer")),
-            "arm": packaging.user_arm(u)}
+    return {
+        "id": u["id"], "email": u["email"], "role": u["role"], "plan": u["plan"],
+        "limits": PLANS[plan_of(u)], "billing": bool(u.get("stripe_customer")),
+        "arm": packaging.user_arm(u),
+    }
 
 
 def start_session(db, user_id):
@@ -495,6 +525,21 @@ def require_user(headers):
     return u
 
 
+def require_role(headers, role, signed_out_message="Sign in to continue."):
+    user = current_user(headers)
+    if not user:
+        raise ApiError(401, signed_out_message)
+    if user["role"] != role:
+        messages = {
+            "creator": "Scans and license offers are for creator accounts.",
+            "brand": "Brand search is for brand accounts.",
+            "manager": "Rosters are for manager accounts.",
+        }
+        raise ApiError(403, "%s You're signed in with a %s account — sign out and create a %s account with another email."
+                       % (messages[role], user["role"], role), role=user["role"])
+    return user
+
+
 def brand_usage(user):
     limits = PLANS[user["plan"]]
     with connect() as db:
@@ -520,12 +565,15 @@ def credentials(body):
 def signup(body, headers=None):
     import packaging
     email, pw = credentials(body)
+    role = body.get("role", "creator")
+    if role not in ("creator", "brand", "manager"):
+        raise ApiError(400, "Choose creator, brand or manager.")
     arm, forced = packaging.signup_arm(headers or {})       # the offer this browser was shown on /creators/
     with connect() as db:
         if db.execute("SELECT 1 FROM users WHERE email = %s", (email,)).fetchone():
             raise ApiError(409, "That email already has an account. Sign in instead.")
-        u = db.execute("INSERT INTO users (email, password, arm, arm_forced) VALUES (%s, %s, %s, %s) RETURNING *",
-                       (email, hash_password(pw), arm, forced)).fetchone()
+        u = db.execute("INSERT INTO users (email, password, role, arm, arm_forced) VALUES (%s, %s, %s, %s, %s) RETURNING *",
+                       (email, hash_password(pw), role, arm, forced)).fetchone()
         cookie = start_session(db, u["id"])
     if headers:
         packaging.link_visitor(headers, u["id"])
@@ -837,7 +885,7 @@ def dispatch(handler):
         if path == "/brands":
             return [{"name": b["name"], "category": b["category"]} for b in CATALOG]
         if path == "/scans":
-            return list_scans(require_user(headers))
+            return list_scans(require_role(headers, "creator"))
         if path == "/sample":
             return sample_view()
         m = re.fullmatch(r"/shared/([A-Za-z0-9_-]{8,32})", path)
@@ -845,7 +893,7 @@ def dispatch(handler):
             return shared_view(m.group(1))
         m = re.fullmatch(r"/scans/(\d+)", path)
         if m:
-            u = require_user(headers)
+            u = require_role(headers, "creator")
             return scan_view(load_scan(u, int(m.group(1))), plan_of(u))
         raise ApiError(404, "Not found.")
     if method != "POST":
@@ -865,16 +913,17 @@ def dispatch(handler):
         return login(body)
     if path == "/logout":
         return logout(headers)
-    u = require_user(headers)
     if path == "/scans":
-        return run_scan(u, body)
+        return run_scan(require_role(headers, "creator"), body)
     m = re.fullmatch(r"/scans/(\d+)/share", path)
     if m:
-        return share_scan(u, int(m.group(1)))
+        return share_scan(require_role(headers, "creator"), int(m.group(1)))
     m = re.fullmatch(r"/scans/(\d+)/brands/([^/]+)/(activity|pitch)", path)
     if m:
         sid, name, feature = int(m.group(1)), unquote(m.group(2)), m.group(3)
-        return activity_route(u, sid, name) if feature == "activity" else pitch_route(u, sid, name)
+        user = require_role(headers, "creator")
+        return activity_route(user, sid, name) if feature == "activity" else pitch_route(user, sid, name)
+    u = require_user(headers)
     if path == "/billing/checkout":
         import packaging
         plan = "pro" if body.get("plan") == "pro" else packaging.offer_plan(u)

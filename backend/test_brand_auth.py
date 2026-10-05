@@ -61,7 +61,8 @@ class Client:
 
 def signup(base, email="brand@example.com"):
     client = Client(base)
-    status, result = client.request("POST", "/api/creators/signup", {"email": email, "password": "password-123"})
+    status, result = client.request("POST", "/api/creators/signup",
+                                    {"email": email, "password": "password-123", "role": "brand"})
     assert status == 201
     return client, result["user"]
 

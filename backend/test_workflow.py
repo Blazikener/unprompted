@@ -117,7 +117,8 @@ def test_the_whole_licence_workflow(base, monkeypatch):
 
     # Week 1 (CONCIERGE "Week 1", step 5): the operator searches the brand and starts a watch for the brand's contact.
     ops = Client(base)
-    assert ops("POST", "/api/creators/signup", {"email": OPERATOR, "password": "password-123"})[0] == 201
+    assert ops("POST", "/api/creators/signup",
+               {"email": OPERATOR, "password": "password-123", "role": "brand"})[0] == 201
     monkeypatch.setattr(server, "oriane", lambda *a, **k: page(video("wf_old", days_ago=40)))
     status, found = ops("POST", "/api/searches", {"brand": "Glow Recipe"})
     assert status == 200 and found["search"]["brand"] == "Glow Recipe"
@@ -173,7 +174,8 @@ def test_the_whole_licence_workflow(base, monkeypatch):
 
     # The creator signs up, claims and verifies the handle (code in bio), and sets up payouts: the owed share goes out.
     lena = Client(base)
-    assert lena("POST", "/api/creators/signup", {"email": CREATOR, "password": "password-123"})[0] == 201
+    assert lena("POST", "/api/creators/signup",
+                {"email": CREATOR, "password": "password-123", "role": "creator"})[0] == 201
     claim = lena("POST", "/api/licenses/handles", {"platform": "tiktok", "handle": "@lena"})[1]
     monkeypatch.setattr(tiktok_public, "creator_page", lambda h: ({"signature": "skincare " + claim["code"]}, []))
     assert lena("POST", "/api/licenses/verify", {"platform": "tiktok", "handle": "lena"})[1]["verified"]

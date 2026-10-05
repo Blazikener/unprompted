@@ -653,7 +653,7 @@ def flag_mention(body, user):
 
 def list_searches(user=None):
     """The user's 20 latest searches; `watch` is set when they watch that brand and filters (any period)."""
-    if not user:
+    if not user or user["role"] != "brand":
         return []
     with connect() as db:
         rows = db.execute(
@@ -674,10 +674,7 @@ def list_searches(user=None):
 
 
 def require_brand_user(headers):
-    user = creator.current_user(headers)
-    if not user:
-        raise ApiError(401, "Sign in to search.")
-    return user
+    return creator.require_role(headers, "brand", "Sign in to search.")
 
 
 def not_found():
@@ -858,6 +855,7 @@ def init_db():
         db.execute(seeding.SCHEMA)
         db.execute(eval_mentions.SCHEMA)
         db.execute(packaging.SCHEMA)
+        db.execute(creator.ROLE_MIGRATION)
 
 
 if __name__ == "__main__":

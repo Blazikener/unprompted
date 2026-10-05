@@ -113,8 +113,21 @@
   async function call(path, body) {
     const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    if (!res.ok) {
+      const error = new Error(data.error || 'Something went wrong.'); error.status = res.status; error.data = data;
+      if (res.status === 403 && data.role) showRoleNotice(data.role);
+      throw error;
+    }
     return data;
+  }
+  function showRoleNotice(role) {
+    $('#app').removeAttribute('aria-busy');
+    $('#app').replaceChildren(h('section', { class: 'role-notice u-card u-card-pad', role: 'status' },
+      h('strong', {}, `You're signed in with a ${role || 'different'} account.`),
+      h('p', {}, 'Rosters and manager reports are for manager accounts.'),
+      h('div', { class: 'u-row' },
+        h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/dashboard' }, 'Go to your dashboard'),
+        h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out'))));
   }
   // A button that posts, then re-renders with the answer (or shows the error next to it). Nothing changes before the server answers.
   function act(label, path, body, cls, after) {
@@ -122,7 +135,11 @@
     const b = h('button', { class: `u-btn ${cls || ''}`, type: 'button', onclick: async () => {
       b.disabled = true; b.setAttribute('aria-busy', 'true'); err.textContent = '';
       try { const out = await call(path, typeof body === 'function' ? body() : body); b.removeAttribute('aria-busy'); if (after) after(out); else render(out); }
-      catch (ex) { b.removeAttribute('aria-busy'); err.textContent = ex.message; b.disabled = false; }
+      catch (ex) {
+        b.removeAttribute('aria-busy');
+        if (ex.status === 403 && ex.data?.role) { showRoleNotice(ex.data.role); return; }
+        err.textContent = ex.message; b.disabled = false;
+      }
     } }, label);
     return h('span', { class: 'act' }, b, err);
   }
@@ -136,15 +153,23 @@
     const pw = h('input', { class: 'u-input', type: 'password', required: true, minlength: 8, autocomplete: 'new-password', id: 'pw' });
     const err = h('p', { class: 'u-error', role: 'alert' });
     const submit = h('button', { class: 'u-btn u-btn-primary' }, 'Create account');
+    const title = h('h2', { id: 'signin-h' }, 'Create your manager account');
+    const roleLinks = h('p', { class: 'u-hint' }, 'Creator or brand? Sign up on the ',
+      h('a', { href: '/creators/' }, 'Creators'), ' / ', h('a', { href: '/brands/' }, 'Brands'), ' page.');
     const toggle = h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => {
-      signup = !signup; submit.textContent = signup ? 'Create account' : 'Sign in';
+      signup = !signup; title.textContent = signup ? 'Create your manager account' : 'Sign in';
+      roleLinks.hidden = !signup; submit.textContent = signup ? 'Create account' : 'Sign in';
       toggle.textContent = signup ? 'I already have an account' : 'Create an account';
       pw.setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
     } }, 'I already have an account');
-    $('#app').replaceChildren(h('section', { class: 'u-card u-card-pad signin', 'aria-labelledby': 'signin-h' }, head('signin-h', 'Sign in'),
+    $('#app').replaceChildren(h('section', { class: 'u-card u-card-pad signin', 'aria-labelledby': 'signin-h' }, h('div', { class: 'sec-head' }, title), roleLinks,
       h('form', { onsubmit: async (e) => {
         e.preventDefault(); err.textContent = ''; submit.disabled = true; submit.setAttribute('aria-busy', 'true');
-        try { await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value }); load(); }
+        try {
+          await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value, ...(signup ? { role: 'manager' } : {}) });
+          if (!new URLSearchParams(location.search).has('subscribed')) location.href = '/dashboard';
+          else load();
+        }
         catch (ex) { err.textContent = ex.message; submit.disabled = false; }
         submit.removeAttribute('aria-busy');
       } }, field('Email', email), field('Password', pw), h('div', { class: 'u-row' }, submit, toggle)), err));
@@ -303,10 +328,14 @@
       const me = await call('/api/creators/me');
       user = me.user;
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
+      if (me.user.role !== 'manager') { showRoleNotice(me.user.role); return; }
       $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
         h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out'));
       render(await call('/api/rosters/mine'));
-    } catch (ex) { $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, ex.message)); $('#app').removeAttribute('aria-busy'); }
+    } catch (ex) {
+      if (ex.status === 403 && ex.data?.role) { showRoleNotice(ex.data.role); return; }
+      $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, ex.message)); $('#app').removeAttribute('aria-busy');
+    }
   }
   async function signOut() { await call('/api/creators/logout', {}); location.reload(); }
 

@@ -429,7 +429,7 @@ def dispatch(handler):
             creator.track(r["owner_id"], "offer_view", {"request": r["id"]})
             return offer_view(r)
         if path == "/mine":
-            return mine(creator.require_user(handler.headers))
+            return mine(creator.require_role(handler.headers, "creator"))
         raise ApiError(404, "Not found.")
     if method != "POST":
         raise ApiError(405, "Method not allowed.")
@@ -438,7 +438,7 @@ def dispatch(handler):
     body = digest.read_json(handler)
     if m:
         return answer(m.group(1), body)
-    user = creator.require_user(handler.headers)
+    user = creator.require_role(handler.headers, "creator")
     import payments
     route = {"/handles": claim, "/verify": verify, "/remove": remove, "/prefs": set_prefs, "/payouts/connect": payments.connect_onboard,
              "/payouts/refresh": lambda u, _: payments.connect_refresh(u)}.get(path)
