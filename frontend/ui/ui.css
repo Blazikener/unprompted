@@ -451,6 +451,7 @@
     .u-aud { gap: 1px; padding: 2px; }
     .u-aud a { min-height: 28px; padding-inline: 5px; font-size: 0.625rem; }
     .u-bar .u-logo small { display: none; }
+    .u-bar .bar-note, .u-bar .u-bar-link[href="/brands/"] { display: none; }
   }
 }
 
