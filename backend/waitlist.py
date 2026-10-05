@@ -141,7 +141,7 @@ def _queue(db, waitlist_id):
         "), scored AS ("
         " SELECT id, referrals, ordering - %s * referrals AS score FROM ranked"
         "), target AS (SELECT score, id, referrals FROM scored WHERE id = %s)"
-        " SELECT 1 + (SELECT count(*) FROM scored s, target t WHERE (s.score, s.id) < (t.score, t.id)) AS position,"
+        " SELECT 1 + (SELECT count(*) FROM scored s, target t WHERE (s.score, -s.referrals, s.id) < (t.score, -t.referrals, t.id)) AS position,"
         "        (SELECT count(*) FROM waitlist) AS total, target.referrals"
         " FROM target",
         (REFERRAL_JUMP, waitlist_id),
@@ -322,7 +322,8 @@ def _admin_report():
             " LEFT JOIN referral_counts rc ON rc.id = w.id),"
             " scored AS (SELECT *, ordering - %s * referrals AS score FROM ranked)"
             " SELECT s.id, s.email, s.role, s.handle, s.platform, s.size, s.pay, s.pain, s.source, s.code,"
-            " s.referrals, (SELECT 1 + count(*) FROM scored other WHERE (other.score, other.id) < (s.score, s.id)) AS position,"
+            " s.referrals, (SELECT 1 + count(*) FROM scored other"
+            " WHERE (other.score, -other.referrals, other.id) < (s.score, -s.referrals, s.id)) AS position,"
             " referrer.code AS \"referredBy\", s.created_at AS \"createdAt\""
             " FROM scored s LEFT JOIN waitlist referrer ON referrer.id = s.referred_by"
             " ORDER BY s.created_at DESC, s.id DESC LIMIT 1000",

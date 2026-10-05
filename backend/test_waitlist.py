@@ -242,3 +242,11 @@ def test_waitlist_and_join_static_aliases(base):
     for path in ("/waitlist", "/waitlist?ref=abc", "/join"):
         with urllib.request.urlopen(base + path) as response:
             assert response.status == 200
+
+
+def test_each_referral_moves_referrer_exactly_jump_spots(base):
+    codes = [join(base, "q%d@wl.test" % number)[1]["code"] for number in range(7)]
+    status, _ = join(base, "friend@wl.test", ref=codes[6])
+    assert status == 200
+    _, after = request(base, "/api/waitlist/" + codes[6])
+    assert after["position"] == 7 - waitlist.REFERRAL_JUMP and after["referrals"] == 1

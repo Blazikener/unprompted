@@ -575,7 +575,8 @@ api('/api/waitlist/stats').then((s) => {
 }).catch(() => {});
 
 // ---- step 1: join
-let me = store.get('wl_me');          // {code, email, role}
+let me = store.get('wl_me');          // {code, email, role, handle, platform, size, pay, pain}
+let hp = '';
 const role = () => ($('input[name="role"]:checked') || {}).value || 'creator';
 const setRole = (r) => { const el = $(`input[name="role"][value="${r}"]`); if (el) el.checked = true; };
 if (['creator', 'brand', 'manager'].includes(params.get('as'))) setRole(params.get('as'));
@@ -588,7 +589,8 @@ $('#join-form').addEventListener('submit', async (e) => {
   const btn = $('#join-btn');
   btn.setAttribute('aria-busy', 'true'); btn.disabled = true;
   try {
-    const r = await api('/api/waitlist', { email, role: role(), ref, source, utm: attribution, visitor, website: e.target.website.value });
+    hp = e.target.website.value;
+    const r = await api('/api/waitlist', { email, role: role(), ref, source, utm: attribution, visitor, website: hp });
     me = { ...r, email };
     store.set('wl_me', { code: r.code, email, role: r.role || role() });
     showQuestions();
@@ -614,7 +616,8 @@ function showQuestions() {
   chips($('#q-pay'), 'pay', PAY, me && me.pay);
   $('#q-pay-label').textContent = r === 'brand' ? 'If it found you creators who already love you, what would it be worth a month?'
     : r === 'manager' ? 'For your whole roster, what would it be worth a month?' : 'If it got you paid deals, what would it be worth to you a month?';
-  if (me && me.handle) $('#q-handle').value = me.handle;
+  $('#q-handle').value = (me && me.handle) || '';
+  $('#q-pain').value = (me && me.pain) || '';
   $('#qs-title').textContent = me && me.alreadyJoined ? 'Welcome back. Update your answers?' : 'You\'re in. Three taps to skip ahead.';
   swap('#qs-form');
   setTimeout(() => $('#q-handle').focus({ preventScroll: true }), 50);
@@ -626,8 +629,9 @@ $('#qs-form').addEventListener('submit', async (e) => {
   btn.setAttribute('aria-busy', 'true'); btn.disabled = true;
   try {
     const r = await api('/api/waitlist', { email: me.email, role: me.role || role(), handle: $('#q-handle').value.trim(), platform: val('platform'),
-      size: val('size'), pay: val('pay'), pain: $('#q-pain').value.trim(), ref, source, utm: attribution, visitor });
-    me = { ...me, ...r, handle: $('#q-handle').value.trim(), platform: val('platform'), size: val('size'), pay: val('pay') };
+      size: val('size'), pay: val('pay'), pain: $('#q-pain').value.trim(), ref, source, utm: attribution, visitor, website: hp });
+    me = { ...me, ...r, handle: $('#q-handle').value.trim(), platform: val('platform'), size: val('size'), pay: val('pay'), pain: $('#q-pain').value.trim() };
+    store.set('wl_me', { code: me.code, email: me.email, role: me.role, handle: me.handle, platform: me.platform, size: me.size, pay: me.pay, pain: me.pain });
     showTicket(true);
   } catch (x) { U.toast(x.message, { kind: 'error' }); } finally { btn.removeAttribute('aria-busy'); btn.disabled = false; }
 });
