@@ -27,15 +27,18 @@
 
   /* ---------- shell: saved searches on the left, the work on the right */
   .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+  body:not(.is-landing) .app { min-height: calc(100vh - var(--appbar-height)); }
   .side { position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; gap: var(--s-2);
           padding: var(--s-5) var(--s-4) var(--s-4); background: var(--surface-2); border-inline-end: 1px solid var(--border); }
+  body:not(.is-landing) .side { top: var(--appbar-height); height: calc(100vh - var(--appbar-height)); }
   .side > * { flex-shrink: 0; }   /* a long saved list scrolls the sidebar instead of squashing it */
   .side .wordmark { margin: 0 6px; font-size: 1.25rem; }
+  body:not(.is-landing) .side .wordmark, body:not(.is-landing) .side .tagline { display: none; }
   .tagline { margin: 2px 6px var(--s-3); font-size: var(--fs-sm); color: var(--text-2); line-height: 1.4; }
   .new-search { width: 100%; justify-content: flex-start; }
   .new-search .u-kbd { margin-inline-start: auto; background: transparent; color: inherit; border-color: color-mix(in oklch, var(--on-accent) 45%, transparent); }
-  .side-tools { display: flex; gap: var(--s-1); margin-bottom: var(--s-2); }
-  .side-tools .u-btn { flex: 1; }
+  .side-tools { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-2); }
+  .side-tools .u-btn { flex: 1 1 auto; }
   .side-h { margin: var(--s-2) 6px 2px; font: 500 0.6875rem/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
   .saved { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: grid; gap: 2px; }
   .saved > li.muted { padding: 6px; font-size: var(--fs-sm); }
@@ -75,11 +78,11 @@
   .searchbar:not(.hero-form) .opts-toggle { display: none; }
   .searchbar:not(.hero-form) .hint, .searchbar:not(.hero-form) .landing-error { order: 11; flex-basis: 100%; }
   .searchbar:not(.hero-form) .u-seg > label { height: 34px; }
-  .app-topbar { display: none; align-items: center; gap: var(--s-3); min-height: 54px; padding: var(--s-2) var(--s-6);
+  .app-topbar { display: none; align-items: center; gap: var(--s-3); width: 100%; min-height: 54px; box-sizing: border-box; padding: var(--s-2) var(--s-6);
                  position: sticky; top: 0; z-index: calc(var(--z-sticky) + 1); background: var(--bg); border-bottom: 1px solid var(--border); }
-  body:not(.is-landing) { --appbar-height: 54px; }
+  body:not(.is-landing) { --appbar-height: 57px; }
   body:not(.is-landing) .app-topbar { display: flex; }
-  body:not(.is-landing) .searchbar:not(.hero-form) { top: var(--appbar-height); }
+  body:not(.is-landing) .searchbar:not(.hero-form) { position: static; }
   .app-topbar .wordmark { flex: none; font-size: var(--fs-lg); view-transition-name: none; }
   .app-topbar #app-account { margin-inline-start: auto; }
   .brand-account-chip { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px 10px; }
@@ -530,9 +533,9 @@
   .player-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid color-mix(in oklch, var(--on-cinema) 10%, transparent); }
   .ph-who { display: grid; min-width: 0; }
   .ph-who span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-sm); color: color-mix(in oklch, var(--on-cinema) 76%, transparent); }
-  .ph-link { margin-inline-start: auto; white-space: nowrap; color: var(--on-cinema); }
-  .ph-link.u-btn-ghost { background: transparent; }
-  .ph-link.u-btn-ghost:hover { color: var(--on-cinema); background: oklch(1 0 0 / 0.08); }
+  .ph-link { margin-inline-start: auto; white-space: nowrap; color: var(--on-cinema); border-color: color-mix(in oklch, var(--on-cinema) 32%, transparent);
+             background: color-mix(in oklch, var(--cinema) 75%, transparent); }
+  .ph-link:hover { color: var(--on-cinema); border-color: var(--on-cinema); background: color-mix(in oklch, var(--on-cinema) 10%, var(--cinema)); }
   .ph-close { flex: none; width: 40px; height: 40px; border: 1px solid color-mix(in oklch, var(--on-cinema) 26%, transparent); border-radius: 50%; background: transparent;
               color: var(--on-cinema); cursor: pointer; transition: border-color var(--dur-instant) var(--ease-out); }
   .ph-close:hover { border-color: var(--on-cinema); }
@@ -584,7 +587,10 @@
   }
   @media (max-width: 760px) {
     .app { grid-template-columns: minmax(0, 1fr); }
+    body:not(.is-landing) .app { min-height: 0; align-content: start; }
     .side { position: static; height: auto; padding: var(--s-4); border-inline-end: 0; border-bottom: 1px solid var(--border); }
+    body:not(.is-landing) .side { top: auto; height: auto; }
+    body:not(.is-landing) #brand-account { display: none; }
     .saved { grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); overflow-x: auto; }
     .side-foot { display: none; }
     .searchbar:not(.hero-form) { position: static; padding: var(--s-3) var(--s-4); }
@@ -628,6 +634,14 @@
 </style>
 </head>
 <body class="is-landing">
+<header class="app-topbar" aria-label="Brand dashboard navigation">
+  <a class="u-logo wordmark" href="/brands/">Un<mark>prompted</mark></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/">Creators</a><a href="/brands/" aria-current="page">Brands</a><a href="/creators/roster">Managers</a>
+  </nav>
+  <span class="grow"></span>
+  <div id="app-account"></div>
+</header>
 <div class="app">
   <aside class="side" aria-label="Saved searches">
     <a class="u-logo wordmark" href="/brands/">Un<mark>prompted</mark></a>
@@ -882,15 +896,6 @@
         <p class="end-word" aria-hidden="true">Unprompted</p>
       </footer>
     </section>
-
-    <header class="app-topbar" aria-label="Brand dashboard navigation">
-      <a class="u-logo wordmark" href="/brands/">Un<mark>prompted</mark></a>
-      <nav class="u-aud" aria-label="Who it's for">
-        <a href="/creators/">Creators</a><a href="/brands/" aria-current="page">Brands</a><a href="/creators/roster">Managers</a>
-      </nav>
-      <span class="grow"></span>
-      <div id="app-account"></div>
-    </header>
 
     <div class="content" hidden>
       <p id="status" class="sr-only" role="status" aria-live="polite"></p>
@@ -2226,7 +2231,7 @@
         h('header', { class: 'player-head' },
           img(d.pfp, null, { class: 'avatar', alt: '' }),
           h('div', { class: 'ph-who' }, h('strong', {}, h('bdi', {}, d.name || d.handle)), h('span', {}, h('bdi', {}, `@${d.handle}`), ` · ${date(d.publishedAt)} · ${fmt(d.views)} views`)),
-          h('a', { class: 'ph-link u-btn u-btn-sm u-btn-ghost', href: d.url, target: '_blank', rel: 'noopener' }, `Open on ${PLATFORM[d.platform]} ↗`),
+          h('a', { class: 'ph-link u-btn u-btn-sm', href: d.url, target: '_blank', rel: 'noopener' }, `Open on ${PLATFORM[d.platform]} ↗`),
           h('button', { type: 'button', class: 'ph-close', 'aria-label': 'Close player', onclick: closePlayer }, '✕')),
         P.captions,
         h('div', { class: 'player-controls' }, P.playBtn, P.timeline, P.timeEl, jump))));

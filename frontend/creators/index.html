@@ -20,7 +20,12 @@
   #account .who { font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
   .cmdk-btn .u-kbd { margin-inline-start: 2px; }
   @media (max-width: 1100px) { #account .who { display: none; } }
-  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } .u-logo small, .cmdk-btn { display: none; } }
+  @media (max-width: 600px) {
+    .u-bar { height: auto; min-height: 64px; flex-wrap: wrap; gap: var(--s-2); padding-inline: var(--s-4); }
+    .u-bar nav.u-aud { gap: 1px; }
+    .u-bar .u-aud a { padding-inline: 3px; }
+    .u-logo small, .cmdk-btn, .u-bar .u-bar-link[href="/creators/licenses"] { display: none; }
+  }
 
   .avatar { width: var(--size, 40px); height: var(--size, 40px); border-radius: 50%; object-fit: cover; background: var(--surface-3); flex: none; display: block; }
 
