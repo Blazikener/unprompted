@@ -31,8 +31,8 @@ def clean():
     server.init_db()
     with psycopg.connect(server.DB_URL) as db:
         db.execute("DELETE FROM digests")
-        db.execute("DELETE FROM mentions WHERE search_id IN (SELECT id FROM searches WHERE brand = 'Tim Hortons')")
-        db.execute("DELETE FROM searches WHERE brand = 'Tim Hortons'")
+        db.execute("DELETE FROM mentions WHERE search_id IN (SELECT id FROM searches WHERE brand IN ('Tim Hortons', 'Baobab'))")
+        db.execute("DELETE FROM searches WHERE brand IN ('Tim Hortons', 'Baobab')")
         db.execute("DELETE FROM creator_handles WHERE handle = 'ali'")   # verified (with rules) in the licence tests
 
 
@@ -230,6 +230,25 @@ def test_run_mails_only_unseen_mentions_and_credits_oriane(monkeypatch):
     again = digest.resend_last(did)
     assert again == {"digest": did, "run": view["runs"][1]["id"], "new": 3, "sent": True, "resent": True}
     assert len(calls) == n_calls and sent[1] == sent[0]
+
+
+def test_about_context_is_saved_and_used_for_digest_classification(monkeypatch):
+    d = digest.subscribe({"email": "brand@example.com", "brand": "Baobab", "about": "candles"})
+    assert d["params"]["about"] == ["candles"]
+    tree = video("baobab-tree", "the baobab tree is ancient")
+    filters_seen = []
+
+    def oriane(filters, **kwargs):
+        filters_seen.append(filters)
+        return page(tree)
+
+    monkeypatch.setattr(server, "oriane", oriane)
+    result = digest.run_due(force=True)["results"][0]
+    assert "about" not in filters_seen[0]
+    with server.connect() as db:
+        mention = db.execute("SELECT kind FROM mentions WHERE search_id = %s AND video_id = %s",
+                             (result["searchId"], tree["id"])).fetchone()
+    assert mention["kind"] == "unverified"
 
 
 def test_license_button_records_one_request_and_tells_the_operator(monkeypatch):
@@ -492,7 +511,7 @@ def test_frontend_routes(base):
     status, html = call(base, "GET", "/brands/")
     assert status == 200 and b"<title>Unprompted</title>" in html and b"Watch this search, get a weekly report." in html
     assert b"Saved, but we couldn't send the confirmation email right now. Try again in a few minutes." in html
-    assert b"Watch a brand: one email report a week." in html and "Watching · weekly".encode() in html
+    assert b"One email a week." in html and "Watching · weekly".encode() in html
     assert b"See a sample report" in html and b"Start with a search" in html
     status, html = call(base, "GET", "/digest/x")
     assert status == 200 and b"href: '/brands/'" in html and b"/brands/#search=${r.searchId}" in html

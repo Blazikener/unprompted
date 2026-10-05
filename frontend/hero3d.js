@@ -18,6 +18,11 @@ const SPIN = (-2 * Math.PI) / 70;            // one turn every 70 s; front tiles
 const POP_IN = 0.7, POP_HOLD = 2.8, POP_OUT = 0.9;
 const PALETTE = ['#1d4c37', '#17474a', '#2c4d2e', '#3b3b2b'];
 const LIME = '#d0f854', MINT = '#cfe9da', FOREST = '#042c1b';
+// Tile faces: the sample creators' video stills (frontend/demo/thumbs, licensed stock, credited on /demo/credits.html),
+// packed into one atlas so the drum stays one draw call. Without them the tiles fall back to a drawn silhouette.
+const THUMBS = [...Array.from({ length: 22 }, (_, i) => `maya-${String(i).padStart(2, '0')}`),
+                ...Array.from({ length: 12 }, (_, i) => `sami-${String(i).padStart(2, '0')}`)].map((k) => `/demo/thumbs/${k}.jpg`);
+const AC = 7, AR = 5, CELL_W = 180, CELL_H = 320;
 const QUOTES = [
   ['honestly I don’t start a shoot without ', ', it’s a whole ritual'],
   ['okay, quick ', ' run before we film this'],
@@ -28,13 +33,13 @@ const QUOTES = [
 ];
 
 const TILE_VERT = /* glsl */`
-  attribute float aSeed, aAngle, aPop, aHeard;
+  attribute float aSeed, aAngle, aPop, aHeard, aTile;
   uniform float uSpin, uScan;
   varying vec2 vUv;
-  varying float vSeed, vPop, vHeard, vListen, vFacing;
+  varying float vSeed, vPop, vHeard, vListen, vFacing, vTile;
   const float PI = 3.14159265, TAU = 6.2831853;
   void main() {
-    vUv = uv; vSeed = aSeed; vPop = aPop; vHeard = aHeard;
+    vUv = uv; vSeed = aSeed; vPop = aPop; vHeard = aHeard; vTile = aTile;
     float d = mod(aAngle + uSpin - uScan + PI, TAU) - PI;
     vListen = 1.0 - smoothstep(0.0, 0.3, abs(d));
     vec3 p = position;
@@ -47,10 +52,11 @@ const TILE_VERT = /* glsl */`
   }`;
 
 const TILE_FRAG = /* glsl */`
-  uniform float uTime;
+  uniform float uTime, uPhoto;
+  uniform sampler2D uAtlas;
   uniform vec3 uLime, uMint, uForest, uPal[4];
   varying vec2 vUv;
-  varying float vSeed, vPop, vHeard, vListen, vFacing;
+  varying float vSeed, vPop, vHeard, vListen, vFacing, vTile;
   const vec2 SIZE = vec2(${TILE_W.toFixed(3)}, ${TILE_H.toFixed(3)});
   const float PAD = ${PAD.toFixed(3)};
   float hash(float n) { return fract(sin(n) * 43758.5453); }
@@ -74,6 +80,13 @@ const TILE_FRAG = /* glsl */`
     col = mix(col, tint * 0.32, body);
     col = mix(col, tint * 0.35, smoothstep(0.3, 0.06, t.y) * 0.75);
     col += (hash(dot(floor(t * SIZE * 140.0), vec2(1.0, 57.0)) + vSeed) - 0.5) * 0.035;
+    // The video still from the atlas, graded toward the cinema: dimmer at the bottom where the waveform sits.
+    vec2 cell = vec2(mod(vTile, ${AC}.0), floor(vTile / ${AC}.0));
+    vec2 st = vec2((cell.x + clamp(t.x, 0.0, 1.0)) / ${AC}.0, 1.0 - (cell.y + 1.0 - clamp(t.y, 0.0, 1.0)) / ${AR}.0);
+    vec3 photo = texture2D(uAtlas, st).rgb;
+    photo = mix(vec3(dot(photo, vec3(0.299, 0.587, 0.114))), photo, 0.85) * 0.92;
+    photo *= mix(0.32, 1.0, smoothstep(0.02, 0.4, t.y)) * mix(1.0, 0.7, smoothstep(0.82, 1.0, t.y));
+    col = mix(col, photo, uPhoto);
     // Handle placeholder, top left.
     col = mix(col, uMint, 0.16 * max(disc(t, vec2(0.17, 0.925), 0.05), aa(box((t - vec2(0.4, 0.925)) * SIZE, vec2(0.13, 0.012), 0.012))));
     // Waveform: still and dim until the beam listens; the middle bars are the brand, lime once heard.
@@ -159,6 +172,30 @@ function popAt(age) {
   return k >= 1 ? 0 : 1 - easeInOut(k);
 }
 
+// Same-origin stills only, so the atlas never taints the canvas. Resolves null if fewer than half load in 4 s.
+async function loadAtlas() {
+  const c = document.createElement('canvas');
+  c.width = AC * CELL_W; c.height = AR * CELL_H;
+  const ctx = c.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#0d1512'; ctx.fillRect(0, 0, c.width, c.height);
+  const load = (src, k) => new Promise((done) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => { ctx.drawImage(img, (k % AC) * CELL_W, Math.floor(k / AC) * CELL_H, CELL_W, CELL_H); done(true); };
+    img.onerror = () => done(false);
+    img.src = src;
+  });
+  const all = Promise.all(THUMBS.map(load));
+  const ok = await Promise.race([all, new Promise((r) => setTimeout(() => r(null), 4000))]);
+  if (!ok || ok.filter(Boolean).length < THUMBS.length / 2) return null;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 4;
+  return tex;
+}
+
 /**
  * Start the drum on `canvas` (inside the hero's cinema panel). `brandInput` is the Brand field the quotes use,
  * `receipt` is the DOM card that follows a popped tile, `reduced()` says whether motion should stay off (checked on
@@ -186,16 +223,20 @@ export async function start(canvas, { brandInput, receipt, reduced = () => false
   drum.add(spin);
   scene.add(drum);
 
+  const atlas = await loadAtlas();
+  if (reduced() || !canvas.isConnected) { atlas?.dispose(); renderer.dispose(); return null; }
   const color = (hex) => new THREE.Color().setStyle(hex, THREE.LinearSRGBColorSpace);   // raw sRGB: shaders write it as-is
   const uniforms = {
     uTime: { value: 0 }, uSpin: { value: 0 }, uScan: { value: SCAN }, uDpr: { value: 1 },
     uLime: { value: color(LIME) }, uMint: { value: color(MINT) }, uForest: { value: color(FOREST) },
     uPal: { value: PALETTE.map(color) },
+    uAtlas: { value: atlas }, uPhoto: { value: atlas ? 1 : 0 },
   };
 
   // Tiles: one instanced plane per video, facing outward around the drum, odd columns staggered half a row.
   const n = COLS * ROWS;
   const geo = new THREE.PlaneGeometry(TILE_W + 2 * PAD, TILE_H + 2 * PAD);
+  const tileIx = new Float32Array(n);
   const seeds = new Float32Array(n), angles = new Float32Array(n), pops = new Float32Array(n), heard = new Float32Array(n);
   const rowY = (c, r) => (r - (ROWS - 1) / 2) * ROW_GAP + (c % 2) * ROW_GAP * 0.5;
   const tiles = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({ uniforms, vertexShader: TILE_VERT, fragmentShader: TILE_FRAG }), n);
@@ -210,6 +251,7 @@ export async function start(canvas, { brandInput, receipt, reduced = () => false
       tiles.setMatrixAt(i, m.matrix);
       seeds[i] = (Math.sin(i * 12.9898) * 43758.5453) % 1 * 0.5 + 0.5;
       angles[i] = a;
+      tileIx[i] = (c * 5 + r * 3) % THUMBS.length;
     }
   }
   const popAttr = new THREE.InstancedBufferAttribute(pops, 1).setUsage(THREE.DynamicDrawUsage);
@@ -217,6 +259,7 @@ export async function start(canvas, { brandInput, receipt, reduced = () => false
   geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 1));
   geo.setAttribute('aAngle', new THREE.InstancedBufferAttribute(angles, 1));
   geo.setAttribute('aPop', popAttr);
+  geo.setAttribute('aTile', new THREE.InstancedBufferAttribute(tileIx, 1));
   geo.setAttribute('aHeard', heardAttr);
   tiles.frustumCulled = false;
   spin.add(tiles);

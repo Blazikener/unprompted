@@ -1,7 +1,7 @@
 """Self-check for the mention logic: python3 backend/test_server.py"""
 from datetime import date
 
-from server import check, classify, find_quote, mention_re, parse, score
+from server import ApiError, check, classify, find_quote, mention_re, parse, score
 
 
 def raw(**kw):
@@ -27,6 +27,33 @@ assert classify(raw(caption="إعلان", **said("Tim Hortons")), "Tim Hortons",
 assert classify(raw(mentions=[{"profileHandle": "timhortons"}], **said("Tim Hortons")), "Tim Hortons", [])[0] == "tagged"
 assert classify(raw(**said("Timmies run")), "Tim Hortons", ["Timmies"])[:2] == ("spoken", 1)
 assert classify(raw(**said("nothing here")), "Tim Hortons", [])[0] == "unverified"
+
+about_params = parse({"brand": "Baobab", "about": "candles, Candle, home fragrance"})[3]
+assert about_params["about"] == ["candles", "candle", "home fragrance"]
+assert parse({"brand": "Baobab", "about": "CANDLE, candle"})[3]["about"] == ["candle"]
+assert "about" not in parse({"brand": "Baobab"})[3]
+assert parse({"brand": "Baobab", "about": ["wax", " oils ", "wax"]})[3]["about"] == ["wax", "oils"]
+try:
+    parse({"brand": "Baobab", "about": "x" * 41})
+except ApiError as exc:
+    assert exc.status == 400 and str(exc) == "Each 'what it sells' word must be under 40 characters."
+else:
+    raise AssertionError("a 41-character context term must be rejected")
+
+assert parse({"brand": "Baobab", "lang": "fr"})[2]["transcriptLanguage"]["includes"] == ["fr", "fra", "fre"]
+assert parse({"brand": "Baobab", "lang": "en"})[2]["transcriptLanguage"]["includes"] == ["en", "eng"]
+try:
+    parse({"brand": "Baobab", "lang": "xx"})
+except ApiError as exc:
+    assert exc.status == 400
+else:
+    raise AssertionError("an unknown language must be rejected")
+
+assert classify(raw(**said("the baobab tree is ancient")), "Baobab", [], ["candle"])[0] == "unverified"
+assert classify(raw(**said("my baobab candle smells amazing")), "Baobab", [], ["candle"])[0] == "spoken"
+assert classify(raw(caption="#baobab", **said("I love the candle here")), "Baobab", [], ["candle"])[0] == "tagged"
+assert classify(raw(mentions=[{"profileHandle": "baobab"}], **said("the baobab tree is ancient")), "Baobab", [], ["candle"])[0] == "tagged"
+assert classify(raw(**said("the baobab tree is ancient")), "Baobab", [], ())[0] == "spoken"
 
 # Name split across two transcript chunks: quote starts at the first chunk, context on both sides.
 q = find_quote(raw(frames=[{"timestampSeconds": 2.1, "url": "f2"}, {"timestampSeconds": 9, "url": "f9"}],

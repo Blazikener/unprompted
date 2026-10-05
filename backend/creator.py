@@ -874,15 +874,20 @@ def dispatch(handler):
         return activity_route(u, sid, name) if feature == "activity" else pitch_route(u, sid, name)
     if path == "/billing/checkout":
         import packaging
-        return checkout(u, packaging.offer_plan(u))
+        plan = "pro" if body.get("plan") == "pro" else packaging.offer_plan(u)
+        return checkout(u, plan)
     if path == "/billing/portal":
         return portal(u)
     if path == "/billing/dev":
         return dev_switch(u, body)
     if path == "/billing/interest":  # checkout not live yet: the click is the signal the validation gate counts
         import packaging
-        plan = packaging.offer_plan(u)
-        track(u["id"], "checkout_intent", {"plan": plan, "price": packaging.offers()[packaging.user_arm(u)]["price"], "scan": body.get("scan")})
+        if body.get("plan") == "pro":
+            data = {"plan": "pro", "price": PRO_PRICE_USD, "scan": body.get("scan"), "from": "brands"}
+        else:
+            plan = packaging.offer_plan(u)
+            data = {"plan": plan, "price": packaging.offers()[packaging.user_arm(u)]["price"], "scan": body.get("scan")}
+        track(u["id"], "checkout_intent", data)
         return {"ok": True}
     if path == "/report":
         track(u["id"], "report", {"text": str(body.get("text", ""))[:500], "scan": body.get("scan")})

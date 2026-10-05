@@ -132,8 +132,10 @@ def test_c_sells_weekly_leads(base, monkeypatch):
     assert b("POST", "/api/creators/visit", {})[1]["offer"]["checkout"] is True
     sent = []
     monkeypatch.setattr(creator, "stripe", lambda path, params: sent.append(params) or {"url": "https://checkout.test/s"})
-    assert b("POST", "/api/creators/billing/checkout", {"plan": "pro"})[1] == {"url": "https://checkout.test/s"}   # its own plan only
+    assert b("POST", "/api/creators/billing/checkout", {})[1] == {"url": "https://checkout.test/s"}   # arm's Weekly leads offer
     assert sent[0]["line_items[0][price]"] == "price_leads" and sent[0]["metadata[plan]"] == "leads"
+    monkeypatch.delenv("STRIPE_PRICE_PRO", raising=False)
+    assert b("POST", "/api/creators/billing/checkout", {"plan": "pro"})[0] == 503
     payload = json.dumps({"type": "checkout.session.completed", "data": {"object": {
         "mode": "subscription", "metadata": {"user_id": str(uid), "plan": "leads"}, "customer": "cus_1", "subscription": "sub_1"}}}).encode()
     assert webhook(payload, "whsec_x") == {"received": True}

@@ -150,6 +150,7 @@ def check(d, sid=None, oriane=True):
     """Look for posts by this watch's unposted gifts. `sid` is a weekly run's search (found posts are added to it, so
     they get licence buttons). Returns the gifts found posting in this check."""
     brand, variants = d["brand"], d["params"].get("variants") or []
+    about = d["params"].get("about", ())
     with connect() as db:
         open_gifts = db.execute("SELECT * FROM seeding_gifts WHERE digest_id = %s AND video_id IS NULL AND shipped_on > %s"
                                 " ORDER BY checked_at NULLS FIRST, id", (d["id"], date.today() - timedelta(days=WINDOW_DAYS))).fetchall()
@@ -183,13 +184,13 @@ def check(d, sid=None, oriane=True):
         for raw in videos:
             if (raw.get("publishedAt") or "")[:10] < g["shipped_on"].isoformat():
                 continue
-            kind, _, q = server.classify(raw, brand, variants)
+            kind, _, q = server.classify(raw, brand, variants, about)
             if kind in POSTED:
                 posts.append((raw, kind, q))
         if posts:
             raw, kind, q = min(posts, key=lambda p: p[0].get("publishedAt") or "")
             if sid:
-                server.store_results(sid, [raw], brand, variants)
+                server.store_results(sid, [raw], brand, variants, about)
             else:
                 held.append(raw)
             mark(g, {"id": raw["id"], "publishedAt": raw.get("publishedAt"), "url": server.post_url(raw)}, kind, (q or {}).get("text"))
@@ -198,7 +199,7 @@ def check(d, sid=None, oriane=True):
             db.execute("UPDATE seeding_gifts SET checked_at = now() WHERE id = %s", (g["id"],))
     if held:                                 # kept under this watch so their licence links work; already shown, so seen
         hold = server.new_search(brand, {**d["params"], "digest": d["id"], "seeding": True}, server.EMPTY_PAGE)
-        server.store_results(hold, held, brand, variants)
+        server.store_results(hold, held, brand, variants, about)
         with connect() as db:
             db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s"
                        " ON CONFLICT DO NOTHING", (d["id"], hold))

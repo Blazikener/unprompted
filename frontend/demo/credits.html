@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo credits for the sample data · Receipts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
+<link rel="stylesheet" href="/ui/ui.css?v=2">
+<script src="/ui/ui.js"></script>
+<style>
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  .bar-note { font: 500 var(--fs-xs)/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
+  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } }
+
+  .page { width: min(1100px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  .intro { display: grid; gap: var(--s-2); }
+  .intro h1 { font-size: var(--fs-2xl); letter-spacing: -0.02em; }
+  .intro p { max-width: 68ch; color: var(--text-2); }
+  .credit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: var(--s-4); }
+  .credit-card { min-width: 0; overflow: hidden; }
+  .credit-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--surface-2); }
+  .credit-copy { display: grid; align-content: start; gap: var(--s-2); padding: var(--s-4); }
+  .credit-copy h2 { font-size: var(--fs-md); line-height: 1.4; overflow-wrap: anywhere; }
+  .credit-meta { display: flex; flex-wrap: wrap; gap: 4px var(--s-2); align-items: baseline; color: var(--text-2); font-size: var(--fs-sm); }
+  .credit-meta a { color: var(--text); text-underline-offset: 0.15em; }
+  .credit-label { flex: 0 0 auto; }
+  .credit-error { color: var(--danger); }
+  .back { justify-self: start; font-size: var(--fs-sm); font-weight: 500; }
+}
+</style>
+</head>
+<body class="u-stage">
+<header class="u-bar">
+  <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
+  </nav>
+  <span class="grow"></span>
+  <span class="bar-note">Photo credits</span>
+</header>
+<main class="page">
+  <div class="intro">
+    <span class="u-eyebrow">Sample data</span>
+    <h1>Photo credits for the sample data</h1>
+    <p>The sample creators are fictional; the photos are licensed stock from Openverse and are used under their listed licences.</p>
+  </div>
+  <div id="credit-grid" class="credit-grid" aria-busy="true"></div>
+  <p id="credit-error" class="credit-error" role="alert" hidden>Photo credits could not be loaded.</p>
+  <a class="back" href="/creators/?sample=1">← Back to the sample report</a>
+</main>
+<script>
+  const { h } = U;
+  const grid = document.querySelector('#credit-grid');
+  const error = document.querySelector('#credit-error');
+  const text = (value) => typeof value === 'string' ? value : '';
+  const LICENSES = { by: 'CC BY', cc0: 'CC0' };
+
+  function externalLink(url, child) {
+    const content = typeof child === 'string' ? h('bdi', { dir: 'auto' }, child) : child;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:') return content;
+      return h('a', { href: parsed.href, target: '_blank', rel: 'noopener noreferrer' }, content);
+    } catch {
+      return content;
+    }
+  }
+
+  function card(item) {
+    const file = text(item.file);
+    const title = text(item.title);
+    const creator = text(item.creator);
+    const code = text(item.license).toLowerCase();
+    const license = [LICENSES[code] || text(item.license), text(item.license_version)].filter(Boolean).join(' ');
+    const image = /^[a-z0-9-]+\.jpg$/i.test(file) ? `/demo/thumbs/${file}` : '';
+    return h('article', { class: 'credit-card u-card' },
+      image ? h('img', { src: image, alt: title, loading: 'lazy', decoding: 'async' }) : null,
+      h('div', { class: 'credit-copy' },
+        h('h2', { dir: 'auto' }, title),
+        h('p', { class: 'credit-meta' }, h('span', { class: 'credit-label' }, 'Creator'),
+          externalLink(item.creator_url, h('bdi', { dir: 'auto' }, creator))),
+        h('p', { class: 'credit-meta' }, h('span', { class: 'credit-label' }, 'Licence'),
+          externalLink(item.license_url, h('bdi', { dir: 'auto' }, license))),
+        h('p', { class: 'credit-meta' }, externalLink(item.source, 'Source'))));
+  }
+
+  async function load() {
+    try {
+      const response = await fetch('/demo/thumbs/credits.json');
+      if (!response.ok) throw new Error('Photo credits request failed.');
+      const entries = await response.json();
+      if (!Array.isArray(entries)) throw new Error('Invalid photo credits.');
+      grid.replaceChildren(...entries.map(card));
+    } catch {
+      error.hidden = false;
+    } finally {
+      grid.removeAttribute('aria-busy');
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
