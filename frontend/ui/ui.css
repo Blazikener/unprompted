@@ -478,7 +478,7 @@
 /* ---- landing motion (motion.js). Without .m-ready (no JS) or with motion reduced, everything is simply shown. */
 @layer components {
   .m-ready [data-split]:not(.is-in) .m-wi { translate: 0 105%; opacity: 0; }
-  [data-split] .m-w { display: inline-block; overflow: clip; overflow-clip-margin: 0.12em; vertical-align: top; padding-block: 0.04em; margin-block: -0.04em; }
+  [data-split] .m-w { display: inline-block; overflow: clip; overflow-clip-margin: 0.4em; vertical-align: top; padding-block: 0.12em; margin-block: -0.12em; }
   [data-split] .m-wi { display: inline-block; transition: translate 1000ms var(--ease-soft), opacity 700ms var(--ease-out);
                        transition-delay: calc(var(--i, 0) * 55ms + var(--split-delay, 0ms)); }
   [data-split].m-settled .m-wi, .m-motion-failed [data-split] .m-wi, .m-motion-failed [data-reveal], .m-motion-failed [data-reveal] > * {
