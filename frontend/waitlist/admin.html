@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waitlist demand · Unprompted operator</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
+<script src="/ui/ui.js?v=2"></script>
+<style>
+@layer page {
+  .console { width: min(1360px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-4); }
+  .page-head h1 { font: 600 var(--fs-3xl)/1 var(--display); letter-spacing: -0.04em; }
+  .page-head .lead { font-size: var(--fs-sm); color: var(--text-2); max-width: 70ch; margin-top: 6px; }
+  .auth { display: flex; gap: var(--s-2); flex: 0 1 460px; min-width: 0; }
+  .auth .u-input { min-width: 0; flex: 1; }
+  .sec-title { font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+  .err { color: var(--danger-text); font-size: var(--fs-sm); }
+  .err:empty { display: none; }
+  .num { text-align: end; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--text-2); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s-3); }
+  .kpi { padding: var(--s-4); display: grid; gap: 6px; align-content: start; }
+  .kpi b { font: 600 clamp(1.8rem, 1.2rem + 1.4vw, 2.4rem)/1 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .kpi small { font-size: var(--fs-xs); color: var(--text-2); }
+  .kpi.hl b { color: var(--accent); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--s-4); align-items: start; }
+  .panel { padding: var(--s-5); display: grid; gap: var(--s-4); min-width: 0; }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+  .panel-head h2 { font: 600 var(--fs-lg)/1.2 var(--display); letter-spacing: -0.02em; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-xs); color: var(--text-2); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 6px; vertical-align: -1px; background: var(--c); }
+
+  .chart { width: 100%; height: 200px; display: block; overflow: visible; }
+  .chart text { font: 400 10px var(--mono); fill: var(--text-3); }
+
+  .bars { display: grid; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 84px 1fr 112px; gap: 12px; align-items: center; font-size: var(--fs-sm); }
+  .bar-row .lbl { color: var(--text); font-weight: 500; }
+  .track { height: 14px; border-radius: 4px; background: var(--surface-3); overflow: hidden; display: flex; }
+  .track span { display: block; height: 100%; background: var(--c, var(--accent)); min-width: 0; transition: width 300ms var(--ease-out); }
+  .bar-row .num { color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
+
+  .tscroll { overflow: auto; max-height: 640px; border: 1px solid var(--border); border-radius: var(--r-3); }
+  .tscroll .u-table td { vertical-align: top; }
+  .tscroll .u-table { min-width: 460px; }
+  .tscroll .wide { min-width: 1100px; }
+  .pain { max-width: 34ch; color: var(--text-2); }
+  .filters { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .filters .u-input { width: 240px; }
+  .empty { padding: var(--s-6); text-align: center; color: var(--text-2); }
+  code { font: 400 0.9em var(--mono); background: var(--surface-3); padding: 1px 5px; border-radius: var(--r-1); }
+}
+</style>
+</head>
+<body>
+<main class="console">
+  <header class="page-head">
+    <div>
+      <p class="sec-title">Unprompted operator · <a href="/admin/">Console</a> · <a href="/waitlist">Waitlist page</a></p>
+      <h1>Waitlist demand</h1>
+      <p class="lead">Who joined <code>/waitlist</code>, where they came from and what they said they'd pay. A signup is interest; a price answer is a stated intent, not a payment. Share links with <code>?utm_source=…</code> to see which channel works.</p>
+    </div>
+    <form class="auth" id="auth">
+      <label class="sr-only" for="token">Operator token</label>
+      <input id="token" class="u-input" type="password" placeholder="Operator token (DIGEST_RUN_TOKEN)" autocomplete="off">
+      <button class="u-btn u-btn-primary" type="submit">Load</button>
+      <button class="u-btn" type="button" id="csv" disabled>CSV</button>
+    </form>
+  </header>
+  <p class="err" id="msg" role="alert"></p>
+
+  <div id="report" hidden>
+    <section class="kpis" aria-label="Headline numbers" id="kpis"></section>
+
+    <div class="grid2" style="margin-top: var(--s-4)">
+      <section class="u-card panel">
+        <div class="panel-head"><h2>Last 30 days</h2>
+          <div class="legend"><span><i style="--c: var(--border-strong)"></i>Visitors</span><span><i style="--c: var(--accent)"></i>Signups</span></div></div>
+        <svg class="chart" id="daily" role="img" aria-label="Daily visitors and signups"></svg>
+      </section>
+      <section class="u-card panel">
+        <div class="panel-head"><h2>Who joined</h2><span class="muted" style="font-size: var(--fs-xs)" id="role-note"></span></div>
+        <div class="bars" id="roles"></div>
+      </section>
+    </div>
+
+    <div class="grid2" style="margin-top: var(--s-4)">
+      <section class="u-card panel">
+        <div class="panel-head"><h2>What they'd pay a month</h2>
+          <div class="legend" id="pay-legend"></div></div>
+        <div class="bars" id="pay"></div>
+      </section>
+      <section class="u-card panel">
+        <div class="panel-head"><h2>How big they are</h2><span class="muted" style="font-size: var(--fs-xs)">Followers · creator budget · roster size</span></div>
+        <div class="bars" id="size"></div>
+      </section>
+    </div>
+
+    <div class="grid2" style="margin-top: var(--s-4)">
+      <section class="u-card panel">
+        <div class="panel-head"><h2>Sources</h2><span class="muted" style="font-size: var(--fs-xs)">utm_source, referring site, or referral</span></div>
+        <div class="tscroll" style="max-height: 360px"><table class="u-table"><thead><tr><th>Source</th><th class="num">Visitors</th><th class="num">Signups</th><th class="num">Conversion</th></tr></thead><tbody id="sources"></tbody></table></div>
+      </section>
+      <section class="u-card panel">
+        <div class="panel-head"><h2>Top referrers</h2><span class="muted" style="font-size: var(--fs-xs)" id="ref-note"></span></div>
+        <div class="tscroll" style="max-height: 360px"><table class="u-table"><thead><tr><th>Who</th><th>Code</th><th class="num">Friends joined</th></tr></thead><tbody id="referrers"></tbody></table></div>
+      </section>
+    </div>
+
+    <section class="u-card panel" style="margin-top: var(--s-4)">
+      <div class="panel-head"><h2>Everyone on the list</h2>
+        <div class="filters">
+          <div class="u-seg" id="role-filter">
+            <button type="button" aria-pressed="true" data-r="">All</button><button type="button" aria-pressed="false" data-r="creator">Creators</button><button type="button" aria-pressed="false" data-r="brand">Brands</button><button type="button" aria-pressed="false" data-r="manager">Managers</button>
+          </div>
+          <label class="sr-only" for="q">Search</label>
+          <input class="u-input" id="q" type="search" placeholder="Search email, handle, answer">
+        </div></div>
+      <div class="tscroll"><table class="u-table wide"><thead><tr><th>Joined</th><th>Email</th><th>Role</th><th>Handle</th><th>Size</th><th>Pay</th><th>Wants first</th><th>Source</th><th class="num">Refs</th><th class="num">Spot</th></tr></thead><tbody id="entries"></tbody></table></div>
+    </section>
+  </div>
+</main>
+<script>
+(() => {
+  const { h, $ } = U;
+  const ROLE = { creator: 'Creators', brand: 'Brands', manager: 'Managers' };
+  const ROLE_C = { creator: 'var(--accent)', brand: 'oklch(0.72 0.14 285)', manager: 'oklch(0.78 0.12 60)' };
+  const PAY = [['0', 'Only if free', 'var(--border-strong)'], ['9', '$9', 'oklch(0.8 0.1 155)'], ['29', '$29', 'oklch(0.68 0.14 155)'], ['99', '$99+', 'oklch(0.52 0.13 155)']];
+  const nf = new Intl.NumberFormat();
+  const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 + '%' : '—');
+  let token = '', data = null, roleFilter = '';
+  try { token = sessionStorage.getItem('opToken') || ''; } catch {}
+  $('#token').value = token;
+
+  async function load() {
+    $('#msg').textContent = '';
+    try {
+      const r = await fetch('/api/admin/waitlist', { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'That token was not accepted.' : j.error || 'Could not load the report.');
+      data = j; render(); $('#report').hidden = false; $('#csv').disabled = false;
+    } catch (e) { $('#msg').textContent = e.message; $('#report').hidden = true; }
+  }
+
+  function kpi(label, value, note, hl) {
+    return h('div', { class: 'u-card kpi' + (hl ? ' hl' : '') }, h('span', { class: 'sec-title' }, label), h('b', {}, value), note ? h('small', {}, note) : null);
+  }
+  function bar(label, n, of, color, extra) {
+    return h('div', { class: 'bar-row' }, h('span', { class: 'lbl' }, label),
+      h('div', { class: 'track' }, h('span', { style: `width:${of ? (n / of) * 100 : 0}%; --c:${color}` })),
+      h('span', { class: 'num' }, extra || `${nf.format(n)} · ${pct(n, of)}`));
+  }
+  function stacked(label, parts, total) {
+    const track = h('div', { class: 'track', title: parts.map(([l, n]) => `${l}: ${n}`).join(' · ') },
+      ...parts.map(([, n, c]) => h('span', { style: `width:${total ? (n / total) * 100 : 0}%; --c:${c}` })));
+    return h('div', { class: 'bar-row' }, h('span', { class: 'lbl' }, label), track, h('span', { class: 'num' }, total ? `${nf.format(total)} answered` : 'no answers'));
+  }
+
+  function render() {
+    const d = data;
+    const answeredPay = Object.values(d.byPay).reduce((s, r) => s + Object.values(r).reduce((a, b) => a + b, 0), 0);
+    $('#kpis').replaceChildren(
+      kpi('On the list', nf.format(d.total), `${nf.format(d.today)} today · ${nf.format(d.week)} this week`, true),
+      kpi('Unique visitors', nf.format(d.visitors), 'one per browser'),
+      kpi('Visit → signup', d.conversion == null ? '—' : pct(d.total, d.visitors), 'signups ÷ visitors'),
+      kpi('Would pay', nf.format(d.wouldPay), answeredPay ? `${pct(d.wouldPay, answeredPay)} of ${nf.format(answeredPay)} who answered` : 'nobody answered yet'),
+      kpi('Joined via a friend', nf.format(d.referrals.total), pct(d.referrals.total, d.total) + ' of signups'),
+    );
+    // daily chart
+    const svg = $('#daily'), W = svg.clientWidth || 600, H = 200, pad = 22, days = d.daily, n = days.length || 1;
+    const max = Math.max(1, ...days.map((x) => Math.max(x.visits, x.signups)));
+    const bw = (W - pad) / n, s = (v) => (v / max) * (H - pad - 8);
+    const NS = 'http://www.w3.org/2000/svg', el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.replaceChildren();
+    svg.append(el('line', { x1: pad, x2: W, y1: H - pad, y2: H - pad, stroke: 'var(--border)' }));
+    const t = el('text', { x: 0, y: 12 }); t.textContent = nf.format(max); svg.append(t);
+    days.forEach((x, i) => {
+      const cx = pad + i * bw, w = Math.max(2, bw * 0.42);
+      const v = el('rect', { x: cx + bw * 0.08, y: H - pad - s(x.visits), width: w, height: s(x.visits), rx: 2, fill: 'var(--border-strong)' });
+      const g = el('rect', { x: cx + bw * 0.08 + w, y: H - pad - s(x.signups), width: w, height: s(x.signups), rx: 2, fill: 'var(--accent)' });
+      const tip = el('title', {}); tip.textContent = `${x.day}: ${x.visits} visitors, ${x.signups} signups`; v.append(tip); g.append(tip.cloneNode(true));
+      svg.append(v, g);
+      if ((n - 1 - i) % 7 === 0) { const lb = el('text', { x: cx, y: H - 6 }); lb.textContent = x.day.slice(5); svg.append(lb); }
+    });
+    // roles
+    $('#roles').replaceChildren(...Object.keys(ROLE).map((r) => bar(ROLE[r], d.byRole[r] || 0, d.total, ROLE_C[r])));
+    $('#role-note').textContent = `${nf.format(d.total)} total`;
+    // pay
+    $('#pay-legend').replaceChildren(...PAY.map(([, l, c]) => h('span', {}, h('i', { style: `--c:${c}` }), l)));
+    $('#pay').replaceChildren(...Object.keys(ROLE).map((r) => {
+      const row = d.byPay[r] || {}, total = PAY.reduce((s2, [k]) => s2 + (row[k] || 0), 0);
+      return stacked(ROLE[r], PAY.map(([k, l, c]) => [l, row[k] || 0, c]), total);
+    }));
+    // size
+    $('#size').replaceChildren(...Object.keys(ROLE).flatMap((r) => {
+      const row = d.bySize[r] || {}, total = Object.values(row).reduce((a, b) => a + b, 0);
+      if (!total) return [h('div', { class: 'bar-row' }, h('span', { class: 'lbl' }, ROLE[r]), h('span', { class: 'muted', style: 'font-size: var(--fs-xs)' }, 'no answers yet'), h('span'))];
+      return Object.keys(row).map((k, i) => bar(i ? '' : ROLE[r], row[k], total, ROLE_C[r], `${d.labels[r][k]} · ${row[k]}`));
+    }));
+    // sources
+    const srcRows = d.bySource.map((x) => h('tr', {}, h('td', {}, x.source), h('td', { class: 'num' }, nf.format(x.visits)), h('td', { class: 'num' }, nf.format(x.signups)),
+      h('td', { class: 'num' }, x.visits ? pct(x.signups, x.visits) : '—')));
+    $('#sources').replaceChildren(...(srcRows.length ? srcRows : [h('tr', {}, h('td', { colspan: 4, class: 'empty' }, 'No visits yet.'))]));
+    // referrers
+    $('#ref-note').textContent = `${nf.format(d.referrals.total)} referred signups`;
+    const refRows = d.referrals.topReferrers.map((x) => h('tr', {}, h('td', {}, x.handle ? `${x.handle} · ${x.email}` : x.email), h('td', {}, h('code', {}, x.code)), h('td', { class: 'num' }, nf.format(x.n))));
+    $('#referrers').replaceChildren(...(refRows.length ? refRows : [h('tr', {}, h('td', { colspan: 3, class: 'empty' }, 'Nobody has brought a friend yet.'))]));
+    entries();
+  }
+
+  function filtered() {
+    const q = $('#q').value.trim().toLowerCase();
+    return data.entries.filter((e) => (!roleFilter || e.role === roleFilter) && (!q || [e.email, e.handle, e.pain, e.source].some((v) => (v || '').toLowerCase().includes(q))));
+  }
+  function entries() {
+    const list = filtered();
+    const when = (iso) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const rows = list.map((e) => h('tr', {},
+      h('td', { style: 'white-space: nowrap' }, when(e.createdAt)), h('td', {}, e.email), h('td', {}, (ROLE[e.role] || e.role).replace(/s$/, '')),
+      h('td', {}, [e.handle, e.platform].filter(Boolean).join(' · ') || '—'), h('td', {}, e.size ? data.labels[e.role][e.size] : '—'),
+      h('td', {}, e.pay == null ? '—' : e.pay === '0' ? 'Only if free' : `$${e.pay}${e.pay === '99' ? '+' : ''}`),
+      h('td', { class: 'pain' }, e.pain || '—'), h('td', {}, e.source || 'direct' , e.referredBy ? h('small', { class: 'muted' }, ` via ${e.referredBy}`) : null),
+      h('td', { class: 'num' }, String(e.referrals)), h('td', { class: 'num' }, '#' + e.position)));
+    $('#entries').replaceChildren(...(rows.length ? rows : [h('tr', {}, h('td', { colspan: 10, class: 'empty' }, data.total ? 'Nobody matches.' : 'No signups yet. Share /waitlist to start.'))]));
+  }
+
+  function csv() {
+    const cols = ['createdAt', 'email', 'role', 'handle', 'platform', 'size', 'pay', 'pain', 'source', 'referredBy', 'referrals', 'position', 'code'];
+    const esc = (v) => { const s2 = v == null ? '' : String(v); return /[",\n]/.test(s2) ? `"${s2.replace(/"/g, '""')}"` : s2; };
+    const body = [cols.join(','), ...filtered().map((e) => cols.map((c) => esc(c === 'size' && e.size ? data.labels[e.role][e.size] : e[c])).join(','))].join('\n');
+    const a = h('a', { href: URL.createObjectURL(new Blob([body], { type: 'text/csv' })), download: `waitlist-${new Date().toISOString().slice(0, 10)}.csv` });
+    document.body.append(a); a.click(); a.remove();
+  }
+
+  $('#auth').addEventListener('submit', (e) => { e.preventDefault(); token = $('#token').value.trim(); try { sessionStorage.setItem('opToken', token); } catch {} load(); });
+  $('#csv').addEventListener('click', csv);
+  $('#q').addEventListener('input', () => data && entries());
+  $('#role-filter').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    roleFilter = b.dataset.r; [...e.currentTarget.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); entries();
+  });
+  addEventListener('resize', () => { if (data) render(); });
+  if (token) load();
+})();
+</script>
+</body>
+</html>
