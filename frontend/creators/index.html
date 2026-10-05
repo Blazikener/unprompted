@@ -6,11 +6,9 @@
 <title>Receipts by Unprompted</title>
 <meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with the brands that will pay: pitch them, or answer licence requests for your best videos.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
-<link rel="stylesheet" href="/ui/ui.css?v=2">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
-<script src="/ui/motion.js?v=1" defer></script>
+<script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
   /* ---- top bar: on a phone the bar scrolls sideways, never the page */
@@ -24,6 +22,7 @@
     .u-bar { height: auto; min-height: 64px; flex-wrap: wrap; gap: var(--s-2); padding-inline: var(--s-4); }
     .u-bar nav.u-aud { gap: 1px; }
     .u-bar .u-aud a { padding-inline: 3px; }
+    #account { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
     .u-logo small, .cmdk-btn, .u-bar .u-bar-link[href="/creators/licenses"] { display: none; }
   }
 
@@ -39,11 +38,14 @@
   .glass-3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1200ms var(--ease-out); }
   .glass-stage.has-3d .glass-3d { opacity: 1; }
   .glass-stage.has-3d .glass-poster { opacity: 0; }
-  .glass-poster { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 1200ms var(--ease-out); }
-  .glass-poster i { width: min(42vh, 360px); aspect-ratio: 0.72; border-radius: 50%; opacity: 0.7; filter: blur(0.5px);
+  .glass-poster { position: absolute; inset: 0; display: grid; place-items: center; background: #060708; transition: opacity 1200ms var(--ease-out); }
+  .glass-poster::before { content: ""; position: absolute; z-index: 1; inset: 0; background-image: url("/ui/img/glass-poster.webp");
+                          background-position: center; background-size: cover; background-repeat: no-repeat; }
+  .glass-poster i { position: relative; z-index: 0; width: min(42vh, 360px); aspect-ratio: 0.72; border-radius: 50%; opacity: 0.7; filter: blur(0.5px);
                     background: conic-gradient(from 200deg, oklch(0.86 0.11 225), oklch(0.7 0.16 285), oklch(0.86 0.1 340), oklch(0.92 0.1 130), oklch(0.86 0.11 225));
                     -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%); mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%);
                     rotate: -14deg; }
+  @media (max-width: 640px) { .glass-poster::before { background-image: url("/ui/img/glass-poster-m.webp"); } }
   .glass-pause { position: absolute; z-index: 2; inset-inline-end: 20px; inset-block-end: 20px; background: oklch(0 0 0 / 0.4); color: var(--text); border-color: oklch(1 0 0 / 0.24); backdrop-filter: blur(8px); }
   .glass-pause:hover { background: oklch(0 0 0 / 0.7); border-color: oklch(1 0 0 / 0.5); }
   .hero-in { display: grid; gap: var(--s-6); padding-block: var(--s-7) var(--s-8); }
@@ -678,11 +680,13 @@ function avatar(src, size = 40) {
 // ---- account bar
 function renderAccount() {
   const el = $('#account');
+  $('.u-logo').href = S.user ? '/dashboard' : '/creators/';
   if (!S.user) { el.replaceChildren(h('button', { class: 'u-btn u-btn-sm', type: 'button', id: 'signin', onclick: () => openAuth('login') }, 'Sign in')); return; }
   const paid = !['free', 'open'].includes(S.user.plan);
   el.replaceChildren(
     h('span', { class: 'who' }, S.user.email),
     h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[S.user.plan] || 'Free'),
+    h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Dashboard'),
     paid ? (S.user.billing ? h('button', { class: 'u-btn u-btn-sm', type: 'button', id: 'portal', onclick: openPortal }, 'Billing') : '')
       : S.offer.plan ? h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', id: 'up', onclick: () => openUpgrade() }, S.offer.arm === 'a' ? 'Go Pro' : S.offer.name) : '',
     h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', id: 'signout', onclick: signOut }, 'Sign out'));
@@ -712,7 +716,8 @@ $('#auth-form').onsubmit = async (e) => {
     const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', { email: f.get('email'), password: f.get('password') });
     S.user = user; $('#auth').close(); renderAccount();
     if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); }
-    else { loadHistory(); if (S.upgradePlan) openUpgrade(); }
+    else if (S.upgradePlan) { loadHistory(); openUpgrade(); }
+    else { loadHistory(); location.href = '/dashboard?as=creator'; }
   } catch (err) { $('#auth-err').textContent = err.message; }
   submit.disabled = false; submit.removeAttribute('aria-busy');
 };
@@ -1102,22 +1107,26 @@ U.palette.add({ id: 'r-scans', search: () => S.history.map((r) => ({ id: `r-scan
 U.palette.add({ id: 'r-sample', label: 'Sample report', hint: 'A made-up creator in the real format', group: 'Receipts', keywords: 'example demo', run: () => openSample() });
 U.palette.add({ id: 'r-licenses', label: 'License offers', hint: 'Brands asking to run your videos as ads', group: 'Go to', keywords: 'licence inbox offers', run: () => { location.href = '/creators/licenses'; } });
 U.palette.add({ id: 'r-roster', label: 'Roster for managers', group: 'Go to', keywords: 'manager monday report', run: () => { location.href = '/creators/roster'; } });
+U.palette.add({ id: 'r-dashboard', label: 'Dashboard', hint: 'Your shared workspace', group: 'Go to', keywords: 'analytics overview brand manager', run: () => { location.href = '/dashboard'; } });
 U.palette.add({ id: 'r-account', search: () => (S.user ? [{ id: 'r-signout', label: 'Sign out', hint: S.user.email, group: 'Account', run: signOut }]
   : [{ id: 'r-signin', label: 'Sign in', group: 'Account', run: () => openAuth('login') }]) });
 U.keys.add('/', newScan, { label: 'New scan' });
 
 // ---- boot
-// ---- the glass lens behind the hero (ui/glass3d.js): after load, never with motion reduced; the CSS poster otherwise
+// ---- the glass lens behind the hero (ui/glass3d.js): after load; a still frame remains under reduced motion
 const glassBtn = $('#glass-pause');
 let glass = null, glassLoading = false;
 const glassPausedPref = () => { try { return localStorage.getItem('glass3d') === 'paused'; } catch { return false; } };
-function syncGlassBtn() { glassBtn.textContent = (glass ? glass.paused() : glassPausedPref()) ? 'Play animation' : 'Pause animation'; }
+function syncGlassBtn() {
+  glassBtn.hidden = !glass || U.reduced();
+  glassBtn.textContent = (glass ? glass.paused() : glassPausedPref()) ? 'Play animation' : 'Pause animation';
+}
 function maybeGlass() {
-  if (glass || glassLoading || document.readyState !== 'complete' || $('#landing').hidden || U.reduced()) return;
+  if (glass || glassLoading || document.readyState !== 'complete' || $('#landing').hidden) return;
   glassLoading = true;
   import('/ui/glass3d.js?v=1')
     .then((m) => m.start($('.glass-3d'), { reduced: U.reduced, paused: glassPausedPref() }))
-    .then((ctrl) => { glass = ctrl || null; glassBtn.hidden = !glass; syncGlassBtn(); })
+    .then((ctrl) => { glass = ctrl || null; syncGlassBtn(); })
     .catch(() => {})
     .finally(() => { glassLoading = false; });
 }
@@ -1128,7 +1137,7 @@ glassBtn.addEventListener('click', () => {
   try { localStorage.setItem('glass3d', paused ? 'paused' : 'playing'); } catch {}
   syncGlassBtn();
 });
-const glassMotion = () => { glass?.refresh(); maybeGlass(); };
+const glassMotion = () => { glass?.refresh(); maybeGlass(); syncGlassBtn(); };
 document.addEventListener('u:prefs', glassMotion);
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', glassMotion);
 const idle = (f) => (window.requestIdleCallback || ((g) => setTimeout(g, 300)))(f);
@@ -1165,6 +1174,25 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
     openUpgrade();
     history.replaceState({}, '', '/creators/');
   } else if (q.get('upgrade') === '1') { openUpgrade(); history.replaceState({}, '', '/creators/'); }
+  else if (q.get('signin') === '1') {
+    if (S.user) location.replace('/dashboard?as=creator');
+    else { openAuth('login'); history.replaceState({}, '', '/creators/'); }
+  } else if (q.has('scan')) {
+    const parsed = parseHandle(q.get('scan'));
+    const platform = q.get('platform') === 'instagram' ? 'instagram' : q.get('platform') === 'tiktok' ? 'tiktok' : parsed.platform || S.platform;
+    if (parsed.handle && !parsed.post && !parsed.short) {
+      setPlatform(platform);
+      $('#handle').value = '@' + parsed.handle;
+      history.replaceState({}, '', '/creators/');
+      startScan(platform, parsed.handle);
+    }
+  } else if (q.has('scanId') && S.user && /^\d+$/.test(q.get('scanId'))) {
+    const scanId = Number(q.get('scanId'));
+    history.replaceState({}, '', '/creators/');
+    openScan(scanId);
+  } else if (S.user && ['/', '/creators/'].includes(location.pathname) && !location.search && !location.hash && q.get('home') !== '1') {
+    location.replace('/dashboard?as=creator');
+  }
 })();
 </script>
 </body>

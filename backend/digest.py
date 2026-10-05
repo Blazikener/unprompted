@@ -309,6 +309,8 @@ def subscribe(body, user=None):
             db.execute("INSERT INTO digest_seen (digest_id, video_id) SELECT %s, video_id FROM mentions WHERE search_id = %s"
                        " ON CONFLICT DO NOTHING", (d["id"], search_id))
     mailed = send(email, *confirm_mail(d)) if not d["confirmed_at"] else False
+    if user:
+        creator.track(user["id"], "digest_subscribe", {"digest": d["id"], "brand": brand})
     return {**row_view(d), "created": created, "mailed": mailed}
 
 
@@ -435,6 +437,8 @@ def manage(token, action=None):
             d = db.execute(sql, (d["id"],)).fetchone()
         if action == "unsubscribe":
             return row_view({**d, "gone": True})
+        if action == "confirm" and d["user_id"]:
+            creator.track(d["user_id"], "digest_confirm", {"digest": d["id"], "brand": d["brand"]})
     import seeding
     return {**row_view(d, runs, licenses), "seeding": seeding.summary(d)}
 

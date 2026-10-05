@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>License offers · Receipts</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
-<link rel="stylesheet" href="/ui/ui.css?v=2">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
 <style>
 @layer page {
@@ -15,7 +13,7 @@
   #who { display: flex; align-items: center; gap: var(--s-3); min-width: 0; font-size: var(--fs-sm); color: var(--text-2); }
   #who .email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
   #who a { font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; min-height: 32px; }
-  @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } .u-logo small, #who .email { display: none; } }
+  @media (max-width: 600px) { .u-bar { flex-wrap: wrap; padding-inline: var(--s-4); } #who { flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; } .u-logo small, #who .email { display: none; } }
 
   .page { width: min(760px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
   .intro { display: grid; gap: var(--s-2); }
@@ -412,7 +410,8 @@
       const me = await call('/api/creators/me');
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
       call('/api/creators/visit', { page: 'inbox' }).catch(() => {});   // a return visit, for the packaging test's week-4 count
-      $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
+        h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
       let connected = false;
       if (new URLSearchParams(location.search).get('connect') === 'done') {   // back from Stripe onboarding
         await call('/api/licenses/payouts/refresh', {}).catch(() => {});

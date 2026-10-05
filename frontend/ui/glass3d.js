@@ -1,7 +1,7 @@
 // Receipts hero: an iridescent glass lens (a twisted ribbon loop) that creator quotes drift through. While a quote is
 // inside the lens its brand lights up lime: the product in one picture (we listen to videos; the brand said gets marked).
-// Decoration only: loaded late, paused off screen / hidden / on request, never started with motion reduced.
-const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+// Decoration only: loaded late, paused off screen / hidden / on request.
+const THREE_URL = '/ui/vendor/three/three.module.min.js';
 const BG = '#060708';                          // must match .glass-stage's background in the page CSS
 const LIME = '#d0f854', INK = '#0b1a10';
 const FALLBACK_QUOTES = [
@@ -148,12 +148,11 @@ void main() { vec2 p = vUv - 0.5; float t = uTime * 0.05;
 /**
  * Start the lens on `canvas` (inside its stage element). `reduced()` is re-checked on refresh; `paused` is the
  * starting state; `quotes` are illustrative {who, a, brand, b, ts, views}. Resolves to a controller, or null when
- * motion is off, three.js can't load or WebGL is missing (the stage's CSS poster stays).
+ * three.js can't load or WebGL is missing (the stage's CSS poster stays).
  */
 export async function start(canvas, { reduced = () => false, paused: startPaused = false, quotes = FALLBACK_QUOTES } = {}) {
-  if (reduced()) return null;
   try { THREE = THREE || await import(THREE_URL); } catch { return null; }
-  if (reduced() || !canvas.isConnected) return null;
+  if (!canvas.isConnected) return null;
   try { await document.fonts?.ready; } catch {}
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' }); } catch { return null; }
@@ -248,17 +247,25 @@ export async function start(canvas, { reduced = () => false, paused: startPaused
   function still() { place(0); renderer.render(scene, camera); }
   function run() {
     const off = reduced();
-    if (off) stage.classList.remove('has-3d'); else if (w > 0) stage.classList.add('has-3d');
+    if (w > 0) stage.classList.add('has-3d');
     const want = visible && !document.hidden && !off && !paused && w > 0;
     if (want && !running) { running = true; last = 0; raf = requestAnimationFrame(frame); }
     if (!want && running) { running = false; cancelAnimationFrame(raf); }
-    if (!want && !off && w > 0) still();
+    if (!want && w > 0) still();
   }
   new ResizeObserver(() => { layout(); run(); }).observe(canvas);
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; run(); }).observe(canvas);
   document.addEventListener('visibilitychange', run);
-  addEventListener('pointermove', (e) => { pointer.x = e.clientX / innerWidth - 0.5; pointer.y = e.clientY / innerHeight - 0.5; }, { passive: true });
-  addEventListener('scroll', () => { const r = stage.getBoundingClientRect(); scrollK = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height))); }, { passive: true });
+  addEventListener('pointermove', (e) => {
+    if (reduced()) return;
+    pointer.x = e.clientX / innerWidth - 0.5;
+    pointer.y = e.clientY / innerHeight - 0.5;
+  }, { passive: true });
+  addEventListener('scroll', () => {
+    if (reduced()) return;
+    const r = stage.getBoundingClientRect();
+    scrollK = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height)));
+  }, { passive: true });
   canvas.addEventListener('webglcontextlost', () => { running = false; cancelAnimationFrame(raf); stage.classList.remove('has-3d'); });
 
   t = 3.2;                                    // start with a card already inside the lens

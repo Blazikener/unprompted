@@ -13,6 +13,20 @@
   const fine = matchMedia('(hover: hover) and (pointer: fine)');
   const reduced = () => mq.matches || root.dataset.motion === 'reduce';
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  function revealAll() {
+    root.classList.add('m-motion-failed');
+    $$('[data-split], [data-reveal]').forEach((el) => el.classList.add('is-in'));
+  }
+  addEventListener('error', revealAll);
+  addEventListener('unhandledrejection', revealAll);
+
+  const settleHero = () => {
+    const hero = document.querySelector('.hero [data-split]');
+    if (hero) hero.classList.add('is-in', 'm-settled');
+  };
+  const scheduleHeroFallback = () => setTimeout(settleHero, 1500);
+  if (document.readyState === 'complete') scheduleHeroFallback();
+  else addEventListener('load', scheduleHeroFallback, { once: true });
 
   // ---- split text into words, keeping inline elements (em, mark, bdi, br) intact
   function split(el) {

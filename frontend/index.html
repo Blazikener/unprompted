@@ -6,11 +6,9 @@
 <title>Unprompted</title>
 <meta name="description" content="Find the creators already talking about your brand on camera.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
-<link rel="stylesheet" href="/ui/ui.css?v=2">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
-<script src="/ui/motion.js?v=1" defer></script>
+<script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
   /* ---------- small helpers this page uses */
@@ -1194,6 +1192,7 @@
         h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[brandUser.plan] || 'Free'),
         h('span', { class: 'brand-account-usage' }, `${remaining} of ${limit} searches left this week`),
         h('span', { class: 'brand-account-actions' },
+          h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Dashboard'),
           proQuota ? null : h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=pro' }, 'Go Pro'),
           h('button', { type: 'button', class: 'u-btn u-btn-ghost u-btn-sm', onclick: signOutBrand }, 'Sign out'))));
     }
@@ -1222,6 +1221,7 @@
   });
   brandAuthForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const hasPendingAction = Boolean(resolveBrandAuth);
     const submit = $('#brand-auth-submit');
     const payload = Object.fromEntries(new FormData(brandAuthForm));
     submit.disabled = true;
@@ -1236,6 +1236,12 @@
       brandAuth.close();
       await loadSaved();
       finishBrandAuth(true);
+      const pendingBrand = new URLSearchParams(location.search).get('brand');
+      if (!hasPendingAction && pendingBrand) {
+        brandEl.value = pendingBrand;
+        history.replaceState({}, '', '/brands/');
+        form.requestSubmit();
+      } else if (!hasPendingAction) location.href = '/dashboard?as=brand';
     } catch (err) {
       $('#brand-auth-error').textContent = err.message;
     } finally {
@@ -2467,6 +2473,7 @@
   U.palette.add({ id: 'sample', label: 'See a sample weekly report', group: 'Search', keywords: 'digest example', run: () => { location.href = '/digest/sample'; } });
   U.palette.add({ id: 'signin', label: 'Sign in or create an account', group: 'Account', keywords: 'login account', run: () => openBrandAuth(brandUser ? 'login' : 'signup') });
   U.palette.add({ id: 'creators-page', label: "I'm a creator: see my receipts", group: 'Account', keywords: 'creator receipts', run: () => { location.href = '/creators/'; } });
+  U.palette.add({ id: 'brand-dashboard', label: 'Dashboard', hint: 'Your shared creator, brand and manager workspace', group: 'Go to', keywords: 'analytics overview creator manager', run: () => { location.href = '/dashboard'; } });
 
   // ---------- landing showcase: real receipts from the one search the operator picked (nothing otherwise) ----------
   async function loadShowcase() {
@@ -2535,11 +2542,22 @@
 
   setMode(true);
   loadSaved();
-  refreshBrandAccount();
   loadShowcase();
   const hash = parseHash();
   if (hash) { state.want = hash; openSearch(hash.id); }
   booted = true;
+  refreshBrandAccount().then(() => {
+    if (!brandUser) return;
+    const q = new URLSearchParams(location.search);
+    const pendingBrand = q.get('brand');
+    if (pendingBrand) {
+      brandEl.value = pendingBrand;
+      history.replaceState({}, '', '/brands/');
+      form.requestSubmit();
+    } else if (['/brands', '/brands/'].includes(location.pathname) && !location.search && !location.hash) {
+      location.replace('/dashboard?as=brand');
+    }
+  });
 </script>
 </body>
 </html>

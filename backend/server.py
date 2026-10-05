@@ -6,6 +6,7 @@ Env (or ../.env): ORIANE_API_KEY, DATABASE_URL (default postgresql:///unprompted
 """
 import json
 import math
+import mimetypes
 import os
 import re
 import statistics
@@ -28,6 +29,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 ROOT = Path(__file__).resolve().parent.parent
+mimetypes.add_type("font/woff2", ".woff2")
 if (ROOT / ".env").exists():
     for line in (ROOT / ".env").read_text().splitlines():
         key, sep, val = line.partition("=")
@@ -736,6 +738,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/creators/index.html"
             elif path in ("/brands", "/brands/"):
                 self.path = "/index.html"
+            elif path in ("/dashboard", "/dashboard/"):
+                self.path = "/dashboard/index.html"
             elif re.fullmatch(r"/creators/r/[^/]+", path):
                 self.path = "/creators/index.html"
             elif re.fullmatch(r"/digest/[^/]+", path):
