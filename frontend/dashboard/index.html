@@ -7,7 +7,7 @@
 <meta name="description" content="Your creator receipts, brand searches and manager roster in one place.">
 <link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
-<script src="/ui/motion.js?v=1" defer></script>
+<script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
   :root { --dash-ink: #d0f854; }
@@ -538,7 +538,7 @@ function weeklyRows() {
   }));
 }
 function avatar(src, handle) {
-  if (src) return h('img', { class: 'avatar', width: 38, height: 38, src, alt: '', loading: 'lazy', onerror: (event) => event.target.replaceWith(avatar(null, handle)) });
+  if (src) return h('img', { class: 'avatar', width: 38, height: 38, src, alt: '', loading: 'eager', onerror: (event) => event.target.replaceWith(avatar(null, handle)) });
   return h('span', { class: 'avatar', 'aria-hidden': 'true' }, (handle || '?').slice(0, 1).toUpperCase());
 }
 function listRow(title, detail, trailing, link = null, image = null) {
