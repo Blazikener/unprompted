@@ -829,6 +829,9 @@ def dispatch(handler):
             u = current_user(headers)
             return {"user": public_user(u) if u else None, "billing": billing_config(),
                     "brandUsage": brand_usage(u) if u else None}
+        if path == "/dashboard":
+            import dashboard
+            return dashboard.view(require_user(headers))
         if path == "/billing/config":
             return billing_config()
         if path == "/brands":

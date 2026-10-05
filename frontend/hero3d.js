@@ -8,7 +8,7 @@
 // three.js itself is imported inside start(), so nothing here competes with the headline for first paint. The page
 // shows a visible Pause button (WCAG 2.2.2). One draw call for all tiles (instanced, drawn in the shader), no
 // post-processing, stopped when off screen, paused or hidden.
-const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+const THREE_URL = '/ui/vendor/three/three.module.min.js';
 let THREE;
 
 const COLS = 22, ROWS = 7, R = 4.1, TILE_W = 0.92, TILE_H = 1.62, PAD = 0.03, ROW_GAP = 1.86;
