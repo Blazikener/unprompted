@@ -725,6 +725,7 @@ function openUpgrade(why) {
   if (!offer.plan) { toast(why || 'Receipts is free on your account.'); return; }   // offer (b): nothing to buy
   $('#upgrade-title').textContent = `${offer.name}, $${offer.price}/month`;
   if (S.upgradePlan) $('#upgrade-list').replaceChildren(...PRO_UPGRADE_BULLETS.map((item) => h('li', {}, item)));
+  else applyOffer();
   $('#upgrade-why').textContent = why || upgradeWhy();
   upgradeMsg('');
   const go = $('#upgrade-go'), name = offer.name;
