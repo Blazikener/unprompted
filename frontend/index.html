@@ -615,6 +615,9 @@
     .player-stage { padding: 12px; border-inline-end: 0; }
     .pf { height: 40vh; }
     .player-side { grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+    .player-controls { flex-wrap: wrap; gap: 8px; padding-inline: 14px; }
+    .player-controls .timeline { min-width: 0; }
+    .player-controls .jump { margin-inline-start: auto; }
     .app-topbar { flex-wrap: wrap; justify-content: space-between; padding-inline: var(--s-4); }
     .app-topbar .grow { display: none; }
     .app-topbar #app-account { flex: 1 1 100%; margin-inline-start: 0; }
@@ -1185,12 +1188,13 @@
       const used = brandUsage?.searches?.used ?? 0;
       const remaining = Math.max(0, limit - used);
       const paid = !['free', 'open'].includes(brandUser.plan);
+      const proQuota = ['pro', 'roster'].includes(brandUser.plan);
       target.append(h('span', { class: 'brand-account-chip' },
         h('span', { class: 'brand-account-email', title: brandUser.email }, brandUser.email),
         h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[brandUser.plan] || 'Free'),
         h('span', { class: 'brand-account-usage' }, `${remaining} of ${limit} searches left this week`),
         h('span', { class: 'brand-account-actions' },
-          paid ? null : h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=pro' }, 'Go Pro'),
+          proQuota ? null : h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=pro' }, 'Go Pro'),
           h('button', { type: 'button', class: 'u-btn u-btn-ghost u-btn-sm', onclick: signOutBrand }, 'Sign out'))));
     }
   }

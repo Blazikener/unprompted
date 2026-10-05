@@ -558,3 +558,11 @@
                 font: 500 0.625rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
   @media (max-width: 760px) { .u-stage .intro:has(.u-peek) { grid-template-columns: minmax(0, 1fr); } .u-peek { display: none; } }
 }
+
+@layer page {
+  @media (max-width: 400px) {
+    body.u-stage > header.u-bar { height: auto; min-height: 64px; flex-wrap: wrap; gap: var(--s-2); padding-block: var(--s-2); }
+    body.u-stage > header.u-bar > .grow { display: none; }
+    body.u-stage > header.u-bar > #who { flex: 1 0 100%; justify-content: flex-end; }
+  }
+}

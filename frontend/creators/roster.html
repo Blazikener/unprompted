@@ -28,6 +28,10 @@
   .act { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
   .act .u-error:empty, .ok:empty { display: none; }
   .ok { color: var(--ok-text); font-size: var(--fs-sm); margin-top: var(--s-2); }
+  @media (max-width: 400px) {
+    .act { min-width: 0; max-width: 100%; }
+    .act .u-btn { max-width: 100%; white-space: normal; }
+  }
 
   /* the roster table: dense, keyboard-navigable (↑/↓, j/k, Enter jumps to that creator's receipts) */
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-3); }
