@@ -428,7 +428,8 @@
   .u-mega { font: 600 var(--fs-mega)/0.84 var(--display); letter-spacing: -0.055em; text-transform: uppercase; }
   .u-mega-2 { font: 600 var(--fs-5xl)/0.9 var(--display); letter-spacing: -0.05em; }
   .u-voice { font-family: var(--voice); font-style: italic; font-weight: 400; letter-spacing: -0.02em; text-transform: none; }
-  .u-iris { background: var(--iris); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .u-iris { background: var(--iris); -webkit-background-clip: text; background-clip: text; color: transparent;
+            -webkit-box-decoration-break: clone; box-decoration-break: clone; padding-block: 0.18em; margin-block: -0.18em; }
   :root[data-theme="light"] .u-iris { background: none; color: var(--accent); }
   .u-h3 { font-size: var(--fs-xl); }
   .u-lead { font-size: var(--fs-lg); color: var(--text-2); max-width: 62ch; }
@@ -478,7 +479,7 @@
 /* ---- landing motion (motion.js). Without .m-ready (no JS) or with motion reduced, everything is simply shown. */
 @layer components {
   .m-ready [data-split]:not(.is-in) .m-wi { translate: 0 105%; opacity: 0; }
-  [data-split] .m-w { display: inline-block; overflow: clip; overflow-clip-margin: 0.4em; vertical-align: top; padding-block: 0.12em; margin-block: -0.12em; }
+  [data-split] .m-w { display: inline-block; overflow: clip; overflow-clip-margin: 0.12em; vertical-align: top; padding-block: 0.04em; margin-block: -0.04em; }
   [data-split] .m-wi { display: inline-block; transition: translate 1000ms var(--ease-soft), opacity 700ms var(--ease-out);
                        transition-delay: calc(var(--i, 0) * 55ms + var(--split-delay, 0ms)); }
   [data-split].m-settled .m-wi, .m-motion-failed [data-split] .m-wi, .m-motion-failed [data-reveal], .m-motion-failed [data-reveal] > * {
