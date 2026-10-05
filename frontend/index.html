@@ -1190,7 +1190,7 @@
         h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[brandUser.plan] || 'Free'),
         h('span', { class: 'brand-account-usage' }, `${remaining} of ${limit} searches left this week`),
         h('span', { class: 'brand-account-actions' },
-          paid ? null : h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=1' }, 'Go Pro'),
+          paid ? null : h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=pro' }, 'Go Pro'),
           h('button', { type: 'button', class: 'u-btn u-btn-ghost u-btn-sm', onclick: signOutBrand }, 'Sign out'))));
     }
   }

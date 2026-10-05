@@ -413,6 +413,34 @@ def test_http_flow(base):
     assert {"signup", "scan", "paywall", "activity", "pitch", "checkout_intent"} <= set(names)
 
 
+def test_brand_upgrade_pro_override(base, monkeypatch):
+    monkeypatch.setenv("RECEIPTS_ARMS", "a,b,c")
+    c = Client(base)
+    assert c.call("POST", "/api/creators/visit", {"arm": "c"})[1]["offer"]["arm"] == "c"
+    status, out = c.call("POST", "/api/creators/signup", {"email": "brand-upgrade-c@example.com", "password": "longenough"})
+    assert status == 201 and out["user"]["arm"] == "c"
+    user_id = out["user"]["id"]
+
+    assert c.call("POST", "/api/creators/billing/interest", {"plan": "pro", "scan": 11})[0] == 200
+    assert c.call("POST", "/api/creators/billing/interest", {"plan": "roster", "scan": 12})[0] == 200
+    with psycopg.connect(server.DB_URL) as db:
+        events = db.execute("SELECT data FROM events WHERE user_id = %s AND name = 'checkout_intent' ORDER BY id",
+                            (user_id,)).fetchall()
+    assert [event[0] for event in events] == [
+        {"plan": "pro", "price": creator.PRO_PRICE_USD, "scan": 11, "from": "brands"},
+        {"plan": "leads", "price": 9, "scan": 12},
+    ]
+
+    c = Client(base)
+    assert c.call("POST", "/api/creators/visit", {"arm": "b"})[1]["offer"]["arm"] == "b"
+    status, out = c.call("POST", "/api/creators/signup", {"email": "brand-upgrade-b@example.com", "password": "longenough"})
+    assert status == 201 and out["user"]["arm"] == "b"
+    monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
+    monkeypatch.delenv("STRIPE_PRICE_PRO", raising=False)
+    assert c.call("POST", "/api/creators/billing/checkout", {"plan": "pro"})[0] == 503
+    assert c.call("POST", "/api/creators/billing/checkout", {"plan": "roster"})[0] == 400
+
+
 def test_sample_photos_use_local_static_files(base):
     status, sample = Client(base).call("GET", "/api/creators/sample")
     assert status == 200 and sample["sample"] and sample["source"] == "demo"

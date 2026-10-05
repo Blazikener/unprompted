@@ -617,7 +617,7 @@ const VERDICT = { active: 'Actively paying creators', some: 'Some paid posts', q
 const TOP_RECEIPTS = 3;
 
 const S = { user: null, billing: null, platform: 'tiktok', scan: null, pending: null, mode: 'signup', open: new Set(), panels: {}, reserved: false,
-  offer: { arm: 'a', plan: 'pro', name: 'Pro', price: 29, checkout: false }, history: [], more: new Set(), sampleData: null, previewLoading: false, shareUrl: '' };
+  offer: { arm: 'a', plan: 'pro', name: 'Pro', price: 29, checkout: false }, upgradePlan: null, history: [], more: new Set(), sampleData: null, previewLoading: false, shareUrl: '' };
 
 async function api(path, body, method) {
   const res = await fetch('/api/creators' + path, body === undefined ? { method: method || 'GET' }
@@ -647,6 +647,9 @@ const OFFER_COPY = {
       'Sponsor activity check for any brand', 'Pitch drafts that quote your own video'],
   },
 };
+const PRO_UPGRADE_BULLETS = ['30 brand searches and 50 creator checks a week on the brand dashboard',
+  'Every brand in your scan, every receipt', 'Sponsor activity check for any brand',
+  'Pitch drafts that quote your own video', '50 scans a week'];
 function applyOffer() {
   const c = OFFER_COPY[S.offer.arm];
   if (!c) return;
@@ -658,7 +661,13 @@ function applyOffer() {
     $('#upgrade-list').replaceChildren(...c.bullets.map((x) => h('li', {}, x)));
   }
 }
-const upgradeWhy = () => OFFER_COPY[S.offer.arm]?.why || 'Unlock every brand, the sponsor check and pitch drafts.';
+const upgradeOffer = () => S.upgradePlan || S.offer;
+const upgradeWhy = () => S.upgradePlan
+  ? 'Pro: 30 brand searches and 50 creator checks a week on the brand dashboard, plus every Receipts feature.'
+  : OFFER_COPY[S.offer.arm]?.why || 'Unlock every brand, the sponsor check and pitch drafts.';
+function brandUpgradeToast(message) {
+  U.toast(message, { kind: 'ok', action: { label: 'Back to the brand dashboard', run: () => { location.href = '/brands/'; } } });
+}
 
 function avatar(src, size = 40) {
   const ph = () => h('span', { class: 'avatar', style: { '--size': `${size}px` }, 'aria-hidden': 'true' });
@@ -702,35 +711,55 @@ $('#auth-form').onsubmit = async (e) => {
   try {
     const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', { email: f.get('email'), password: f.get('password') });
     S.user = user; $('#auth').close(); renderAccount();
-    if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); } else loadHistory();
+    if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); }
+    else { loadHistory(); if (S.upgradePlan) openUpgrade(); }
   } catch (err) { $('#auth-err').textContent = err.message; }
   submit.disabled = false; submit.removeAttribute('aria-busy');
 };
 
-// ---- upgrade (the dialog sells S.offer's plan: checkout, the dev switch, or a reservation)
+// ---- upgrade (checkout, the dev switch, or a reservation)
 function upgradeMsg(text, error) { const m = $('#upgrade-err'); m.className = error ? 'u-error' : 'u-hint'; m.textContent = text; }
 function openUpgrade(why) {
   if (!S.user) { openAuth('signup'); return; }
-  if (!S.offer.plan) { toast(why || 'Receipts is free on your account.'); return; }   // offer (b): nothing to buy
+  const offer = upgradeOffer();
+  if (!offer.plan) { toast(why || 'Receipts is free on your account.'); return; }   // offer (b): nothing to buy
+  $('#upgrade-title').textContent = `${offer.name}, $${offer.price}/month`;
+  if (S.upgradePlan) $('#upgrade-list').replaceChildren(...PRO_UPGRADE_BULLETS.map((item) => h('li', {}, item)));
   $('#upgrade-why').textContent = why || upgradeWhy();
   upgradeMsg('');
-  const go = $('#upgrade-go'), name = S.offer.name;
+  const go = $('#upgrade-go'), name = offer.name;
   go.disabled = false;
   if (S.offer.checkout) go.textContent = 'Continue to checkout';
   else if (S.billing.devSwitch) go.textContent = `Switch to ${name} (dev)`;
   else if (S.reserved) { go.disabled = true; go.textContent = 'Reserved'; upgradeMsg(reservedCopy()); }
-  else go.textContent = `Reserve ${name} at $${S.offer.price}/mo`;
+  else go.textContent = `Reserve ${name} at $${offer.price}/mo`;
   if (!$('#upgrade').open) $('#upgrade').showModal();
 }
-const reservedCopy = () => `Checkout opens in a few days. You're first in line at $${S.offer.price}/mo and we'll email ${S.user.email}.`;
+const reservedCopy = () => `Checkout opens in a few days. You're first in line at $${upgradeOffer().price}/mo and we'll email ${S.user.email}.`;
 $('#upgrade-close').onclick = () => $('#upgrade').close();
+$('#upgrade').addEventListener('close', () => { S.upgradePlan = null; });
 $('#upgrade-go').onclick = async () => {
   const go = $('#upgrade-go');
+  const offer = upgradeOffer(), brandUpgrade = Boolean(S.upgradePlan);
   go.setAttribute('aria-busy', 'true');
   try {
-    if (S.offer.checkout) { location.href = (await api('/billing/checkout', {})).url; return; }
-    if (S.billing.devSwitch) { S.user = (await api('/billing/dev', { plan: S.offer.plan })).user; $('#upgrade').close(); renderAccount(); toast(`You're on ${S.offer.name}`, 'ok'); if (S.scan?.id) await openScan(S.scan.id); else if (S.scan) showScan(S.scan, true); return; }
-    await api('/billing/interest', { scan: S.scan ? S.scan.id : null });
+    if (S.offer.checkout) {
+      const { url } = await api('/billing/checkout', brandUpgrade ? { plan: offer.plan } : {});
+      if (brandUpgrade) { try { sessionStorage.setItem('brandUpgradeReturn', '1'); } catch {} }
+      location.href = url;
+      return;
+    }
+    if (S.billing.devSwitch) {
+      S.user = (await api('/billing/dev', { plan: offer.plan })).user;
+      $('#upgrade').close(); renderAccount();
+      if (brandUpgrade) brandUpgradeToast(`You're on ${offer.name}`);
+      else toast(`You're on ${offer.name}`, 'ok');
+      if (S.scan?.id) await openScan(S.scan.id); else if (S.scan) showScan(S.scan, true);
+      return;
+    }
+    const body = { scan: S.scan ? S.scan.id : null };
+    if (brandUpgrade) body.plan = offer.plan;
+    await api('/billing/interest', body);
     S.reserved = true; go.disabled = true; go.textContent = 'Reserved';
     upgradeMsg(reservedCopy());
   } catch (e) { upgradeMsg(e.message, true); }
@@ -1122,8 +1151,19 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
   if (shared) openShared('/shared/' + shared[1]);
   const q = new URLSearchParams(location.search);
   if (q.get('sample') === '1') openShared('/sample');
-  if (q.get('upgraded') === '1') { toast(S.user && S.user.plan !== 'free' ? `You're on ${PLAN_NAME[S.user.plan] || 'Pro'}` : 'Payment received, your plan updates in a moment', 'ok'); history.replaceState({}, '', '/creators/'); }
-  if (q.get('upgrade') === '1') { openUpgrade(); history.replaceState({}, '', '/creators/'); }
+  if (q.get('upgraded') === '1') {
+    let brandUpgrade = false;
+    try { brandUpgrade = sessionStorage.getItem('brandUpgradeReturn') === '1'; sessionStorage.removeItem('brandUpgradeReturn'); } catch {}
+    const message = S.user && S.user.plan !== 'free' ? `You're on ${PLAN_NAME[S.user.plan] || 'Pro'}` : 'Payment received, your plan updates in a moment';
+    if (brandUpgrade) brandUpgradeToast(message); else toast(message, 'ok');
+    history.replaceState({}, '', '/creators/');
+  }
+  if (q.get('upgraded') === '0') { try { sessionStorage.removeItem('brandUpgradeReturn'); } catch {} }
+  if (q.get('upgrade') === 'pro') {
+    S.upgradePlan = { plan: 'pro', name: 'Pro', price: S.billing.price || 29 };
+    openUpgrade();
+    history.replaceState({}, '', '/creators/');
+  } else if (q.get('upgrade') === '1') { openUpgrade(); history.replaceState({}, '', '/creators/'); }
 })();
 </script>
 </body>
