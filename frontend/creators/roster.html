@@ -14,6 +14,7 @@
   .u-bar { overflow-x: auto; scrollbar-width: none; gap: var(--s-3); }
   #who { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
   @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } .cmdk-btn, #who .email { display: none; } }
+  @media (max-width: 480px) { .u-bar { gap: var(--s-2); padding-inline: var(--s-3); } }
 
   .roster { width: min(980px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-4); }
   .intro { display: grid; gap: var(--s-2); margin-bottom: var(--s-2); }
@@ -65,6 +66,9 @@
 <body class="u-stage">
 <header class="u-bar">
   <a class="u-logo" href="/creators/">Un<mark>prompted</mark><small>for managers</small></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster" aria-current="page">Managers</a>
+  </nav>
   <span class="grow"></span>
   <button class="u-btn u-btn-ghost u-btn-sm cmdk-btn" type="button" id="cmdk" aria-label="Commands (Ctrl+K)">Jump to <kbd class="u-kbd">Ctrl</kbd><kbd class="u-kbd">K</kbd></button>
   <span id="who" class="no-present"></span>

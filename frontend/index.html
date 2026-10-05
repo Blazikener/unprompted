@@ -69,11 +69,26 @@
   .searchbar:not(.hero-form) .sb-main, .searchbar:not(.hero-form) .sb-opts { display: contents; }
   .searchbar:not(.hero-form) .f-brand { flex: 1 1 200px; }
   .searchbar:not(.hero-form) .f-variants { flex: 1 1 190px; }
+  .searchbar:not(.hero-form) .f-about { flex: 1 1 190px; }
   .searchbar:not(.hero-form) .u-select { width: auto; }
   .searchbar:not(.hero-form) #go { order: 10; min-width: 104px; }
   .searchbar:not(.hero-form) .opts-toggle { display: none; }
   .searchbar:not(.hero-form) .hint, .searchbar:not(.hero-form) .landing-error { order: 11; flex-basis: 100%; }
   .searchbar:not(.hero-form) .u-seg > label { height: 34px; }
+  .app-topbar { display: none; align-items: center; gap: var(--s-3); min-height: 54px; padding: var(--s-2) var(--s-6);
+                 position: sticky; top: 0; z-index: calc(var(--z-sticky) + 1); background: var(--bg); border-bottom: 1px solid var(--border); }
+  body:not(.is-landing) { --appbar-height: 54px; }
+  body:not(.is-landing) .app-topbar { display: flex; }
+  body:not(.is-landing) .searchbar:not(.hero-form) { top: var(--appbar-height); }
+  .app-topbar .wordmark { flex: none; font-size: var(--fs-lg); view-transition-name: none; }
+  .app-topbar #app-account { margin-inline-start: auto; }
+  .brand-account-chip { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px 10px; }
+  .brand-account-email { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-account-usage { color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
+  .brand-account-actions { display: inline-flex; align-items: center; gap: 6px; }
+  .brand-account-actions .u-btn { min-height: 30px; }
+  .context-notice:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+  .context-notice p { margin: 0; flex: 1 1 36ch; }
 
   .hero-form { display: grid; gap: var(--s-3); width: 100%; max-width: 640px; }
   .hero-form .sb-main { display: flex; align-items: flex-end; gap: var(--s-2); }
@@ -86,7 +101,7 @@
   .hero-form .opts-toggle[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
   .hero-form .sb-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); padding: var(--s-4);
                         border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); }
-  .hero-form .f-variants, .hero-form .seg-field { grid-column: 1 / -1; }
+  .hero-form .seg-field { grid-column: 1 / -1; }
   .hero-form .u-seg { display: flex; }
   .hero-form .u-seg > label { flex: 1; justify-content: center; height: 34px; }
 
@@ -515,8 +530,9 @@
   .player-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid color-mix(in oklch, var(--on-cinema) 10%, transparent); }
   .ph-who { display: grid; min-width: 0; }
   .ph-who span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-sm); color: color-mix(in oklch, var(--on-cinema) 76%, transparent); }
-  .ph-link { margin-inline-start: auto; white-space: nowrap; color: var(--on-cinema); font-size: var(--fs-sm); font-weight: 600; text-underline-offset: 3px; }
-  .ph-link:hover { color: var(--on-cinema); }
+  .ph-link { margin-inline-start: auto; white-space: nowrap; color: var(--on-cinema); }
+  .ph-link.u-btn-ghost { background: transparent; }
+  .ph-link.u-btn-ghost:hover { color: var(--on-cinema); background: oklch(1 0 0 / 0.08); }
   .ph-close { flex: none; width: 40px; height: 40px; border: 1px solid color-mix(in oklch, var(--on-cinema) 26%, transparent); border-radius: 50%; background: transparent;
               color: var(--on-cinema); cursor: pointer; transition: border-color var(--dur-instant) var(--ease-out); }
   .ph-close:hover { border-color: var(--on-cinema); }
@@ -572,7 +588,7 @@
     .saved { grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); overflow-x: auto; }
     .side-foot { display: none; }
     .searchbar:not(.hero-form) { position: static; padding: var(--s-3) var(--s-4); }
-    .searchbar:not(.hero-form) .f-brand, .searchbar:not(.hero-form) .f-variants { flex-basis: 100%; }
+    .searchbar:not(.hero-form) .f-brand, .searchbar:not(.hero-form) .f-variants, .searchbar:not(.hero-form) .f-about { flex-basis: 100%; }
     .searchbar:not(.hero-form) #go { min-height: 44px; flex: 1 1 100%; }
     .content { padding: var(--s-4) var(--s-4) var(--s-7); }
     .summary { font-size: var(--fs-lg); }
@@ -593,7 +609,15 @@
     .player-stage { padding: 12px; border-inline-end: 0; }
     .pf { height: 40vh; }
     .player-side { grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
-    .ph-link { display: none; }
+    .app-topbar { flex-wrap: wrap; justify-content: space-between; padding-inline: var(--s-4); }
+    .app-topbar .grow { display: none; }
+    .app-topbar #app-account { flex: 1 1 100%; margin-inline-start: 0; }
+    .app-topbar .brand-account-chip { justify-content: flex-start; }
+    .brand-account-email { max-width: 18ch; }
+    .landing-top { flex-wrap: wrap; height: auto; }
+    .landing-top .grow { display: none; }
+    .landing-top #landing-account { flex: 1 1 100%; }
+    body:not(.is-landing) { --appbar-height: 116px; }
   }
   @media (max-width: 560px) {
     .hero-form .sb-main { flex-direction: column; align-items: stretch; }
@@ -603,7 +627,7 @@
 }
 </style>
 </head>
-<body data-fx="player" class="is-landing">
+<body class="is-landing">
 <div class="app">
   <aside class="side" aria-label="Saved searches">
     <a class="u-logo wordmark" href="/brands/">Un<mark>prompted</mark></a>
@@ -624,10 +648,12 @@
     <section id="landing" class="landing" aria-labelledby="landing-h">
       <header class="u-bar landing-top">
         <a class="u-logo wordmark home" href="/brands/">Un<mark>prompted</mark></a>
+        <nav class="u-aud" aria-label="Who it's for">
+          <a href="/creators/">Creators</a><a href="/brands/" aria-current="page">Brands</a><a href="/creators/roster">Managers</a>
+        </nav>
         <span class="grow"></span>
         <a class="u-bar-link no-narrow" href="#b-how">How it works</a>
         <a class="u-bar-link no-narrow" href="/digest/sample">Sample report</a>
-        <a class="u-bar-link" href="/creators/">For creators</a>
         <button class="u-btn u-btn-ghost u-btn-sm no-narrow" type="button" data-open-palette>Commands <kbd class="u-kbd" aria-hidden="true">Ctrl K</kbd></button>
         <span id="landing-account"></span>
       </header>
@@ -648,7 +674,7 @@
           <h1 id="landing-h" class="b-hero-h" data-split>Find the creators who <span class="u-voice u-iris">already love your brand.</span></h1>
           <div class="b-hero-row">
             <div class="b-hero-copy">
-              <p class="u-lead" data-reveal>Unprompted listens to what creators <strong>say on camera</strong> across Instagram and TikTok, then hands you the receipts: the quote, the timestamp and the frame. Caption tools miss a lot of it. In the brands we sampled, <strong>27 to 34% of mentions were spoken only</strong>.</p>
+              <p class="u-lead" data-reveal>Search once. Get new on-camera mentions every week by email. Unprompted listens to what creators <strong>say on camera</strong> across Instagram and TikTok, then hands you the receipts: the quote, the timestamp and the frame. Caption tools miss a lot of it. In the brands we sampled, <strong>27 to 34% of mentions were spoken only</strong>.</p>
               <div class="hero-ctas" data-reveal>
                 <a class="u-btn" href="/creators/">I'm a creator: see my receipts</a>
                 <a class="u-btn u-btn-ghost" href="/digest/sample">See a sample weekly report</a>
@@ -669,6 +695,10 @@
         <div class="u-field f-variants">
           <label class="u-label" for="variants">Also listen for</label>
           <input id="variants" class="u-input" name="variants" type="text" maxlength="200" placeholder="Nicknames, e.g. Timmies" dir="auto">
+        </div>
+        <div class="u-field f-about">
+          <label class="u-label" for="about">What it sells</label>
+          <input id="about" class="u-input" name="about" type="text" maxlength="200" placeholder="If the name is also a word, e.g. candles" dir="auto">
         </div>
         <fieldset class="seg-field">
           <legend class="u-label">Platform</legend>
@@ -693,6 +723,16 @@
             <option value="any">Any language</option>
             <option value="en">English</option>
             <option value="ar">Arabic</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+            <option value="pt">Portuguese</option>
+            <option value="it">Italian</option>
+            <option value="de">German</option>
+            <option value="nl">Dutch</option>
+            <option value="hi">Hindi</option>
+            <option value="ja">Japanese</option>
+            <option value="id">Indonesian</option>
+            <option value="tr">Turkish</option>
           </select>
         </div>
       </div>
@@ -843,6 +883,15 @@
       </footer>
     </section>
 
+    <header class="app-topbar" aria-label="Brand dashboard navigation">
+      <a class="u-logo wordmark" href="/brands/">Un<mark>prompted</mark></a>
+      <nav class="u-aud" aria-label="Who it's for">
+        <a href="/creators/">Creators</a><a href="/brands/" aria-current="page">Brands</a><a href="/creators/roster">Managers</a>
+      </nav>
+      <span class="grow"></span>
+      <div id="app-account"></div>
+    </header>
+
     <div class="content" hidden>
       <p id="status" class="sr-only" role="status" aria-live="polite"></p>
       <div id="error" class="error" role="alert" hidden>
@@ -873,6 +922,10 @@
         <div class="results-head">
           <p id="summary" class="summary"></p>
           <p id="meta" class="meta"></p>
+          <div id="context-notice" class="context-notice u-card u-card-pad" hidden>
+            <p id="context-notice-text"></p>
+            <button id="context-notice-about" class="u-btn u-btn-sm" type="button">Tell us what it sells</button>
+          </div>
           <div id="absence" class="u-empty" hidden></div>
           <dl id="stats" class="stats"></dl>
           <div class="mix">
@@ -955,7 +1008,7 @@
 
 <script>
   const $ = (s) => document.querySelector(s);
-  const form = $('#search'), brandEl = $('#brand'), variantsEl = $('#variants');
+  const form = $('#search'), brandEl = $('#brand'), variantsEl = $('#variants'), aboutEl = $('#about');
   // Motion follows the OS setting and the in-app "Reduce motion" toggle (ui.js).
   const isReduced = () => U.reduced();
   $('#digest-start-search').addEventListener('click', () => {
@@ -963,7 +1016,10 @@
     brandEl.focus({ preventScroll: true });
   });
   const PLATFORM = { instagram: 'Instagram', tiktok: 'TikTok' };
-  const LANG = { en: 'English', ar: 'Arabic' };
+  const LANG = {
+    any: 'Any language', en: 'English', ar: 'Arabic', fr: 'French', es: 'Spanish', pt: 'Portuguese',
+    it: 'Italian', de: 'German', nl: 'Dutch', hi: 'Hindi', ja: 'Japanese', id: 'Indonesian', tr: 'Turkish',
+  };
   const KINDS = {
     spoken: { label: 'On camera only', color: 'var(--spoken)' },
     tagged: { label: 'In caption', color: 'var(--tagged)' },
@@ -971,9 +1027,6 @@
     owned: { label: "Brand's own account", color: 'var(--border-strong)' },
     unverified: { label: 'Fuzzy match', color: 'var(--text-3)' },
   };
-  // Evidence player on (default): frames replay the moment and searches stream in. Off: frames open on the platform and
-  // searches load in one go. ?fx=off still works; the old Live/Fluid previews fold into the default.
-  const FX = { off: 'Plain', player: 'Player' };
   const VERDICT_PILL = { 'Ready to pitch': 'u-pill-ok', 'Review first': 'u-pill-warn', Risky: 'u-pill-danger' };
   const VERDICT_NEXT = {
     'Ready to pitch': 'Next: send the outreach draft below.',
@@ -1007,8 +1060,6 @@
     sort: 'score', flagged: new Set(), want: null, momentsAll: {},
   };
   try { state.cpm = Number(localStorage.getItem('cpm')) || 10; } catch {}
-  const playerOn = () => state.fx !== 'off';
-
   // DOM builder: strings become text nodes, so API data never reaches innerHTML.
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -1108,38 +1159,35 @@
     return res;
   }
 
-  function renderBrandAccount() {
-    const box = $('#brand-account'), top = $('#landing-account');
-    box.replaceChildren();
-    if (!brandUser) {
-      const signIn = document.createElement('a');
-      signIn.href = '#brand-sign-in';
-      signIn.textContent = 'Sign in';
-      signIn.addEventListener('click', (e) => { e.preventDefault(); openBrandAuth('signup'); });
-      box.append(signIn);
-      top.replaceChildren(h('button', { type: 'button', class: 'u-btn u-btn-sm', onclick: () => openBrandAuth('login') }, 'Sign in'));
-      return;
+  const PLAN_NAME = { free: 'Free', open: 'Free', pro: 'Pro', leads: 'Weekly leads', roster: 'Roster' };
+  async function signOutBrand() {
+    try {
+      await api('/api/creators/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      location.reload();
+    } catch (err) {
+      setError(`Sign out failed. ${err.message}`);
     }
-    const email = document.createElement('div');
-    email.textContent = brandUser.email;
-    const limit = brandUsage?.searches?.limit ?? 2;
-    const used = brandUsage?.searches?.used ?? 0;
-    const remaining = document.createElement('div');
-    remaining.textContent = `${Math.max(0, limit - used)} of ${limit} searches left this week`;
-    const signOut = document.createElement('a');
-    signOut.href = '#brand-sign-out';
-    signOut.textContent = 'Sign out';
-    signOut.addEventListener('click', async (e) => {
-      e.preventDefault();
-      try {
-        await api('/api/creators/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        location.reload();
-      } catch (err) {
-        setError(`Sign out failed. ${err.message}`);
+  }
+
+  function renderBrandAccount() {
+    for (const target of [$('#brand-account'), $('#landing-account'), $('#app-account')]) {
+      target.replaceChildren();
+      if (!brandUser) {
+        target.append(h('button', { type: 'button', class: 'u-btn u-btn-sm', onclick: () => openBrandAuth('login') }, 'Sign in'));
+        continue;
       }
-    });
-    box.append(email, remaining, signOut);
-    top.replaceChildren(h('span', { class: 'u-stamp no-narrow', title: `${Math.max(0, limit - used)} of ${limit} searches left this week` }, brandUser.email));
+      const limit = brandUsage?.searches?.limit ?? 2;
+      const used = brandUsage?.searches?.used ?? 0;
+      const remaining = Math.max(0, limit - used);
+      const paid = !['free', 'open'].includes(brandUser.plan);
+      target.append(h('span', { class: 'brand-account-chip' },
+        h('span', { class: 'brand-account-email', title: brandUser.email }, brandUser.email),
+        h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[brandUser.plan] || 'Free'),
+        h('span', { class: 'brand-account-usage' }, `${remaining} of ${limit} searches left this week`),
+        h('span', { class: 'brand-account-actions' },
+          paid ? null : h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=1' }, 'Go Pro'),
+          h('button', { type: 'button', class: 'u-btn u-btn-ghost u-btn-sm', onclick: signOutBrand }, 'Sign out'))));
+    }
   }
 
   async function refreshBrandAccount() {
@@ -1266,6 +1314,7 @@
     return {
       brand: brandEl.value.trim(),
       variants: variantsEl.value,
+      about: aboutEl.value,
       platform: form.elements.platform.value,
       days: Number(form.elements.days.value),
       lang: form.elements.lang.value,
@@ -1277,7 +1326,7 @@
     if (state.busy) { state.pending = true; return; }
     const body = formBody();
     // Searches stream in (rows land as Oriane answers) wherever the browser can read a response stream.
-    if (playerOn() && 'TextDecoderStream' in window) return runLive(body);
+    if ('TextDecoderStream' in window) return runLive(body);
     run(() => authorizedApi('/api/searches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
       `Listening to creator videos for "${body.brand}". This usually takes 5 to 10 seconds.`, 'Search failed.');
   });
@@ -1317,6 +1366,7 @@
     state.selected = wanted ? key(wanted) : key(visibleCreators()[0]);
     brandEl.value = s.brand;
     variantsEl.value = (s.params.variants || []).join(', ');
+    aboutEl.value = (s.params.about || []).join(', ');
     form.elements.platform.value = s.params.platform;
     form.elements.days.value = String(s.params.days);
     form.elements.lang.value = s.params.lang;
@@ -1351,6 +1401,11 @@
     done.hidden = false;
   }
 
+  $('#context-notice-about').addEventListener('click', () => {
+    setOpts(true);
+    aboutEl.focus();
+  });
+
   $('#digest-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const s = state.data.search, btn = e.target.querySelector('button'), done = $('#digest-done');
@@ -1358,7 +1413,8 @@
     btn.setAttribute('aria-busy', 'true');
     try {
       const d = await api('/api/digests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-        email: $('#digest-email').value, brand: s.brand, variants: (s.params.variants || []).join(', '), platform: s.params.platform, lang: s.params.lang, searchId: s.id }) });
+        email: $('#digest-email').value, brand: s.brand, variants: (s.params.variants || []).join(', '), about: (s.params.about || []).join(', '),
+        platform: s.params.platform, lang: s.params.lang, searchId: s.id }) });
       renderWatch(d, d.status === 'active'
         ? `Watching ${s.brand}. Every ${d.every} days we email ${d.email} any new mentions. `
         : d.mailed ? `Almost: confirm the email we just sent to ${d.email} to start watching. `
@@ -1385,7 +1441,8 @@
       : t.source === 'oriane' ? `fetched in ${(s.fetchMs / 1000).toFixed(1)} s from Oriane, saved to Postgres`
         : t.source === 'cache' ? `reused from Postgres in ${t.ms} ms, no credits`
           : `reopened from Postgres in ${t.ms} ms`;
-    return [`Search #${s.id} · `, fresh, ` · ${analysed} · ${served}.`];
+    const about = (s.params.about || []).length ? ` · about: ${s.params.about.join(', ')}` : '';
+    return [`Search #${s.id} · `, fresh, about, ` · ${analysed} · ${served}.`];
   }
 
   // Absence is evidence: say exactly what was searched, then offer the two fixes that usually work.
@@ -1404,6 +1461,14 @@
 
   function renderSummary(live) {
     const { search: s, videos } = state.data;
+    const about = s.params.about || [];
+    const unverified = videos.filter((v) => v.kind === 'unverified').length;
+    const showContextNotice = !about.length && videos.length >= 5 && unverified / videos.length >= 0.3;
+    $('#context-notice').hidden = !showContextNotice;
+    if (showContextNotice) {
+      $('#context-notice-text').replaceChildren('Many of these may not be about ', h('bdi', {}, s.brand),
+        '. If the name is also an everyday word, tell us what it sells and search again.');
+    }
     const spoken = videos.filter((v) => v.kind === 'spoken').length;
     const brand = () => h('strong', {}, h('bdi', {}, s.brand));
     $('#absence').hidden = true;
@@ -1563,12 +1628,9 @@
     const k = key(c), on = k === state.selected, rank = rankOf(c);
     const vids = videosOf(c), best = bestVideo(vids), at = best?.quote?.start;
     let moment;
-    if (at != null && playerOn() && best.id) {
+    if (at != null && best.id) {
       moment = h('button', { type: 'button', class: 'u-time', 'data-receipt': k, 'aria-label': `Play @${c.handle} from ${clock(at)}`,
         onclick: (e) => { e.stopPropagation(); openPlayer(best.id, null, { start: at }); } }, clock(at));
-    } else if (at != null) {
-      moment = h('a', { class: 'u-time', 'data-receipt': k, href: best.url, target: '_blank', rel: 'noopener', 'aria-label': `Open @${c.handle}'s video, said at ${clock(at)}`,
-        onclick: (e) => e.stopPropagation() }, clock(at));
     } else moment = h('span', { class: 'no-moment' }, best?.kind === 'tagged' ? 'Caption only' : 'No quote');
     // A click on a control inside the row (score ring, time chip, link) is that control's; anywhere else opens the panel.
     const onclick = (e) => { if (!e.target.closest('button, a')) select(k, { open: true }); };
@@ -1749,9 +1811,9 @@
       s.flags.length ? [h('h4', {}, 'Flagged moments'), h('ol', { class: 'moments' }, s.flags.map((f) => h('li', {}, moment({ ...f, label: f.category }))))] : null,
       h('h4', {}, 'Moodboard'),
       h('div', { class: 'mood-grid' }, res.moodboard.frames.map((f) => h('a', {
-        href: f.url, target: '_blank', rel: 'noopener', 'aria-label': playerOn() && f.id ? `Play post with ${fmt(f.views)} views` : `Open post with ${fmt(f.views)} views`,
+        href: f.url, target: '_blank', rel: 'noopener', 'aria-label': f.id ? `Play post with ${fmt(f.views)} views` : `Open post with ${fmt(f.views)} views`,
         onclick: (e) => { if (wantsPlayer(e) && f.id) { e.preventDefault(); openPlayer(f.id, e.currentTarget.querySelector('img')); } },
-      }, img(f.image, null, { alt: '' }), h('span', { class: 'mood-views' }, fmt(f.views)), playerOn() && f.id ? h('span', { class: 'play-badge' }, icon('play')) : null))),
+      }, img(f.image, null, { alt: '' }), h('span', { class: 'mood-views' }, fmt(f.views)), f.id ? h('span', { class: 'play-badge' }, icon('play')) : null))),
       res.moodboard.hashtags.length ? h('div', { class: 'tags' }, res.moodboard.hashtags.map(([tag]) => h('span', { class: 'u-pill', dir: 'auto' }, tag))) : null,
       h('p', { class: 'u-hint' }, languages(res.moodboard.languages)),
       benchmark(c, res),
@@ -1841,7 +1903,7 @@
   // One receipt: the frame, the quote with the brand marked, the second it was said, then the counts.
   function moment(v, { c = null, flaggable = false } = {}) {
     const q = v.quote, start = q && q.start != null ? q.start : null, platform = PLATFORM[v.platform] || v.platform;
-    const playable = playerOn() && v.id;
+    const playable = Boolean(v.id);
     const actions = [h('a', { class: 'u-btn u-btn-sm u-btn-ghost', href: v.url, target: '_blank', rel: 'noopener' }, `Open on ${platform} ↗`)];
     if (c && start != null && v.id) actions.push(h('button', { type: 'button', class: 'u-btn u-btn-sm u-btn-ghost', onclick: () => U.copy(deepLink(c, v), 'Link to this moment copied') }, 'Copy link to this moment'));
     if (flaggable && v.id) {
@@ -2074,7 +2136,7 @@
   // ---------- evidence player: rebuild the moment from Oriane's frames and timed transcript ----------
   const P = { data: null, t: 0, playing: false, raf: 0, last: 0, frameIdx: -2, chunkIdx: -2, layer: 0, token: 0, thumb: null, opening: false };
   const dialog = $('#player');
-  const wantsPlayer = (e) => playerOn() && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button);
+  const wantsPlayer = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button);
 
   async function openPlayer(id, thumb, { start = null, flag = null } = {}) {
     if (P.opening || dialog.open) return;
@@ -2164,7 +2226,7 @@
         h('header', { class: 'player-head' },
           img(d.pfp, null, { class: 'avatar', alt: '' }),
           h('div', { class: 'ph-who' }, h('strong', {}, h('bdi', {}, d.name || d.handle)), h('span', {}, h('bdi', {}, `@${d.handle}`), ` · ${date(d.publishedAt)} · ${fmt(d.views)} views`)),
-          h('a', { class: 'ph-link', href: d.url, target: '_blank', rel: 'noopener' }, `Open on ${PLATFORM[d.platform]} ↗`),
+          h('a', { class: 'ph-link u-btn u-btn-sm u-btn-ghost', href: d.url, target: '_blank', rel: 'noopener' }, `Open on ${PLATFORM[d.platform]} ↗`),
           h('button', { type: 'button', class: 'ph-close', 'aria-label': 'Close player', onclick: closePlayer }, '✕')),
         P.captions,
         h('div', { class: 'player-controls' }, P.playBtn, P.timeline, P.timeEl, jump))));
@@ -2267,17 +2329,6 @@
     if (e.key === ' ' && !e.target.closest('button, a')) { e.preventDefault(); toggle(); }
   });
 
-  // ---------- evidence player on/off (was the dev-only "Overdrive preview"; now one palette command) ----------
-  function setFx(fx, rerender = true) {
-    state.fx = fx === 'off' ? 'off' : 'player';
-    document.body.dataset.fx = state.fx;
-    try { localStorage.setItem('fx', state.fx); } catch {}
-    if (rerender && state.data && !state.live && state.data.videos.length) { renderBoard(); renderDetail(true); }
-  }
-  let initialFx = new URLSearchParams(location.search).get('fx');
-  if (!FX[initialFx]) { try { initialFx = localStorage.getItem('fx'); } catch {} }
-  setFx(initialFx, false);
-
   // ---------- Filters re-run the search, so changing one always changes the results ----------
   // Known brands' Arabic spellings (brands.py), offered for "Also listen for": Arabic transcripts write them in Arabic script.
   let arabicNames = null;
@@ -2292,7 +2343,8 @@
     const hint = $('#hint');
     const typed = variantsEl.value.split(',').map((v) => v.trim()).filter(Boolean);
     const known = arabicNames && arabicNames[brandEl.value.trim().toLowerCase()];
-    const missing = known && form.elements.lang.value !== 'en' ? known.spellings.filter((sp) => !typed.includes(sp)) : [];
+    const lang = form.elements.lang.value;
+    const missing = known && (lang === 'any' || lang === 'ar') ? known.spellings.filter((sp) => !typed.includes(sp)) : [];
     if (missing.length && typed.length < 5) {
       const everyday = missing.filter((sp) => known.everyday.includes(sp));
       hint.replaceChildren('Arabic videos write ', h('b', {}, known.name), ' as ', h('b', { lang: 'ar', dir: 'rtl' }, missing.join('، ')), '.',
@@ -2404,11 +2456,6 @@
       if (!$('#digest-form').hidden) $('#digest-email').focus({ preventScroll: true }); else $('#digest-done a')?.focus({ preventScroll: true });
     } });
   U.palette.add({ id: 'sample', label: 'See a sample weekly report', group: 'Search', keywords: 'digest example', run: () => { location.href = '/digest/sample'; } });
-  U.palette.add({ id: 'player', label: 'Turn the evidence player on or off', hint: 'Replay moments here, or open them on the platform', group: 'Settings', keywords: 'mode preview plain stream',
-    run: () => {
-      setFx(playerOn() ? 'off' : 'player');
-      U.toast(playerOn() ? 'Evidence player on: frames replay the moment and searches stream in.' : 'Evidence player off: frames open on the platform and searches load in one go.', { kind: 'ok' });
-    } });
   U.palette.add({ id: 'signin', label: 'Sign in or create an account', group: 'Account', keywords: 'login account', run: () => openBrandAuth(brandUser ? 'login' : 'signup') });
   U.palette.add({ id: 'creators-page', label: "I'm a creator: see my receipts", group: 'Account', keywords: 'creator receipts', run: () => { location.href = '/creators/'; } });
 

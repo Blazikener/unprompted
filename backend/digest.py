@@ -284,6 +284,8 @@ def subscribe(body, user=None):
     variants = body.get("variants", "")
     brand, variants, _, p = parse({**body, "variants": ", ".join(variants) if isinstance(variants, list) else variants, "days": 30})
     params = {"variants": variants, "platform": p["platform"], "lang": p["lang"]}
+    if p.get("about"):
+        params["about"] = p["about"]
     search_id = body.get("searchId")
     with connect() as db:
         db.execute("SELECT pg_advisory_xact_lock(471478344)")
@@ -449,7 +451,7 @@ def run_one(d, force=False):
     data = server.oriane(filters, limit=100, sort="publishedAt")
     results = data["data"]["results"]
     sid = server.new_search(brand, {**params, "digest": d["id"]}, data)
-    server.store_results(sid, results, brand, variants)
+    server.store_results(sid, results, brand, variants, params.get("about", ()))
     import seeding                                # gifted creators' posts join this run's results
     try:
         found = seeding.check(d, sid)

@@ -147,7 +147,8 @@ def test_collect_samples_each_brand_once_and_stops_at_the_cap(clean, monkeypatch
     monkeypatch.setattr(server, "oriane", oriane)
     out = eval_mentions.collect(["Talabat"], per_brand=5)
     assert out == {"collected": {"Talabat": 5}, "skipped": [], "stopped": None}
-    assert calls[0]["transcriptLanguage"] == {"includes": ["ar"]} and set(calls[0]["transcript"]["includesFuzzy"]["values"]) == {"Talabat", "طلبات"}
+    assert calls[0]["transcriptLanguage"] == {"includes": ["ar", "ara"]}
+    assert set(calls[0]["transcript"]["includesFuzzy"]["values"]) == {"Talabat", "طلبات"}
     out = eval_mentions.collect(["Talabat", "Noon", "Careem"], per_brand=5)
     assert out["skipped"] == ["Talabat"] and out["collected"] == {} and out["stopped"].startswith("Live search is paused")
     report = eval_mentions.report()

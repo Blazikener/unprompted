@@ -437,9 +437,21 @@
   .u-bar .grow { flex: 1; }
   .u-bar-link { color: var(--text-2); font-size: var(--fs-sm); font-weight: 500; text-decoration: none; white-space: nowrap; }
   .u-bar-link:hover, .u-bar-link[aria-current="page"] { color: var(--text); }
+  .u-aud { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 3px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); }
+  .u-aud a { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 10px; border-radius: var(--r-pill);
+             color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; }
+  .u-aud a:hover { color: var(--text); background: var(--surface-3); }
+  .u-aud a[aria-current="page"] { color: var(--on-highlight); background: var(--highlight); }
+  .u-aud a[aria-current="page"]:hover { color: var(--on-highlight); background: var(--highlight); }
+  .u-aud a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; z-index: 1; }
   .u-logo { display: inline-flex; align-items: baseline; gap: 2px; font: 700 1.1875rem/1 var(--display); letter-spacing: -0.04em; color: var(--text); text-decoration: none; }
   .u-logo mark { background: var(--highlight); color: var(--on-highlight); padding: 1px 4px; border-radius: 3px; }
   .u-logo small { margin-inline-start: 8px; font: 500 0.75rem var(--sans); color: var(--text-2); letter-spacing: 0; }
+  @media (max-width: 480px) {
+    .u-aud { gap: 1px; padding: 2px; }
+    .u-aud a { min-height: 28px; padding-inline: 5px; font-size: 0.625rem; }
+    .u-bar .u-logo small { display: none; }
+  }
 }
 
 @layer utilities {

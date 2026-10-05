@@ -36,6 +36,12 @@ if (ROOT / ".env").exists():
 
 ORIANE_URL = "https://connect.oriane.xyz/rest/%s/search"
 ORIANE_COST = {"contents": 40, "profiles": 30}
+LANGS = {
+    "en": ["en", "eng"], "fr": ["fr", "fra", "fre"], "es": ["es", "spa"],
+    "pt": ["pt", "por"], "it": ["it", "ita"], "de": ["de", "deu", "ger"],
+    "nl": ["nl", "nld", "dut"], "hi": ["hi", "hin"], "ja": ["ja", "jpn"],
+    "id": ["id", "ind"], "tr": ["tr", "tur"], "ar": ["ar", "ara"],
+}
 DB_URL = os.environ.get("DATABASE_URL", "postgresql:///unprompted")
 
 SCHEMA = """
@@ -216,7 +222,7 @@ def find_quote(raw, rx):
     return None
 
 
-def classify(raw, brand, variants):
+def classify(raw, brand, variants, about=()):
     """(kind, hits, quote) for one Oriane result.
 
     kind, first match wins: owned (brand's own account), sponsored (co-authored with the brand, or disclosed and
@@ -237,14 +243,19 @@ def classify(raw, brand, variants):
     co_authors = " ".join(c["profileHandle"] for c in raw.get("coAuthors") or [])
     mentioned = " ".join(m["profileHandle"] for m in raw.get("mentions") or [])
     in_caption = bool(rx.search(caption + " " + mentioned)) or bool(rx_everyday and rx_everyday.search(caption) and in_context(caption))
+    transcript = raw.get("transcript") or ""
     q = find_quote(raw, rx)
     if not q and rx_everyday:
         q = find_quote(raw, rx_everyday)
         q = q if q and in_context(q["text"]) else None
+    on_topic = (not about or bool(mention_re(about).search(caption) or mention_re(about).search(transcript)
+                                  or mention_re([brand]).search(mentioned)))
     if mention_re([brand]).search(raw.get("profileHandle") or ""):
         kind = "owned"
     elif rx.search(co_authors):
         kind = "sponsored"
+    elif not on_topic:
+        kind = "unverified"
     elif not (in_caption or q):
         kind = "unverified"  # a fuzzy match, or someone else's ad: the brand isn't in what was said or written
     elif tags & DISCLOSURE_TAGS or any(p in caption.lower() for p in DISCLOSURE_PHRASES):
@@ -253,7 +264,6 @@ def classify(raw, brand, variants):
         kind = "tagged"
     else:
         kind = "spoken"
-    transcript = raw.get("transcript") or ""
     hits = len(rx.findall(transcript)) + (len(rx_everyday.findall(transcript)) if rx_everyday and in_context(transcript) else 0)
     return kind, hits, q
 
@@ -290,8 +300,24 @@ def parse(body):
     variants = [v for v in dict.fromkeys(variants) if v.lower() != brand.lower()][:5]
     if any(len(v) > 60 for v in variants):
         raise ApiError(400, "Each spelling variant must be under 60 characters.")
+    about = body.get("about", [])
+    if isinstance(about, str):
+        about = about.split(",")
+    elif not isinstance(about, list):
+        about = []
+    about_terms = []
+    for term in about:
+        if not isinstance(term, str):
+            continue
+        term = term.strip().lower()
+        if not term:
+            continue
+        if len(term) > 40:
+            raise ApiError(400, "Each 'what it sells' word must be under 40 characters.")
+        if re.search(r"[^\W\d_]", term):
+            about_terms.append(term)
     platform, lang, days = body.get("platform", "all"), body.get("lang", "any"), body.get("days", 365)
-    if platform not in ("all", "instagram", "tiktok") or lang not in ("any", "en", "ar") or days not in (30, 90, 365, 0):
+    if platform not in ("all", "instagram", "tiktok") or lang not in ("any", *LANGS) or days not in (30, 90, 365, 0):
         raise ApiError(400, "Invalid filter value.")
 
     # Fuzzy multi-word search matches loosely ("Al Ain water" pulled 72K videos about water), so multi-word
@@ -307,10 +333,12 @@ def parse(body):
     if platform != "all":
         filters["platform"] = {"includes": [platform]}
     if lang != "any":
-        filters["transcriptLanguage"] = {"includes": [lang]}
+        filters["transcriptLanguage"] = {"includes": LANGS[lang]}
     if days:
         filters["publishedAt"] = {"after": (date.today() - timedelta(days=days)).isoformat()}
     params = {"variants": variants, "platform": platform, "lang": lang, "days": days, "match": 2}
+    if about_terms:
+        params["about"] = list(dict.fromkeys(about_terms))[:5]
     return brand, variants, filters, params
 
 
@@ -375,12 +403,12 @@ def new_search(brand, params, data, user_id=None):
             (brand, Jsonb(params), total, data["data"]["aggregations"]["totalViewsCount"], user_id)).fetchone()["id"]
 
 
-def store_results(sid, results, brand, variants):
+def store_results(sid, results, brand, variants, about=()):
     """Store raw videos and their classified mentions for one search."""
     results = list({r["id"]: r for r in results}.values())
     rows = []
     for r in results:
-        kind, hits, q = classify(r, brand, variants)
+        kind, hits, q = classify(r, brand, variants, about)
         rows.append((sid, r["id"], kind, hits, Jsonb(q) if q else None))
     with connect() as db:
         with db.cursor() as cur:
@@ -421,7 +449,7 @@ def search_events(brand, variants, filters, params, user=None, progress=True):
         results = data["data"]["results"]
         sid = new_search(brand, params, data if results else EMPTY_PAGE, user_id=user_id)
         if results:
-            heard = store_results(sid, results, brand, variants)
+            heard = store_results(sid, results, brand, variants, params.get("about", ()))
             if progress:
                 yield {"type": "progress", "heard": heard, "data": load(sid)}
         with connect() as db:
@@ -439,7 +467,7 @@ def run_search(body, user):
 
 def video_detail(vid, query):
     """Everything the evidence player needs: frames, timed transcript, and where the brand (or a flag) is said."""
-    if not re.fullmatch(r"[A-Za-z0-9_]{1,64}", vid):
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", vid):
         raise ApiError(400, "Invalid video id.")
     with connect() as db:
         row = db.execute("SELECT raw FROM videos WHERE id = %s", (vid,)).fetchone()
@@ -633,6 +661,7 @@ def list_searches(user=None):
             " FROM searches s LEFT JOIN mentions m ON m.search_id = s.id"
             " LEFT JOIN LATERAL (SELECT * FROM digests d WHERE d.user_id = s.user_id AND d.brand = s.brand AND d.params ="
             "   jsonb_build_object('variants', s.params->'variants', 'platform', s.params->'platform', 'lang', s.params->'lang')"
+            "   || CASE WHEN s.params ? 'about' THEN jsonb_build_object('about', s.params->'about') ELSE '{}'::jsonb END"
             "   ORDER BY d.id LIMIT 1) w ON true"
             " WHERE s.user_id = %s GROUP BY s.id, w.token, w.paused_at, w.confirmed_at ORDER BY s.id DESC LIMIT 20",
             (user["id"],)).fetchall()

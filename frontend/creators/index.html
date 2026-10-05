@@ -20,7 +20,6 @@
   #account .who { font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
   .cmdk-btn .u-kbd { margin-inline-start: 2px; }
   @media (max-width: 1100px) { #account .who { display: none; } }
-  @media (max-width: 900px) { .u-bar nav .u-bar-link + .u-bar-link { display: none; } }   /* keep "License offers" */
   @media (max-width: 600px) { .u-bar { padding-inline: var(--s-4); } .u-logo small, .cmdk-btn { display: none; } }
 
   .avatar { width: var(--size, 40px); height: var(--size, 40px); border-radius: 50%; object-fit: cover; background: var(--surface-3); flex: none; display: block; }
@@ -103,6 +102,18 @@
   @media (max-width: 600px) { .hero-top .no-narrow { display: none; } }
 
   /* ---- landing sections: editorial grid, numbered chapters, poster headings */
+  .role-doors { padding-block: clamp(56px, 7vw, 96px); border-bottom: 1px solid var(--border); }
+  .role-doors .u-eyebrow { display: block; margin-bottom: var(--s-2); }
+  .role-doors h2 { margin-bottom: var(--s-5); }
+  .role-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+  .role-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); min-height: 100%; }
+  .role-card h3 { font-size: var(--fs-xl); }
+  .role-card p { color: var(--text-2); flex: 1; max-width: 44ch; }
+  .role-card-actions { display: grid; align-content: start; gap: var(--s-2); width: 100%; margin-top: auto; }
+  .role-card-actions .u-btn { justify-self: start; }
+  .role-card-secondary { font-size: var(--fs-sm); }
+  @media (max-width: 960px) { .role-grid { grid-template-columns: minmax(0, 1fr); } }
+
   .band { padding-block: clamp(72px, 10vw, 160px); }
   .band .u-eyebrow { display: block; margin-bottom: var(--s-4); }
   .band .u-mega-2 { max-width: 16ch; margin-bottom: var(--s-7); }
@@ -332,11 +343,12 @@
 <div class="m-ruler no-present" data-progress aria-hidden="true"><span data-progress-pct>000%</span></div>
 <header class="u-bar">
   <a class="u-logo" href="/creators/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/" aria-current="page">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
+  </nav>
   <span class="grow"></span>
   <nav class="no-present" aria-label="Main">
     <a class="u-bar-link" href="/creators/licenses">License offers</a>
-    <a class="u-bar-link" href="/creators/roster">For managers</a>
-    <a class="u-bar-link" href="/brands/">For brands</a>
   </nav>
   <button class="u-btn u-btn-ghost u-btn-sm cmdk-btn" type="button" id="cmdk" aria-label="Commands (Ctrl+K)">Commands <kbd class="u-kbd">Ctrl</kbd><kbd class="u-kbd">K</kbd></button>
   <div id="account" class="no-present"></div>
@@ -378,6 +390,33 @@
       </div>
     </div>
     <div class="hero-scroll" aria-hidden="true"><span>Scroll</span><i></i></div>
+  </section>
+
+  <section class="role-doors" aria-labelledby="role-doors-h">
+    <div class="u-wide">
+      <span class="u-eyebrow">Choose your side</span>
+      <h2 class="u-h2" id="role-doors-h">Pick your side</h2>
+      <div class="role-grid">
+        <article class="role-card u-card u-card-pad" data-reveal data-tilt>
+          <h3>Creators</h3>
+          <p>See every brand you've mentioned, with receipts. Answer license offers from brands in one inbox; you keep ownership.</p>
+          <div class="role-card-actions"><a class="u-btn u-btn-primary" href="#handle" data-scan-focus>Scan my handle</a></div>
+        </article>
+        <article class="role-card u-card u-card-pad" data-reveal data-tilt>
+          <h3>Brands</h3>
+          <p>Save a brand search once. Every week, new on-camera mentions land in your inbox, and you can license a clip in one click.</p>
+          <div class="role-card-actions">
+            <a class="u-btn u-btn-primary" href="/brands/">Open the brand dashboard</a>
+            <a class="role-card-secondary" href="/digest/sample">See a sample weekly report</a>
+          </div>
+        </article>
+        <article class="role-card u-card u-card-pad" data-reveal data-tilt>
+          <h3>Managers</h3>
+          <p>Track every creator on your roster in one place, with the brands they mention.</p>
+          <div class="role-card-actions"><a class="u-btn u-btn-primary" href="/creators/roster">Open roster</a></div>
+        </article>
+      </div>
+    </div>
   </section>
 
   <section class="belt" aria-labelledby="belt-h">
@@ -557,6 +596,12 @@
 <script>
 const { h } = U;
 const $ = (s, el = document) => el.querySelector(s);
+document.querySelectorAll('[data-scan-focus]').forEach((link) => link.addEventListener('click', (e) => {
+  e.preventDefault();
+  const input = $('#handle');
+  input.scrollIntoView({ behavior: U.reduced() ? 'auto' : 'smooth', block: 'center' });
+  input.focus({ preventScroll: true });
+}));
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const num = (n) => U.fmt(n ?? 0, 'compact');
 const date = (iso) => U.date(iso);
@@ -1073,6 +1118,7 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
   const q = new URLSearchParams(location.search);
   if (q.get('sample') === '1') openShared('/sample');
   if (q.get('upgraded') === '1') { toast(S.user && S.user.plan !== 'free' ? `You're on ${PLAN_NAME[S.user.plan] || 'Pro'}` : 'Payment received, your plan updates in a moment', 'ok'); history.replaceState({}, '', '/creators/'); }
+  if (q.get('upgrade') === '1') { openUpgrade(); history.replaceState({}, '', '/creators/'); }
 })();
 </script>
 </body>

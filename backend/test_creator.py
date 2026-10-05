@@ -441,3 +441,13 @@ def test_sample_photos_use_local_static_files(base):
             assert response.status == 200 and b"Photo credits for the sample data" in response.read()
     with urllib.request.urlopen(base + "/demo/thumbs/maya-00.jpg") as response:
         assert response.status == 200 and response.headers.get_content_type() == "image/jpeg"
+
+
+def test_player_accepts_demo_fixture_video_ids(base):
+    vid = "demo-tiktok-maya.eats-00"
+    raw = {**video("Tim Hortons iced capp"), "id": vid}
+    raw["transcriptChunks"][0]["endSeconds"] = 4.0
+    with server.connect() as db:
+        db.execute(server.VIDEO_UPSERT, server.video_row(raw))
+    status, detail = Client(base).call("GET", "/api/videos/%s?brand=Tim%%20Hortons" % vid)
+    assert status == 200 and detail["id"] == vid and detail["frames"][0]["url"] == "f.jpg"
