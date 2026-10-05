@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Receipts early access: get paid for the brands you already talk about</title>
+<meta name="description" content="Receipts reads your public videos' transcripts, finds every brand you've said on camera and turns it into proof brands pay for. Join the waitlist: invites go out in waves.">
+<meta name="theme-color" content="#060708">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Receipts by Unprompted">
+<meta property="og:title" content="You already said the brand. Get paid for it.">
+<meta property="og:description" content="Receipts finds every brand you've mentioned on camera, with the quote, the second and the views, and puts it in front of brands that pay. Join the early-access list.">
+<meta property="og:url" content="https://receipts-thc8.onrender.com/waitlist">
+<meta property="og:image" content="https://receipts-thc8.onrender.com/waitlist/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="You already said the brand. Get paid for it.">
+<meta name="twitter:description" content="Receipts finds every brand you've mentioned on camera and puts the proof in front of brands that pay. Early access is opening in waves.">
+<meta name="twitter:image" content="https://receipts-thc8.onrender.com/waitlist/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preload" href="/ui/fonts/host-grotesk-latin-073d27d1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/ui/fonts/instrument-serif-latin-253e49fe.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/ui/ui.css?v=3">
+<script src="/ui/ui.js?v=2"></script>
+<script src="/ui/motion.js?v=2" defer></script>
+<style>
+@layer page {
+  /* The launch page is always the dark cinema, whatever theme a returning visitor picked elsewhere. */
+  html, body { color-scheme: dark; background: #060708; }
+  :root[data-theme="light"] .u-iris { background: var(--iris); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  body { overflow-x: clip; }
+  ::selection { background: var(--highlight); color: var(--on-highlight); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .mono { font-family: var(--mono); }
+  .kicker { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2); }
+  .kicker b { color: var(--text); font-weight: 500; }
+  mark.said { background: var(--highlight); color: var(--on-highlight); padding: 0 0.18em; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+  /* ---- top bar: logo only (a launch page has one job) */
+  .wl-bar { position: fixed; inset: 0 0 auto 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+            height: 64px; padding: 0 clamp(16px, 3vw, 48px); padding-top: env(safe-area-inset-top);
+            transition: background-color 300ms var(--ease-out), border-color 300ms var(--ease-out), backdrop-filter 300ms; border-bottom: 1px solid transparent; }
+  .wl-bar:not(.is-stuck) .live-dot { opacity: 0; }
+  .wl-bar .live-dot { transition: opacity 300ms var(--ease-out); }
+  #join { scroll-margin-top: 88px; }
+  .wl-bar.is-stuck { background: oklch(0.1 0.004 160 / 0.72); backdrop-filter: blur(16px) saturate(1.4); border-bottom-color: var(--border); }
+  .wl-bar .u-logo small { color: var(--text-2); }
+  .wl-bar-cta { display: inline-flex; gap: var(--s-2); align-items: center; }
+  .wl-bar-cta .u-btn { opacity: 0; translate: 0 -6px; pointer-events: none; transition: opacity 300ms var(--ease-out), translate 300ms var(--ease-out); }
+  .wl-bar.is-stuck .wl-bar-cta .u-btn { opacity: 1; translate: none; pointer-events: auto; }
+  .joined .wl-bar-cta .u-btn, .joined .dock { display: none !important; }
+  .live-dot { display: inline-flex; align-items: center; gap: 8px; font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+  .live-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--highlight); box-shadow: 0 0 0 0 oklch(0.92 0.19 122 / 0.6); animation: ping 2.2s var(--ease-out) infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 oklch(0.92 0.19 122 / 0.55); } 70%, 100% { box-shadow: 0 0 0 10px oklch(0.92 0.19 122 / 0); } }
+
+  /* ---- hero */
+  .hero { position: relative; isolation: isolate; min-height: 100svh; display: grid; align-content: center; padding-block: 112px 72px; overflow: clip; }
+  .glass-stage { position: absolute; inset: 0 0 0 40%; z-index: -2; margin: 0; background: #060708;
+                 -webkit-mask-image: linear-gradient(90deg, transparent, #000 24%); mask-image: linear-gradient(90deg, transparent, #000 24%); }
+  .glass-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #060708, transparent 34%), linear-gradient(transparent 72%, #060708); }
+  .glass-3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1400ms var(--ease-out); }
+  .glass-stage.has-3d .glass-3d { opacity: 1; }
+  .glass-stage.has-3d .glass-poster { opacity: 0; }
+  .glass-poster { position: absolute; inset: 0; background: #060708 url("/ui/img/glass-poster.webp") center / cover no-repeat; transition: opacity 1400ms var(--ease-out); }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+                  background: radial-gradient(60% 50% at 18% 30%, oklch(0.44 0.12 160 / 0.22), transparent 70%),
+                              radial-gradient(40% 40% at 8% 90%, oklch(0.7 0.16 285 / 0.12), transparent 70%); }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: var(--s-8); align-items: center; }
+  .hero-copy { display: grid; gap: var(--s-6); align-content: start; }
+  .hero-h { font: 600 clamp(2.75rem, 0.8rem + 6.6vw, 7.6rem)/0.88 var(--display); letter-spacing: -0.055em; text-wrap: balance; max-width: 12ch; }
+  .hero-h .u-voice { display: block; font-size: 1.02em; line-height: 0.98; --split-delay: 250ms; }
+  .hero-lead { max-width: 50ch; font-size: clamp(1.0625rem, 0.98rem + 0.35vw, 1.3125rem); color: var(--text-2); }
+  .hero-lead strong { color: var(--text); font-weight: 500; }
+  .hero-pane { position: relative; }
+
+  /* ---- the join card (glass), then the ticket that replaces it */
+  .join { position: relative; display: grid; gap: var(--s-4); padding: clamp(20px, 2.2vw, 32px); border-radius: var(--r-5); border: 1px solid oklch(1 0 0 / 0.12);
+          background: linear-gradient(160deg, oklch(0.2 0.01 160 / 0.7), oklch(0.12 0.006 160 / 0.78)); backdrop-filter: blur(22px) saturate(1.5);
+          box-shadow: 0 40px 120px -40px oklch(0 0 0 / 0.9), inset 0 1px 0 oklch(1 0 0 / 0.08); }
+  .join::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+                  background: linear-gradient(140deg, oklch(0.86 0.11 225 / 0.55), transparent 30%, transparent 70%, oklch(0.92 0.19 122 / 0.4));
+                  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+  .join-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); }
+  .join-head h2 { font: 600 var(--fs-xl)/1.1 var(--display); letter-spacing: -0.03em; }
+  .join-step { font: 500 0.6875rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+  .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); border: 0; padding: 0; margin: 0; }
+  .roles legend { margin-bottom: var(--s-2); }
+  .role { position: relative; display: grid; gap: 2px; padding: 12px 12px 11px; border-radius: var(--r-3); border: 1px solid var(--border); background: oklch(1 0 0 / 0.03);
+          cursor: pointer; transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .role:hover { border-color: var(--border-strong); background: oklch(1 0 0 / 0.06); }
+  .role:active { transform: scale(0.98); }
+  .role input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .role b { font-weight: 600; font-size: var(--fs-md); }
+  .role span { font-size: var(--fs-xs); color: var(--text-2); line-height: 1.3; }
+  .role:has(input:checked) { border-color: var(--highlight); background: oklch(0.92 0.19 122 / 0.08); box-shadow: inset 0 0 0 1px var(--highlight); }
+  .role:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .email-row { display: flex; gap: var(--s-2); }
+  .email-row .u-input { flex: 1; min-width: 0; background: oklch(0 0 0 / 0.35); }
+  .go { --h: 52px; white-space: nowrap; background: var(--highlight); color: var(--on-highlight); border-color: transparent; font-weight: 600; }
+  .go:hover { background: var(--lime-10); }
+  .go .arrow { display: inline-block; transition: translate 200ms var(--ease-out); }
+  .go:hover .arrow { translate: 3px 0; }
+  .fine { font-size: var(--fs-sm); color: var(--text-2); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .fine span::before { content: "✓"; color: var(--highlight); margin-inline-end: 6px; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .ref-note { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-3); background: oklch(0.92 0.19 122 / 0.1); border: 1px dashed oklch(0.92 0.19 122 / 0.5); font-size: var(--fs-sm); }
+  .form-err { color: var(--danger-text); font-size: var(--fs-sm); }
+  .form-err:empty { display: none; }
+  .social { display: flex; align-items: center; gap: var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
+  .faces { display: flex; }
+  .faces i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #0d0f10; margin-inline-start: -8px; background: var(--c); display: grid; place-items: center;
+             font: 600 0.625rem/1 var(--display); font-style: normal; color: oklch(0.15 0.02 160); }
+  .faces i:first-child { margin-inline-start: 0; }
+
+  /* ---- the ticket: a thermal-paper receipt that prints out of the card */
+  .ticket-wrap { display: grid; gap: var(--s-4); }
+  .ticket { --paper: oklch(0.975 0.006 95); --ink: oklch(0.2 0.01 160); position: relative; color: var(--ink); background: var(--paper);
+            font: 500 0.875rem/1.5 var(--mono); padding: 28px 26px 30px; border-radius: 4px 4px 0 0; color-scheme: light;
+            -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 16px 51% repeat-x, linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat;
+                    mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 16px 51% repeat-x, linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat;
+            box-shadow: 0 30px 80px -30px oklch(0 0 0 / 0.9); transform-origin: top center; }
+  .ticket::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+                    background: repeating-linear-gradient(0deg, transparent 0 3px, oklch(0 0 0 / 0.018) 3px 4px); }
+  .ticket.printing { animation: print 1400ms var(--ease-out) both; }
+  @keyframes print { from { clip-path: inset(0 0 100% 0); translate: 0 -18px; } to { clip-path: inset(0 0 0 0); translate: 0 0; } }
+  .t-top { text-align: center; display: grid; gap: 2px; }
+  .t-top .t-logo { font: 700 1.25rem/1 var(--display); letter-spacing: -0.04em; }
+  .t-top .t-logo mark { background: oklch(0.92 0.19 122); color: var(--ink); padding: 0 4px; border-radius: 3px; }
+  .t-sub { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.45 0.01 160); }
+  .t-rule { border: 0; border-top: 1.5px dashed oklch(0.2 0.01 160 / 0.35); margin: 14px 0; }
+  .t-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.8125rem; }
+  .t-row span:first-child { color: oklch(0.45 0.01 160); text-transform: uppercase; letter-spacing: 0.06em; }
+  .t-row span:last-child { text-align: end; overflow-wrap: anywhere; }
+  .t-num { display: grid; justify-items: center; gap: 2px; padding: 6px 0; }
+  .t-num small { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.45 0.01 160); }
+  .t-num b { font: 600 clamp(3.4rem, 2rem + 4vw, 4.8rem)/0.95 var(--display); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .t-bar { height: 34px; margin-top: 12px; background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 4px, var(--ink) 4px 5px, transparent 5px 8px, var(--ink) 8px 11px, transparent 11px 12px); opacity: 0.85; }
+  .t-foot { text-align: center; font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.45 0.01 160); margin-top: 8px; }
+  .share { display: grid; gap: var(--s-3); padding: var(--s-5); border-radius: var(--r-4); border: 1px solid var(--border); background: oklch(0.14 0.006 160 / 0.8); backdrop-filter: blur(16px); }
+  .share h3 { font: 600 var(--fs-lg)/1.2 var(--display); letter-spacing: -0.02em; }
+  .share p { font-size: var(--fs-sm); color: var(--text-2); }
+  .link-row { display: flex; gap: var(--s-2); }
+  .link-row input { flex: 1; min-width: 0; font: 400 var(--fs-sm) var(--mono); background: oklch(0 0 0 / 0.35); }
+  .share-btns { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .share-btns .u-btn { flex: 1 1 auto; }
+  .ladder { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+  .ladder div { padding: 10px; border-radius: var(--r-2); border: 1px solid var(--border); font-size: var(--fs-xs); color: var(--text-2); display: grid; gap: 2px; }
+  .ladder div b { font: 600 var(--fs-md) var(--display); color: var(--text); }
+  .ladder div.on { border-color: var(--highlight); color: var(--text); }
+  .ladder div.on b { color: var(--highlight); }
+
+  /* ---- step 2: three taps that tell us who you are */
+  .qs { display: grid; gap: var(--s-4); }
+  .q { display: grid; gap: var(--s-2); border: 0; padding: 0; margin: 0; }
+  .q legend, .q > label { font-size: var(--fs-sm); font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--border-strong);
+          font-size: var(--fs-sm); color: var(--text-2); cursor: pointer; transition: all 140ms var(--ease-out); }
+  .chip:hover { color: var(--text); border-color: oklch(1 0 0 / 0.4); }
+  .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .chip:has(input:checked) { background: var(--text); color: #060708; border-color: var(--text); }
+  .chip:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .qs .u-input, .qs .u-textarea { background: oklch(0 0 0 / 0.35); }
+  .qs-actions { display: flex; gap: var(--s-2); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+  /* ---- marquee of receipts */
+  .tape { position: relative; padding-block: var(--s-7); border-block: 1px solid var(--border); overflow: clip;
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+  .tape-row { display: flex; gap: var(--s-4); width: max-content; animation: tape 70s linear infinite; }
+  .tape-row.rev { animation-direction: reverse; animation-duration: 85s; margin-top: var(--s-4); }
+  .tape:hover .tape-row { animation-play-state: paused; }
+  @keyframes tape { to { translate: -50% 0; } }
+  .rc { flex: none; width: 360px; display: grid; gap: 10px; padding: 18px 20px; border-radius: var(--r-4); border: 1px solid var(--border); background: oklch(0.15 0.006 160); }
+  .rc q { quotes: none; font: italic 400 1.125rem/1.4 var(--serif); color: var(--text); }
+  .rc-meta { display: flex; justify-content: space-between; gap: 10px; font: 400 0.75rem var(--mono); color: var(--text-2); }
+  .rc-meta b { color: var(--text); font-weight: 500; }
+  .tape-note { text-align: center; margin-top: var(--s-5); font: 400 0.75rem var(--mono); color: var(--text-3); letter-spacing: 0.06em; }
+  @media (prefers-reduced-motion: reduce) { .tape-row, .live-dot::before, .ticket.printing { animation: none; } }
+  :root[data-motion="reduce"] .tape-row, :root[data-motion="reduce"] .live-dot::before, :root[data-motion="reduce"] .ticket.printing { animation: none; }
+
+  /* ---- sections */
+  .sec { padding-block: clamp(80px, 12vw, 168px); position: relative; }
+  .sec-head { display: grid; gap: var(--s-5); max-width: 900px; margin-bottom: clamp(40px, 6vw, 80px); }
+  .sec-h { font: 600 clamp(2.4rem, 1rem + 4.6vw, 5.4rem)/0.92 var(--display); letter-spacing: -0.05em; text-wrap: balance; }
+  .sec-h .u-voice { font-size: 1.04em; }
+
+  /* problem: three numbers */
+  .pain-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-5); overflow: hidden; }
+  .pain-grid > div { background: #0a0c0d; padding: clamp(24px, 3vw, 44px); display: grid; gap: var(--s-3); align-content: start; }
+  .pain-grid .big { font: 600 clamp(2.6rem, 1.4rem + 3vw, 4.2rem)/1 var(--display); letter-spacing: -0.05em; }
+  .pain-grid p { color: var(--text-2); max-width: 34ch; }
+
+  /* how it works: three steps with a mock UI each */
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); counter-reset: step; }
+  .step { display: grid; grid-template-rows: auto 1fr; gap: var(--s-5); padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border); background: linear-gradient(180deg, oklch(0.16 0.006 160), oklch(0.11 0.004 160)); }
+  .step-txt { display: grid; gap: var(--s-2); }
+  .step-txt .n { font: 500 0.75rem var(--mono); color: var(--highlight); letter-spacing: 0.1em; }
+  .step-txt h3 { font: 600 var(--fs-2xl)/1.05 var(--display); letter-spacing: -0.035em; }
+  .step-txt p { color: var(--text-2); font-size: var(--fs-md); }
+  .mock { align-self: end; border-radius: var(--r-3); border: 1px solid var(--border); background: #08090a; padding: 14px; display: grid; gap: 10px; min-height: 196px; align-content: start; font-size: var(--fs-sm); }
+  .mock-input { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: var(--r-2); border: 1px solid var(--border-strong); font: 400 var(--fs-sm) var(--mono); }
+  .mock-input .caret { width: 1.5px; height: 18px; background: var(--highlight); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .mock-btn { justify-self: start; height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--text); color: #060708; font-weight: 600; font-size: var(--fs-xs); }
+  .mock-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-2); background: oklch(1 0 0 / 0.04); }
+  .mock-line .k { font: 400 0.6875rem var(--mono); color: var(--text-2); }
+  .mock-q { font: italic 400 0.9375rem/1.45 var(--serif); }
+  .mock-pill { font: 500 0.625rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 7px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); color: var(--text-2); white-space: nowrap; }
+  .mock-pill.ok { border-color: oklch(0.84 0.13 155 / 0.5); color: var(--ok-text); }
+  .mock-mail { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--r-2); background: oklch(1 0 0 / 0.04); border-inline-start: 2px solid var(--highlight); }
+  .mock-mail .k { font: 400 0.6875rem var(--mono); color: var(--text-2); }
+
+  /* who it's for */
+  .who { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
+  .who-card { position: relative; display: grid; gap: var(--s-4); align-content: start; padding: clamp(24px, 2.6vw, 36px); border-radius: var(--r-5); border: 1px solid var(--border); background: oklch(0.13 0.005 160); overflow: hidden; }
+  .who-card::after { content: ""; position: absolute; inset: auto -30% -60% auto; width: 80%; aspect-ratio: 1; border-radius: 50%; background: var(--glow); filter: blur(60px); opacity: 0.35; pointer-events: none; }
+  .who-card h3 { font: 600 var(--fs-3xl)/1 var(--display); letter-spacing: -0.045em; }
+  .who-card .tag { justify-self: start; font: 500 0.6875rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 9px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); color: var(--text-2); }
+  .who-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .who-card li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; color: var(--text-2); }
+  .who-card li::before { content: ""; width: 14px; height: 14px; margin-top: 4px; border-radius: 4px; background: var(--highlight); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3 3 7-7' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3 3 7-7' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+  .who-card li b { color: var(--text); font-weight: 500; }
+  .who-card .u-btn { justify-self: start; margin-top: var(--s-2); }
+
+  /* principles */
+  .rules { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-5); border-top: 1px solid var(--border); padding-top: var(--s-6); }
+  .rules h3 { font: 600 var(--fs-lg)/1.2 var(--display); letter-spacing: -0.02em; margin-bottom: 6px; }
+  .rules p { color: var(--text-2); font-size: var(--fs-md); }
+
+  /* FAQ */
+  .faq { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: var(--s-8); align-items: start; }
+  .faq-list { border-top: 1px solid var(--border); }
+  .faq details { border-bottom: 1px solid var(--border); }
+  .faq summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); padding: 22px 0; cursor: pointer; font: 500 var(--fs-xl)/1.25 var(--display); letter-spacing: -0.02em; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border-strong); font: 400 1.25rem/1 var(--sans); color: var(--text-2); transition: rotate 200ms var(--ease-out); }
+  .faq details[open] summary::after { rotate: 45deg; }
+  .faq details p { padding: 0 0 24px; color: var(--text-2); max-width: 62ch; }
+
+  /* final call */
+  .end { text-align: center; display: grid; justify-items: center; gap: var(--s-6); padding-block: clamp(96px, 14vw, 200px) clamp(64px, 7vw, 112px); position: relative; isolation: isolate; overflow: clip; }
+  .end::before { content: ""; position: absolute; z-index: -1; inset: 10% 20%; border-radius: 50%; background: radial-gradient(closest-side, oklch(0.44 0.12 160 / 0.45), transparent); filter: blur(40px); }
+  .end-h { font: 600 clamp(2.8rem, 1rem + 7vw, 8.4rem)/0.88 var(--display); letter-spacing: -0.055em; max-width: 14ch; text-wrap: balance; }
+  .end-h .u-voice { display: block; }
+  .end .u-btn { --h: 60px; padding-inline: 34px; font-size: var(--fs-lg); }
+  .foot { border-top: 1px solid var(--border); padding-block: var(--s-6) calc(var(--s-6) + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--s-4); font-size: var(--fs-sm); color: var(--text-2); }
+  .foot a { color: var(--text-2); }
+  .foot a:hover { color: var(--text); }
+
+  /* sticky join pill on phones once the hero form is out of view */
+  .dock { position: fixed; z-index: 40; inset: auto 12px calc(12px + env(safe-area-inset-bottom)) 12px; display: none; }
+  .dock .u-btn { width: 100%; --h: 54px; font-size: var(--fs-lg); box-shadow: 0 20px 50px -10px oklch(0 0 0 / 0.8); }
+
+  @media (max-width: 1080px) {
+    .hero-grid { grid-template-columns: 1fr; gap: var(--s-6); }
+    .hero-pane { max-width: 620px; }
+    .glass-stage { opacity: 0.6; }
+    .glass-stage::after { background: linear-gradient(90deg, #060708 8%, transparent 75%), linear-gradient(transparent 60%, #060708); }
+    .steps, .who { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 1fr 1fr; grid-template-rows: none; align-items: center; }
+    .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .faq { grid-template-columns: 1fr; gap: var(--s-5); }
+  }
+  @media (max-width: 720px) {
+    .glass-stage { inset: 0 0 auto 0; height: 440px; opacity: 0.7; -webkit-mask-image: none; mask-image: none; }
+    .glass-stage::after { background: linear-gradient(transparent 30%, #060708); }
+    .glass-poster { background-image: url("/ui/img/glass-poster-m.webp"); }
+    .hero { padding-block: 96px 48px; align-content: start; }
+    .pain-grid { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 1fr; }
+    .rules { grid-template-columns: 1fr; }
+    .roles { grid-template-columns: 1fr; }
+    .role { grid-template-columns: auto 1fr; align-items: baseline; gap: 10px; padding: 12px 14px; }
+    .email-row { flex-direction: column; }
+    .go { width: 100%; }
+    .rc { width: 290px; }
+    .wl-bar .live-dot { display: none; }
+    .kicker .k-mid { display: none; }
+    .ladder div { padding: 8px; }
+    .dock.on { display: block; }
+    .foot { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  }
+}
+</style>
+</head>
+<body>
+<a class="sr-only" href="#join-email">Skip to the sign-up form</a>
+<header class="wl-bar" id="bar">
+  <a class="u-logo" href="/waitlist" aria-label="Receipts by Unprompted"><mark>Re</mark>ceipts<small>by Unprompted</small></a>
+  <div class="wl-bar-cta">
+    <span class="live-dot">Early access · opening in waves</span>
+    <a class="u-btn u-btn-sm go" href="#join" id="bar-join" style="--h:36px">Join the waitlist</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="top" aria-labelledby="hero-h">
+    <figure class="glass-stage" aria-hidden="true">
+      <div class="glass-poster"></div>
+      <canvas class="glass-3d"></canvas>
+    </figure>
+    <div class="u-wide hero-grid">
+      <div class="hero-copy">
+        <p class="kicker" data-reveal><b>Receipts</b> &nbsp;/&nbsp; <span class="k-mid">TikTok · Instagram &nbsp;/&nbsp; </span>Early access</p>
+        <h1 class="hero-h" id="hero-h" data-split>You already said the brand. <span class="u-voice u-iris">Get paid for it.</span></h1>
+        <p class="hero-lead" data-reveal>Every week creators name brands on camera for free. Receipts reads your public videos' transcripts, finds <strong>every brand you've said, tagged or featured</strong>, and turns it into proof a brand can't ignore: <strong>the quote, the second you said it, the views.</strong> Then it puts that proof in front of the brands that pay.</p>
+        <div class="social" id="social" hidden data-reveal>
+          <span class="live-dot" aria-hidden="true"></span>
+          <span id="social-text"></span>
+        </div>
+      </div>
+
+      <div class="hero-pane" id="join" data-reveal>
+        <!-- step 1: email + who you are -->
+        <form class="join" id="join-form" novalidate>
+          <div class="join-head"><h2>Get on the list</h2><span class="join-step">Step 1 of 2</span></div>
+          <div class="ref-note" id="ref-note" hidden><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--highlight)" stroke-width="1.8" stroke-linejoin="round" style="flex:none"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z"/><path d="M14.5 6v12" stroke-dasharray="2 2.2"/></svg><span>A friend saved you a spot. Joining with their link moves you both up.</span></div>
+          <fieldset class="roles">
+            <legend class="u-label">I'm a</legend>
+            <label class="role"><input type="radio" name="role" value="creator" checked><b>Creator</b><span>I post on TikTok / IG</span></label>
+            <label class="role"><input type="radio" name="role" value="brand"><b>Brand</b><span>I hire creators</span></label>
+            <label class="role"><input type="radio" name="role" value="manager"><b>Manager</b><span>I run a roster</span></label>
+          </fieldset>
+          <div class="u-field">
+            <label class="u-label" for="join-email">Email</label>
+            <div class="email-row">
+              <input class="u-input u-input-lg" id="join-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required enterkeyhint="go" aria-describedby="join-err">
+              <button class="u-btn u-btn-lg go" type="submit" id="join-btn">Join the waitlist <span class="arrow" aria-hidden="true">→</span></button>
+            </div>
+          </div>
+          <label class="hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+          <p class="form-err" id="join-err" role="alert"></p>
+          <p class="fine"><span>Free to join</span><span>No card</span><span>One email when your invite is ready</span></p>
+        </form>
+
+        <!-- step 2: three taps (shown after the email is in) -->
+        <form class="join" id="qs-form" hidden>
+          <div class="join-head"><h2 id="qs-title">You're in. Three taps to skip ahead.</h2><span class="join-step">Step 2 of 2</span></div>
+          <p class="u-hint" style="margin-top:-8px">Invites go to the people we can help most first. Tell us who you are.</p>
+          <div class="qs">
+            <div class="q"><label for="q-handle" id="q-handle-label">Your handle</label><input class="u-input" id="q-handle" maxlength="80" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="@yourhandle"></div>
+            <fieldset class="q" id="q-platform-wrap"><legend>Where you post most</legend><div class="chips" id="q-platform"></div></fieldset>
+            <fieldset class="q"><legend id="q-size-label">Followers</legend><div class="chips" id="q-size"></div></fieldset>
+            <fieldset class="q"><legend id="q-pay-label">If it worked, what would it be worth to you a month?</legend><div class="chips" id="q-pay"></div></fieldset>
+            <div class="q"><label for="q-pain" id="q-pain-label">What would you want it to do first? (optional)</label><textarea class="u-textarea u-input" id="q-pain" rows="2" maxlength="500" placeholder="e.g. find brands that already pay creators like me"></textarea></div>
+          </div>
+          <div class="qs-actions">
+            <button class="u-btn u-btn-ghost" type="button" id="qs-skip">Skip for now</button>
+            <button class="u-btn u-btn-lg go" type="submit" id="qs-btn">Save and see my spot <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </form>
+
+        <!-- step 3: the ticket -->
+        <div class="ticket-wrap" id="done" hidden>
+          <div class="ticket" id="ticket" role="group" aria-labelledby="t-pos-label">
+            <div class="t-top"><span class="t-logo"><mark>Re</mark>ceipts</span><span class="t-sub">Early access · admit one</span></div>
+            <hr class="t-rule">
+            <div class="t-num"><small id="t-pos-label">Your place in line</small><b id="t-pos">#—</b></div>
+            <hr class="t-rule">
+            <div class="t-row"><span>Role</span><span id="t-role">—</span></div>
+            <div class="t-row"><span>Handle</span><span id="t-handle">—</span></div>
+            <div class="t-row"><span>Friends joined</span><span id="t-refs">0</span></div>
+            <div class="t-row"><span>Each friend</span><span id="t-jump">+5 spots</span></div>
+            <div class="t-row"><span>On the list</span><span id="t-total">—</span></div>
+            <hr class="t-rule">
+            <div class="t-row"><span>Ticket</span><span id="t-code">—</span></div>
+            <div class="t-bar" aria-hidden="true"></div>
+            <p class="t-foot">Keep this. Your link is your skip-the-line pass.</p>
+          </div>
+          <div class="share">
+            <h3>Move up the line</h3>
+            <p id="share-lead">Every friend who joins with your link moves you up 5 spots. The earliest spots get invited first.</p>
+            <div class="link-row">
+              <label class="sr-only" for="share-link">Your invite link</label>
+              <input class="u-input" id="share-link" readonly>
+              <button class="u-btn u-btn-primary" type="button" id="copy-link">Copy</button>
+            </div>
+            <div class="share-btns">
+              <a class="u-btn u-btn-sm" id="sh-wa" target="_blank" rel="noopener">WhatsApp</a>
+              <a class="u-btn u-btn-sm" id="sh-x" target="_blank" rel="noopener">X</a>
+              <a class="u-btn u-btn-sm" id="sh-li" target="_blank" rel="noopener">LinkedIn</a>
+              <a class="u-btn u-btn-sm" id="sh-mail">Email</a>
+              <button class="u-btn u-btn-sm" type="button" id="sh-native" hidden>More…</button>
+            </div>
+            <div class="ladder" aria-label="Referral milestones">
+              <div data-at="1"><b>1 friend</b>+5 spots</div>
+              <div data-at="3"><b>3 friends</b>+15, first wave odds</div>
+              <div data-at="10"><b>10 friends</b>A founder call</div>
+            </div>
+            <button class="u-btn u-btn-ghost u-btn-sm" type="button" id="edit-answers" style="justify-self:start">Edit my answers</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tape" aria-label="Examples of what a receipt looks like">
+    <div class="tape-row" id="tape-a"></div>
+    <div class="tape-row rev" id="tape-b"></div>
+    <p class="tape-note">Illustrative examples of the format. Real receipts link to the exact second of the video.</p>
+  </section>
+
+  <section class="sec u-wide" aria-labelledby="pain-h">
+    <div class="sec-head">
+      <p class="kicker" data-reveal>The problem</p>
+      <h2 class="sec-h" id="pain-h" data-split>Brands already live in your videos. <span class="u-voice">Nobody's sending the invoice.</span></h2>
+    </div>
+    <div class="pain-grid" data-reveal="2">
+      <div><span class="big">Free</span><p>Creators name the coffee, the gym, the app they actually use, again and again, and get nothing for it.</p></div>
+      <div><span class="big">Blind</span><p>Brands can't search what creators <em>say</em>. Hashtags and tags miss most of it, so the real fans stay invisible.</p></div>
+      <div><span class="big">Cold</span><p>So pitches go out as cold DMs with no proof, and get ignored. A timestamped quote with views changes the conversation.</p></div>
+    </div>
+  </section>
+
+  <section class="sec u-wide" aria-labelledby="how-h" style="padding-top:0">
+    <div class="sec-head">
+      <p class="kicker" data-reveal>How it works</p>
+      <h2 class="sec-h" id="how-h" data-split>One handle in. <span class="u-voice u-iris">Proof out.</span></h2>
+    </div>
+    <div class="steps">
+      <article class="step" data-reveal>
+        <div class="step-txt"><span class="n">01</span><h3>Paste your handle</h3><p>TikTok or Instagram. Receipts reads the transcripts of your public videos. Nothing to connect, nothing posted.</p></div>
+        <div class="mock" aria-hidden="true">
+          <div class="mock-input"><span class="u-muted">@</span>maya.eats<span class="caret"></span></div>
+          <span class="mock-btn">Find my brands</span>
+          <div class="mock-line"><span class="k">Reading 48 videos</span><span class="mock-pill">transcripts</span></div>
+        </div>
+      </article>
+      <article class="step" data-reveal>
+        <div class="step-txt"><span class="n">02</span><h3>Get the receipt</h3><p>Every brand you said, tagged or featured: the exact words, the second you said them, the frame and the views. Ads you disclosed stay separate.</p></div>
+        <div class="mock" aria-hidden="true">
+          <p class="mock-q">"post-leg-day reward, honestly my <mark class="said">Starbucks</mark> order is a personality"</p>
+          <div class="mock-line"><span class="k">0:31 · 88K views</span><span class="mock-pill ok">Said on camera</span></div>
+          <div class="mock-line"><span class="k">Starbucks · 4 videos</span><span class="mock-pill">unpaid</span></div>
+        </div>
+      </article>
+      <article class="step" data-reveal>
+        <div class="step-txt"><span class="n">03</span><h3>Get paid</h3><p>Pitch with proof attached, or answer brands that want to licence your best video as an ad. You approve everything.</p></div>
+        <div class="mock" aria-hidden="true">
+          <div class="mock-mail"><span class="k">To: partnerships · Subject: you're already in my videos</span><span>4 organic mentions, 1.2M views. Here's the quote at 0:31…</span></div>
+          <div class="mock-line"><span class="k">Licence request · 30-day paid ad</span><span class="mock-pill ok">Accept</span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="sec u-wide" aria-labelledby="who-h" style="padding-top:0">
+    <div class="sec-head">
+      <p class="kicker" data-reveal>Who it's for</p>
+      <h2 class="sec-h" id="who-h" data-split>Three seats at <span class="u-voice">the same table.</span></h2>
+    </div>
+    <div class="who">
+      <article class="who-card" style="--glow:oklch(0.92 0.19 122)" data-reveal>
+        <span class="tag">Creators</span>
+        <h3>Turn mentions into money.</h3>
+        <ul>
+          <li><span><b>Every brand you've named</b>, with the receipt to prove it</span></li>
+          <li><span><b>Who's paying creators</b> in your niche right now</span></li>
+          <li><span><b>A pitch draft</b> with your rate and the quote attached</span></li>
+        </ul>
+        <button class="u-btn pick" type="button" data-role="creator">Join as a creator</button>
+      </article>
+      <article class="who-card" style="--glow:oklch(0.78 0.14 285)" data-reveal>
+        <span class="tag">Brands</span>
+        <h3>Find the fans already selling you.</h3>
+        <ul>
+          <li><span><b>Search what creators say</b>, not just what they tag</span></li>
+          <li><span><b>A weekly digest</b> of new on-camera mentions of your brand</span></li>
+          <li><span><b>Licence the video</b> as an ad, rights and price agreed in one link</span></li>
+        </ul>
+        <button class="u-btn pick" type="button" data-role="brand">Join as a brand</button>
+      </article>
+      <article class="who-card" style="--glow:oklch(0.86 0.1 340)" data-reveal>
+        <span class="tag">Managers</span>
+        <h3>Your whole roster, one report.</h3>
+        <ul>
+          <li><span><b>Every creator's brand mentions</b> in one weekly view</span></li>
+          <li><span><b>Warm leads</b> ranked by brands that already pay</span></li>
+          <li><span><b>Proof-backed pitches</b> for each creator, ready to send</span></li>
+        </ul>
+        <button class="u-btn pick" type="button" data-role="manager">Join as a manager</button>
+      </article>
+    </div>
+  </section>
+
+  <section class="sec u-wide" aria-labelledby="rules-h" style="padding-top:0">
+    <div class="sec-head" style="margin-bottom:var(--s-6)">
+      <p class="kicker" data-reveal>Our rules</p>
+      <h2 class="sec-h" id="rules-h" data-split>Proof, <span class="u-voice">not vibes.</span></h2>
+    </div>
+    <div class="rules" data-reveal="2">
+      <div><h3>Verbatim or nothing</h3><p>Every claim links to the second it was said. If we can't show it, we don't count it.</p></div>
+      <div><h3>Public videos only</h3><p>We read public transcripts. No logins, no DMs, nothing posted for you.</p></div>
+      <div><h3>Ads kept apart</h3><p>Disclosed sponsorships are labelled as ads, never passed off as organic love.</p></div>
+      <div><h3>You approve it</h3><p>No pitch, licence or payment moves without the creator saying yes.</p></div>
+    </div>
+  </section>
+
+  <section class="sec u-wide" aria-labelledby="faq-h" style="padding-top:0">
+    <div class="faq">
+      <div class="sec-head" style="margin:0">
+        <p class="kicker" data-reveal>Questions</p>
+        <h2 class="sec-h" id="faq-h" data-split>Before you <span class="u-voice">join.</span></h2>
+      </div>
+      <div class="faq-list" data-reveal>
+        <details><summary>When do I get in?</summary><p>Invites go out in waves, earliest spots first. Inviting friends moves you up 5 spots each. You'll get one email when your invite is ready.</p></details>
+        <details><summary>Is it free?</summary><p>Joining the waitlist is free and needs no card. Creators will be able to scan for free and see their top brands; deeper features are a paid plan. Early members hear the pricing first.</p></details>
+        <details><summary>Which platforms?</summary><p>TikTok and Instagram today. Tell us in step 2 if you mostly post somewhere else; that's exactly the signal we use to decide what's next.</p></details>
+        <details><summary>Do you post or DM for me?</summary><p>Never. Receipts reads public video transcripts. Pitches are drafts you send yourself, and licence offers need your yes.</p></details>
+        <details><summary>What happens to my email?</summary><p>It's used for your invite and launch updates from us, nothing else. It's never sold or shared.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="end" aria-labelledby="end-h">
+    <h2 class="end-h" id="end-h" data-split>The receipts are already out there. <span class="u-voice u-iris">Get in line.</span></h2>
+    <button class="u-btn go" type="button" id="end-join" data-magnetic>Join the waitlist <span class="arrow" aria-hidden="true">→</span></button>
+    <p class="u-muted" id="end-count" style="font-size:var(--fs-sm)">Free to join · invites in waves</p>
+  </section>
+
+  <footer class="foot u-wide">
+    <span>© <span id="yr">2026</span> Unprompted · Receipts</span>
+    <span>Questions? <a href="mailto:yasirsza@gmail.com">Email the founder</a></span>
+  </footer>
+</main>
+
+<div class="dock" id="dock"><a class="u-btn go" href="#join">Join the waitlist →</a></div>
+
+<script>
+(() => {
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const params = new URLSearchParams(location.search);
+const ROLE_NAMES = { creator: 'Creator', brand: 'Brand', manager: 'Manager' };
+const Q = {
+  creator: { handle: ['Your handle', '@yourhandle'], size: ['Followers', [['s', 'Under 10K'], ['m', '10K–100K'], ['l', '100K–1M'], ['xl', '1M+']]],
+             pain: 'e.g. find brands that already pay creators like me' },
+  brand: { handle: ['Brand name', 'e.g. Oatly'], size: ['Monthly creator budget', [['s', 'None yet'], ['m', 'Under $1K'], ['l', '$1K–10K'], ['xl', '$10K+']]],
+           pain: 'e.g. find creators who already love us before we pay anyone' },
+  manager: { handle: ['Agency or roster name', 'e.g. North Talent'], size: ['Creators you manage', [['s', '1–5'], ['m', '6–20'], ['l', '21–50'], ['xl', '50+']]],
+             pain: 'e.g. one weekly report of brand leads for my whole roster' },
+};
+const PLATFORMS = [['tiktok', 'TikTok'], ['instagram', 'Instagram'], ['youtube', 'YouTube'], ['other', 'Somewhere else']];
+const PAY = [['0', 'Only if free'], ['9', '$9'], ['29', '$29'], ['99', '$99+']];
+
+// ---- attribution: where this visitor came from (utm, the referring site, or a friend's code)
+const ref = (params.get('ref') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 16) || (store.get('wl_ref') || '');
+if (params.get('ref')) store.set('wl_ref', ref);
+const refHost = (() => { try { const h = new URL(document.referrer).hostname.replace(/^www\./, ''); return h && h !== location.hostname ? h : ''; } catch { return ''; } })();
+const utm = {};
+for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content']) if (params.get(k)) utm[k] = params.get(k).slice(0, 200);
+if (refHost) utm.referrer = refHost;
+const first = store.get('wl_src');
+const source = (first && first.source) || (utm.utm_source || (ref ? 'referral' : '') || refHost || 'direct').toLowerCase().slice(0, 60);
+if (!first) store.set('wl_src', { source, utm });
+const attribution = (first && first.utm) || utm;
+let visitor = store.get('wl_vid');
+if (!visitor) { visitor = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32); store.set('wl_vid', visitor); }
+const api = (path, body) => fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})
+  .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong. Try again.'), { status: r.status }); return j; });
+api('/api/waitlist/visit', { visitor, source, ref }).catch(() => {});
+
+if (ref) $('#ref-note').hidden = false;
+$('#yr').textContent = new Date().getFullYear();
+
+// ---- social proof: real numbers only, and only once there are enough to mean something
+api('/api/waitlist/stats').then((s) => {
+  if (!s || s.total < 25) return;
+  const t = U.fmt(s.total, 'compact');
+  $('#social-text').textContent = `${t} creators, brands and managers already in line${s.today >= 3 ? `, ${s.today} today` : ''}.`;
+  $('#social').hidden = false;
+  $('#end-count').textContent = `${t} people in line · free to join`;
+}).catch(() => {});
+
+// ---- step 1: join
+let me = store.get('wl_me');          // {code, email, role}
+const role = () => ($('input[name="role"]:checked') || {}).value || 'creator';
+const setRole = (r) => { const el = $(`input[name="role"][value="${r}"]`); if (el) el.checked = true; };
+if (['creator', 'brand', 'manager'].includes(params.get('as'))) setRole(params.get('as'));
+
+$('#join-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('#join-email').value.trim(), err = $('#join-err');
+  err.textContent = '';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'That email doesn\'t look right.'; $('#join-email').focus(); return; }
+  const btn = $('#join-btn');
+  btn.setAttribute('aria-busy', 'true'); btn.disabled = true;
+  try {
+    const r = await api('/api/waitlist', { email, role: role(), ref, source, utm: attribution, visitor, website: e.target.website.value });
+    me = { ...r, email };
+    store.set('wl_me', { code: r.code, email, role: r.role || role() });
+    showQuestions();
+  } catch (x) {
+    err.textContent = x.message;
+  } finally { btn.removeAttribute('aria-busy'); btn.disabled = false; }
+});
+
+// ---- step 2: questions, shaped by role
+function chips(el, name, items, value) {
+  el.replaceChildren(...items.map(([v, label]) => U.h('label', { class: 'chip' },
+    U.h('input', { type: 'radio', name, value: v, checked: v === value || null }), label)));
+}
+function showQuestions() {
+  const r = (me && me.role) || role(), q = Q[r];
+  $('#q-handle-label').textContent = q.handle[0];
+  $('#q-handle').placeholder = q.handle[1];
+  $('#q-size-label').textContent = q.size[0];
+  $('#q-pain').placeholder = q.pain;
+  $('#q-platform-wrap').hidden = r !== 'creator';
+  chips($('#q-platform'), 'platform', PLATFORMS, me && me.platform);
+  chips($('#q-size'), 'size', q.size[1], me && me.size);
+  chips($('#q-pay'), 'pay', PAY, me && me.pay);
+  $('#q-pay-label').textContent = r === 'brand' ? 'If it found you creators who already love you, what would it be worth a month?'
+    : r === 'manager' ? 'For your whole roster, what would it be worth a month?' : 'If it got you paid deals, what would it be worth to you a month?';
+  if (me && me.handle) $('#q-handle').value = me.handle;
+  $('#qs-title').textContent = me && me.alreadyJoined ? 'Welcome back. Update your answers?' : 'You\'re in. Three taps to skip ahead.';
+  swap('#qs-form');
+  setTimeout(() => $('#q-handle').focus({ preventScroll: true }), 50);
+}
+const val = (n) => ($(`#qs-form input[name="${n}"]:checked`) || {}).value || '';
+$('#qs-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#qs-btn');
+  btn.setAttribute('aria-busy', 'true'); btn.disabled = true;
+  try {
+    const r = await api('/api/waitlist', { email: me.email, role: me.role || role(), handle: $('#q-handle').value.trim(), platform: val('platform'),
+      size: val('size'), pay: val('pay'), pain: $('#q-pain').value.trim(), ref, source, utm: attribution, visitor });
+    me = { ...me, ...r, handle: $('#q-handle').value.trim(), platform: val('platform'), size: val('size'), pay: val('pay') };
+    showTicket(true);
+  } catch (x) { U.toast(x.message, { kind: 'error' }); } finally { btn.removeAttribute('aria-busy'); btn.disabled = false; }
+});
+$('#qs-skip').addEventListener('click', () => showTicket(true));
+$('#edit-answers').addEventListener('click', showQuestions);
+
+// ---- step 3: the ticket and the share loop
+function swap(sel) {
+  for (const s of ['#join-form', '#qs-form', '#done']) $(s).hidden = s !== sel;
+  document.body.classList.toggle('joined', sel !== '#join-form');
+}
+function shareText() {
+  return me.role === 'brand' ? 'Found this: Receipts finds creators who already mention your brand on camera, with the exact quote and views. Early access is opening in waves:'
+    : me.role === 'manager' ? 'Receipts turns every brand your creators mention on camera into a proof-backed pitch. Early access is opening in waves:'
+    : 'Just got on the Receipts waitlist. It finds every brand you\'ve mentioned on camera and turns it into a paid pitch with proof. Skip the line with my link:';
+}
+function showTicket(print) {
+  const link = `${location.origin}/waitlist?ref=${encodeURIComponent(me.code)}`;
+  $('#t-pos').textContent = '#' + Number(me.position || 0).toLocaleString();
+  $('#t-role').textContent = ROLE_NAMES[me.role] || '—';
+  $('#t-handle').textContent = me.handle || '—';
+  $('#t-refs').textContent = String(me.referrals || 0);
+  $('#t-jump').textContent = `+${me.jump || 5} spots`;
+  $('#t-total').textContent = me.total ? Number(me.total).toLocaleString() : '—';
+  $('#t-code').textContent = String(me.code);
+  $('#share-link').value = link;
+  const text = shareText();
+  $('#sh-wa').href = 'https://wa.me/?text=' + encodeURIComponent(`${text} ${link}`);
+  $('#sh-x').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(link);
+  $('#sh-li').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(link);
+  $('#sh-mail').href = 'mailto:?subject=' + encodeURIComponent('You should get on this') + '&body=' + encodeURIComponent(`${text}\n\n${link}`);
+  $('#sh-native').hidden = !navigator.share;
+  const refs = me.referrals || 0;
+  $$('.ladder div').forEach((d) => d.classList.toggle('on', refs >= Number(d.dataset.at)));
+  $('#share-lead').textContent = refs ? `${refs} friend${refs === 1 ? '' : 's'} joined with your link. Each one moves you up ${me.jump || 5} spots.`
+    : `Every friend who joins with your link moves you up ${me.jump || 5} spots. The earliest spots get invited first.`;
+  swap('#done');
+  const t = $('#ticket');
+  t.classList.remove('printing');
+  if (print && !U.reduced()) { void t.offsetWidth; t.classList.add('printing'); }
+  if (print) $('#join').scrollIntoView({ block: 'start', behavior: U.reduced() ? 'auto' : 'smooth' });
+}
+$('#copy-link').addEventListener('click', () => U.copy($('#share-link').value, 'Invite link copied'));
+$('#share-link').addEventListener('focus', (e) => e.target.select());
+$('#sh-native').addEventListener('click', () => navigator.share({ title: 'Receipts early access', text: shareText(), url: $('#share-link').value }).catch(() => {}));
+
+// returning visitor: show their ticket instead of the form
+if (me && me.code) {
+  api('/api/waitlist/' + encodeURIComponent(me.code)).then((r) => { me = { ...me, ...r }; showTicket(false); })
+    .catch((x) => { if (x.status === 404) { store.set('wl_me', null); me = null; } });
+}
+
+// ---- joining from anywhere on the page
+function goJoin(r) {
+  if (r) setRole(r);
+  $('#join').scrollIntoView({ block: 'center', behavior: U.reduced() ? 'auto' : 'smooth' });
+  if (!$('#join-form').hidden) setTimeout(() => $('#join-email').focus({ preventScroll: true }), U.reduced() ? 0 : 500);
+}
+$$('.pick').forEach((b) => b.addEventListener('click', () => goJoin(b.dataset.role)));
+$('#end-join').addEventListener('click', () => goJoin());
+$$('a[href="#join"]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); goJoin(); }));
+
+// ---- chrome: bar fills once you scroll; the phone dock shows while the form is off screen
+const bar = $('#bar'), dock = $('#dock');
+const onScroll = () => bar.classList.toggle('is-stuck', scrollY > 40);
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+new IntersectionObserver(([e]) => { dock.classList.toggle('on', !e.isIntersecting && e.boundingClientRect.top < 0); }).observe($('#join'));
+
+// ---- the receipts tape (illustrative)
+const SAMPLES = [
+  ['@maya.eats', 'iced capp, extra large, nobody talk to me.', 'Tim Hortons', 'hits different', '0:05', '412K'],
+  ['@sami.lifts', 'post-leg-day reward, honestly my', 'Starbucks', 'order is a personality', '0:31', '88K'],
+  ['@noor.cooks', 'this shawarma is unreal, and a cold', 'Vimto', 'because I\u2019m a child', '0:09', '1.3M'],
+  ['@dxb.dad', 'school run fuel:', 'Almarai', 'laban, every single morning', '0:14', '240K'],
+  ['@late.night.lina', 'it\u2019s 2am and I\u2019m ordering', 'Talabat', 'again, don\u2019t judge me', '0:22', '67K'],
+  ['@fitwithomar', 'the only shorts I train in are', 'Gymshark', 'and that\u2019s not an ad', '0:47', '510K'],
+  ['@hana.haul', 'the whole fit is', 'Shein', 'and it cost less than lunch', '0:03', '930K'],
+  ['@studywithzee', 'I literally passed because of', 'Notion', 'templates, no joke', '1:12', '205K'],
+  ['@runwithrae', 'mile nine and the only thing keeping me alive is', 'Gatorade', '', '0:18', '74K'],
+  ['@chef.kenji.jr', 'cast iron, a knob of butter and', 'Maldon', 'salt. that\u2019s the whole secret', '0:40', '1.1M'],
+];
+const card = ([who, a, brand, b, ts, views]) => U.h('figure', { class: 'rc' },
+  U.h('q', {}, a + ' ', U.h('mark', { class: 'said' }, brand), b ? ' ' + b : ''),
+  U.h('figcaption', { class: 'rc-meta' }, U.h('b', {}, who), U.h('span', {}, `${ts} · ${views} views`)));
+const fill = (el, list) => el.replaceChildren(...[...list, ...list].map(card));
+fill($('#tape-a'), SAMPLES.slice(0, 5).concat(SAMPLES.slice(7)));
+fill($('#tape-b'), SAMPLES.slice(3).concat(SAMPLES.slice(0, 3)));
+$$('.tape-row').forEach((r, i) => r.querySelectorAll('.rc').forEach((c, j) => { if (j >= r.children.length / 2) c.setAttribute('aria-hidden', 'true'); }));
+
+// ---- the glass lens (decoration; a still poster stays under reduced motion or without WebGL)
+let glass = null;
+const startGlass = () => import('/ui/glass3d.js?v=1').then((m) => m.start($('.glass-3d'), { reduced: U.reduced })).then((c) => { glass = c || null; }).catch(() => {});
+const idle = (f) => (window.requestIdleCallback || ((g) => setTimeout(g, 300)))(f);
+if (document.readyState === 'complete') idle(startGlass); else addEventListener('load', () => idle(startGlass));
+document.addEventListener('u:prefs', () => glass?.refresh());
+})();
+</script>
+</body>
+</html>
