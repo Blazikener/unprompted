@@ -8,6 +8,7 @@ import json
 import math
 import mimetypes
 import os
+import posixpath
 import re
 import statistics
 import sys
@@ -22,7 +23,7 @@ from datetime import date, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib import error, request
-from urllib.parse import parse_qs, quote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import psycopg
 from psycopg.rows import dict_row
@@ -45,6 +46,28 @@ LANGS = {
     "id": ["id", "ind"], "tr": ["tr", "tur"], "ar": ["ar", "ara"],
 }
 DB_URL = os.environ.get("DATABASE_URL", "postgresql:///unprompted")
+
+
+def waitlist_only():
+    return os.environ.get("WAITLIST_ONLY", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+WAITLIST_ALLOW = re.compile(
+    r"(?:"
+    r"/waitlist(?:/.*)?"
+    r"|/join/?"
+    r"|/ui/.+"
+    r"|/favicon\.ico"
+    r"|/admin(?:/.*)?"
+    r"|/api/admin/.*"
+    r"|/digest/[^/]+"
+    r"|/offer/[^/]+"
+    r"|/license/[^/]+/[^/]+"
+    r"|/api/digests/(?:[A-Za-z0-9_-]{16,32}(?:/.*)?|run|sample)"
+    r"|/api/licenses/offer/[0-9a-f]{32}"
+    r"|/api/waitlist(?:/.*)?"
+    r")"
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS searches (
@@ -698,7 +721,25 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT / "frontend"), **kwargs)
 
+    def _waitlist_gate(self, method):
+        url = urlparse(self.path)
+        path = posixpath.normpath(unquote(unquote(url.path)))
+        if not waitlist_only() or WAITLIST_ALLOW.fullmatch(path):
+            return False
+        if method in ("GET", "HEAD") and not path.startswith("/api/"):
+            location = "/waitlist" + ("?" + url.query if url.query else "")
+            self.send_response(302)
+            self.send_header("Location", location)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        else:
+            self.api(not_found)
+        return True
+
     def do_GET(self):
+        if self._waitlist_gate("GET"):
+            return
         url = urlparse(self.path)
         path = url.path
         m = re.fullmatch(r"/api/searches/(\d+)", path)
@@ -764,7 +805,14 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/waitlist/admin.html"
             super().do_GET()
 
+    def do_HEAD(self):
+        if self._waitlist_gate("HEAD"):
+            return
+        super().do_HEAD()
+
     def do_POST(self):
+        if self._waitlist_gate("POST"):
+            return
         routes = {"/api/searches": run_search, "/api/checks": run_check,
                   "/api/searches/stream": lambda body, user: Stream(search_events(*parse(body), user=user))}
         route = routes.get(urlparse(self.path).path)

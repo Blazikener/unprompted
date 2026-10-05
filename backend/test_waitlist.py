@@ -1,5 +1,6 @@
 """Waitlist signups, referral queue, visit tracking, and operator reporting."""
 import json
+import http.client
 import os
 import threading
 import time
@@ -26,6 +27,7 @@ def db_connect():
 def clean(monkeypatch):
     server.init_db()
     monkeypatch.setenv("DIGEST_RUN_TOKEN", "run-secret")
+    monkeypatch.delenv("WAITLIST_ONLY", raising=False)
     monkeypatch.delenv("DEMO_MODE", raising=False)
     monkeypatch.delenv("ORIANE_API_KEY", raising=False)
     monkeypatch.delenv("WAITLIST_MAIL_DAILY", raising=False)
@@ -59,6 +61,23 @@ def request(base, path, body=None, token=None, headers=None):
             return response.status, json.load(response)
     except urllib.error.HTTPError as error:
         return error.code, json.load(error)
+
+
+def direct_request(base, method, path, body=None):
+    from urllib.parse import urlsplit
+    url = urlsplit(base)
+    headers = {}
+    data = None
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(body)
+    conn = http.client.HTTPConnection(url.hostname, url.port)
+    conn.request(method, path, body=data, headers=headers)
+    response = conn.getresponse()
+    output = response.read()
+    result = response.status, dict(response.getheaders()), output
+    conn.close()
+    return result
 
 
 def join(base, email, **fields):
@@ -242,6 +261,63 @@ def test_waitlist_and_join_static_aliases(base):
     for path in ("/waitlist", "/waitlist?ref=abc", "/join"):
         with urllib.request.urlopen(base + path) as response:
             assert response.status == 200
+
+
+def test_waitlist_only_redirects_blocked_pages_and_preserves_query(base, monkeypatch):
+    monkeypatch.setenv("WAITLIST_ONLY", "1")
+    for path in ("/", "/creators/", "/brands/", "/dashboard", "/index.html", "/creators/index.html"):
+        status, headers, _ = direct_request(base, "GET", path)
+        assert status == 302 and headers["Location"] == "/waitlist"
+        assert headers["Cache-Control"] == "no-store" and headers["Content-Length"] == "0"
+    status, headers, _ = direct_request(base, "GET", "/creators/?utm_source=tt")
+    assert status == 302 and headers["Location"] == "/waitlist?utm_source=tt"
+    status, headers, body = direct_request(base, "HEAD", "/")
+    assert status == 302 and headers["Location"] == "/waitlist" and body == b""
+
+
+def test_waitlist_only_returns_json_404_for_blocked_apis(base, monkeypatch):
+    monkeypatch.setenv("WAITLIST_ONLY", "1")
+    for path in ("/api/showcase", "/api/searches"):
+        status, headers, body = direct_request(base, "GET", path)
+        assert status == 404 and headers["Content-Type"] == "application/json"
+        assert json.loads(body) == {"error": "Not found."}
+    for path in ("/api/creators/login", "/api/digests"):
+        status, headers, body = direct_request(base, "POST", path, {})
+        assert status == 404 and headers["Content-Type"] == "application/json"
+        assert json.loads(body) == {"error": "Not found."}
+
+
+def test_waitlist_only_allows_public_operator_and_existing_customer_routes(base, monkeypatch):
+    monkeypatch.setenv("WAITLIST_ONLY", "1")
+    for path in ("/waitlist", "/join", "/waitlist/og.png", "/ui/ui.css", "/admin/", "/digest/abcdefghijklmnop"):
+        status, _, _ = direct_request(base, "GET", path)
+        assert status == 200, path
+
+    status, _, _ = direct_request(base, "POST", "/api/waitlist", {
+        "email": "lockdown@wl.test", "role": "creator",
+    })
+    assert status == 200
+    status, _, body = direct_request(base, "GET", "/api/admin/waitlist")
+    assert status == 401 and json.loads(body) == {"error": "Bad run token."}
+
+    reached = []
+    monkeypatch.setattr(digest, "dispatch", lambda handler: reached.append(handler.path) or {"reached": True})
+    status, _, body = direct_request(base, "GET", "/api/digests/abcdefghijklmnopqr")
+    assert status == 200 and json.loads(body) == {"reached": True}
+    assert reached == ["/api/digests/abcdefghijklmnopqr"]
+
+
+def test_waitlist_only_rejects_encoded_path_traversal(base, monkeypatch):
+    monkeypatch.setenv("WAITLIST_ONLY", "1")
+    for path in ("/waitlist/%2e%2e/creators/index.html", "/waitlist/%252e%252e/creators/index.html"):
+        status, headers, _ = direct_request(base, "GET", path)
+        assert status == 302 and headers["Location"] == "/waitlist"
+
+
+def test_waitlist_only_off_preserves_root_route(base, monkeypatch):
+    monkeypatch.delenv("WAITLIST_ONLY", raising=False)
+    status, _, _ = direct_request(base, "GET", "/")
+    assert status == 200
 
 
 def test_each_referral_moves_referrer_exactly_jump_spots(base):
