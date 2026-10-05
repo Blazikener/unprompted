@@ -9,6 +9,7 @@ Hackathon prototype (Replit x Oriane). Finds creators who mention a brand on cam
 - `python3 backend/server.py` serves Receipts at http://127.0.0.1:8000/ and the brand dashboard at http://127.0.0.1:8000/brands/. Schema is created on start.
 - Self-check: `python3 backend/test_server.py`
 - Env (`.env`, gitignored): `ORIANE_API_KEY`; optional `DATABASE_URL`, `HOST`, `PORT`. On Replit: `HOST=0.0.0.0` plus Replit's `DATABASE_URL`.
+- Set `WAITLIST_ONLY=1` to redirect non-allowlisted pages to `/waitlist` and return 404 for other APIs during launch.
 
 ## Layout
 - `backend/server.py`: stdlib HTTP server + psycopg 3. Oriane client, mention classifier, score check, Postgres storage (`searches`, `videos`, `mentions`, `checks`).
