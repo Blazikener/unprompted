@@ -719,10 +719,14 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: packaging.admin_route(self))
         elif path == "/api/admin/health":
             self.api(lambda: ops.admin_route(self))
+        elif path == "/api/admin/waitlist":
+            self.api(lambda: waitlist.admin_route(self))
         elif path == "/api/brands/arabic":
             self.api(lambda: {"brands": brands.arabic_spellings()})
         elif path == "/api/showcase":
             self.api(showcase)
+        elif path.startswith("/api/waitlist"):
+            self.api(lambda: waitlist.dispatch(self))
         elif path.startswith("/api/admin/"):
             self.api(lambda: digest.admin(self))
         elif path == "/api/searches":
@@ -754,6 +758,10 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/creators/roster.html"
             elif path in ("/demo/credits", "/demo/credits/"):
                 self.path = "/demo/credits.html"
+            elif path in ("/waitlist", "/waitlist/", "/join", "/join/"):
+                self.path = "/waitlist/index.html"
+            elif path in ("/waitlist/admin", "/waitlist/admin/"):
+                self.path = "/waitlist/admin.html"
             super().do_GET()
 
     def do_POST(self):
@@ -764,6 +772,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: creator.dispatch(self))
         if self.path.startswith("/api/digests"):
             return self.api(lambda: digest.dispatch(self))
+        if self.path.startswith("/api/waitlist"):
+            return self.api(lambda: waitlist.dispatch(self))
         if self.path.startswith("/api/licenses/") or self.path.startswith("/api/admin/handles"):
             return self.api(lambda: licenses.dispatch(self))
         if self.path.startswith("/api/rosters/") or self.path == "/api/admin/rosters":
@@ -841,6 +851,7 @@ import brands  # noqa: E402
 import eval_mentions  # noqa: E402
 import packaging  # noqa: E402
 import ops  # noqa: E402
+import waitlist  # noqa: E402
 
 
 def init_db():
@@ -858,6 +869,7 @@ def init_db():
         db.execute(seeding.SCHEMA)
         db.execute(eval_mentions.SCHEMA)
         db.execute(packaging.SCHEMA)
+        db.execute(waitlist.SCHEMA)
 
 
 if __name__ == "__main__":
