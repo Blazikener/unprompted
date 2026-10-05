@@ -11,6 +11,8 @@
    - Dark "cinema" by default (huge tight display type, hairline grid, glass), light as an option, a present mode for
      meeting rooms. Display type is Host Grotesk; Instrument Serif italic is the one voice accent. */
 
+@import url("/ui/fonts.css");
+
 @layer reset, tokens, base, components, utilities, page;
 
 @layer reset {

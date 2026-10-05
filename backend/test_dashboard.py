@@ -227,7 +227,7 @@ def test_brand_aggregates_are_user_scoped_and_filter_owned_kinds(user):
         out = dashboard.view(user)["brand"]
         assert out["searches"] == 3
         assert out["digests"] == {"active": 1, "pending": 1}
-        assert out["mentions"] == 5 and out["views"] == 1_100
+        assert out["mentions"] == 4 and out["views"] == 1_000
         weeks = {row["week"]: row["mentions"] for row in out["weekly"]}
         assert weeks[monday().date().isoformat()] == 3
         assert weeks[monday(-2).date().isoformat()] == 1
@@ -238,6 +238,28 @@ def test_brand_aggregates_are_user_scoped_and_filter_owned_kinds(user):
         assert out["licenseRequests"] == {"requested": 2, "accepted": 1, "live": 1, "declined": 1}
     finally:
         delete_user(other)
+
+
+def test_activity_filters_noise_and_collapses_consecutive_duplicates(user):
+    now = datetime.now(UTC)
+    events = [
+        ("signup", Jsonb({}), now - timedelta(minutes=5)),
+        ("scan", Jsonb({"handle": "maya.eats"}), now - timedelta(minutes=4)),
+        ("visit", Jsonb({"page": "/brands/"}), now - timedelta(minutes=3, seconds=30)),
+        ("scan", Jsonb({"handle": "maya.eats"}), now - timedelta(minutes=3)),
+        ("digest_confirm", Jsonb({"brand": "Trail Co"}), now - timedelta(minutes=2)),
+        ("paywall", Jsonb({"reason": "scan_quota"}), now - timedelta(minutes=1)),
+        ("offer_accept", Jsonb({"request": 7}), now),
+    ]
+    with server.connect() as db:
+        for name, data, created_at in events:
+            db.execute(
+                "INSERT INTO events (user_id, name, data, created_at) VALUES (%s, %s, %s, %s)",
+                (user["id"], name, data, created_at),
+            )
+
+    activity = dashboard.view(user)["activity"]
+    assert [row["name"] for row in activity] == ["offer_accept", "digest_confirm", "scan", "signup"]
 
 
 def test_manager_roster_summary_reuses_roster_access(user):

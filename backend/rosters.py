@@ -133,13 +133,19 @@ def add_creator(user, body):
         db.execute("INSERT INTO roster_creators (roster_id, platform, handle, name) VALUES (%s, %s, %s, %s)"
                    " ON CONFLICT (roster_id, platform, handle) DO UPDATE SET name = coalesce(excluded.name, roster_creators.name)",
                    (r["id"], platform, handle, name))
+    creator.track(user["id"], "roster_creator_added", {"platform": platform, "handle": handle})
     return mine(user)
 
 
 def remove_creator(user, body):
     r = require_access(user)
     with connect() as db:
-        db.execute("DELETE FROM roster_creators WHERE roster_id = %s AND id = %s", (r["id"], body.get("id")))
+        removed = db.execute(
+            "DELETE FROM roster_creators WHERE roster_id = %s AND id = %s RETURNING platform, handle",
+            (r["id"], body.get("id")),
+        ).fetchone()
+    if removed:
+        creator.track(user["id"], "roster_creator_removed", dict(removed))
     return mine(user)
 
 

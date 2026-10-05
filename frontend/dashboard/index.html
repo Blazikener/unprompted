@@ -5,19 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard · Unprompted</title>
 <meta name="description" content="Your creator receipts, brand searches and manager roster in one place.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
-<link rel="stylesheet" href="/ui/ui.css?v=2">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
 <script src="/ui/motion.js?v=1" defer></script>
 <style>
 @layer page {
   :root { --dash-ink: #d0f854; }
   body { min-width: 320px; }
-  .dash-bar { position: sticky; inset-block-start: 0; z-index: var(--z-sticky); min-height: 64px; }
+  .dash-bar { position: sticky; inset-block-start: 0; z-index: var(--z-sticky); min-height: 64px; flex-wrap: wrap; }
   .dash-bar .grow { flex: 1; }
+  .dash-account { display: flex; align-items: center; gap: var(--s-2); flex: none; }
   .dash-main { width: min(1440px, 100% - clamp(28px, 6vw, 88px)); margin-inline: auto; padding-block: clamp(28px, 4vw, 56px) 80px; }
-  .dash-hero { position: relative; isolation: isolate; display: flex; justify-content: space-between; align-items: end; gap: var(--s-5); padding: clamp(24px, 4vw, 48px);
+  .dash-hero { position: relative; isolation: isolate; display: block; padding: clamp(24px, 4vw, 48px);
                border: 1px solid var(--border); border-radius: var(--r-5); overflow: hidden; background: var(--surface-2); }
   .dash-hero::before { position: absolute; z-index: -1; inset: 0; content: ""; opacity: 0.8; pointer-events: none;
                        background: radial-gradient(ellipse at 84% 10%, oklch(0.72 0.17 132 / 0.16), transparent 42%),
@@ -26,10 +25,8 @@
   .dash-title em { display: block; margin-top: 6px; color: var(--text-2); font: italic 400 0.78em/1.1 var(--voice); letter-spacing: -0.035em; }
   .dash-intro { max-width: 54ch; margin-top: var(--s-3); color: var(--text-2); }
   .dash-kicker, .panel-kicker { color: var(--text-3); font: 500 var(--fs-xs)/1.2 var(--mono); letter-spacing: 0.11em; text-transform: uppercase; }
-  .account-block { display: grid; justify-items: end; gap: var(--s-2); flex: none; }
-  .account-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: var(--s-2); }
-  .account-email { color: var(--text-2); font-size: var(--fs-sm); }
-  .account-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--s-2); }
+  .account-email { max-width: 220px; overflow: hidden; color: var(--text-2); font-size: var(--fs-sm); text-overflow: ellipsis; white-space: nowrap; }
+  .account-actions { display: flex; align-items: center; gap: var(--s-2); }
   .dash-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: start; margin-top: var(--s-5); }
   .dash-rail { position: sticky; inset-block-start: 84px; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-4); background: var(--surface-2); }
   .rail-label { margin: 0 var(--s-2) var(--s-2); color: var(--text-3); font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
@@ -46,11 +43,16 @@
   .panel-head { display: flex; justify-content: space-between; align-items: end; gap: var(--s-3); margin-bottom: var(--s-4); }
   .panel-head h2 { margin-top: 5px; font: 600 var(--fs-3xl)/1 var(--display); letter-spacing: -0.05em; }
   .panel-head p { max-width: 54ch; color: var(--text-2); font-size: var(--fs-sm); }
-  .welcome { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); padding: var(--s-4) var(--s-5);
-             border: 1px solid color-mix(in oklch, var(--highlight) 34%, var(--border)); border-radius: var(--r-4);
-             background: linear-gradient(110deg, color-mix(in oklch, var(--highlight) 9%, var(--surface)), var(--surface)); }
-  .welcome strong { display: block; font: 500 var(--fs-xl)/1.2 var(--display); }
-  .welcome p { margin-top: 4px; color: var(--text-2); font-size: var(--fs-sm); }
+  .setup-card { margin-bottom: var(--s-4); padding: var(--s-4); border-color: color-mix(in oklch, var(--highlight) 34%, var(--border)); }
+  .setup-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
+  .setup-head h2 { font: 500 var(--fs-lg)/1.2 var(--display); }
+  .setup-head p { color: var(--text-3); font-size: var(--fs-xs); }
+  .setup-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2) var(--s-4); margin: 0; padding: 0; list-style: none; }
+  .setup-item { display: flex; align-items: center; gap: var(--s-2); min-width: 0; padding-top: var(--s-2); border-top: 1px solid var(--border); }
+  .setup-check { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border: 1px solid var(--border-strong); border-radius: 50%; color: var(--text-3); font: 500 0.7rem var(--mono); }
+  .setup-item.is-done .setup-check { border-color: var(--highlight); background: color-mix(in oklch, var(--highlight) 20%, var(--surface)); color: var(--text); }
+  .setup-label { flex: 1; min-width: 0; font-size: var(--fs-sm); }
+  .setup-item a { flex: none; font-size: var(--fs-xs); }
   .usage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
   .usage-card { padding: var(--s-4); }
   .usage-head { display: flex; justify-content: space-between; gap: var(--s-2); margin-bottom: var(--s-3); color: var(--text-2); font-size: var(--fs-sm); }
@@ -66,22 +68,32 @@
   .metric-label { display: block; max-width: 20ch; color: var(--text-2); font-size: var(--fs-sm); }
   .metric-value { display: block; margin-top: var(--s-4); color: var(--text); font: 500 clamp(2rem, 1.3rem + 2vw, 3.2rem)/1 var(--mono); letter-spacing: -0.075em; }
   .metric-note { display: block; margin-top: var(--s-2); color: var(--text-3); font-size: var(--fs-xs); }
-  .split-grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr); gap: var(--s-3); margin-bottom: var(--s-5); }
+  .split-grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr); gap: var(--s-3); margin-bottom: var(--s-5); align-items: start; }
   .chart-card { min-width: 0; }
   .chart-head { display: flex; justify-content: space-between; align-items: start; gap: var(--s-3); margin-bottom: var(--s-3); }
   .chart-head h3 { font-size: var(--fs-lg); }
   .chart-head p { margin-top: 4px; color: var(--text-3); font-size: var(--fs-xs); }
-  .chart-wrap { min-width: 0; }
-  .chart-svg { width: 100%; height: auto; overflow: visible; }
+  .chart-wrap { position: relative; min-width: 0; }
+  .chart-svg { width: 100%; height: 220px; overflow: visible; }
   .chart-gridline { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 7; }
-  .chart-axis { fill: var(--text-3); font: 10px var(--mono); }
+  .chart-axis, .chart-y { fill: var(--text-3); font: 15px var(--mono); }
   .chart-line { fill: none; stroke: var(--highlight); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .chart-area { fill: color-mix(in oklch, var(--highlight) 18%, transparent); }
   .chart-dot { fill: var(--surface); stroke: var(--highlight); stroke-width: 2; }
   .chart-bar { fill: var(--accent); transform-box: fill-box; transform-origin: bottom; animation: bar-rise 650ms var(--ease-out) both; }
+  :root:not([data-theme="light"]) .chart-bar { fill: var(--highlight); }
+  :root[data-motion="reduce"] .chart-bar { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .chart-bar { animation: none; } }
+  .chart-value { fill: var(--text-2); font: 500 13px var(--mono); }
+  .chart-point { cursor: crosshair; }
+  .chart-tooltip { position: absolute; z-index: 2; max-width: 180px; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: var(--r-2);
+                   background: var(--surface); color: var(--text); box-shadow: var(--shadow-lift); font: 500 11px var(--mono); pointer-events: none; white-space: nowrap; }
+  .chart-tooltip[hidden] { display: none; }
+  .chart-empty { display: grid; justify-items: start; gap: var(--s-2); min-height: 190px; align-content: center; padding: var(--s-4); border: 1px dashed var(--border-strong); border-radius: var(--r-3); background: var(--surface-2); }
+  .chart-empty p { max-width: 48ch; color: var(--text-2); font-size: var(--fs-sm); }
   @keyframes bar-rise { from { transform: scaleY(0.04); opacity: 0.3; } to { transform: scaleY(1); opacity: 1; } }
   .chart-table { position: fixed; inset-block-start: 0; inset-inline-start: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
-  .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
+  .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); align-items: start; }
   .content-card { min-width: 0; }
   .card-title { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); margin-bottom: var(--s-3); }
   .card-title h3 { font-size: var(--fs-lg); }
@@ -148,10 +160,9 @@
   }
   @media (max-width: 700px) {
     .dash-main { width: min(100% - 28px, 560px); padding-block: 20px 56px; }
-    .dash-hero { display: grid; align-items: start; gap: var(--s-4); padding: var(--s-4); }
-    .account-block { justify-items: start; width: 100%; }
-    .account-line, .account-actions { justify-content: start; }
-    .account-email { max-width: min(70vw, 330px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dash-hero { padding: var(--s-4); }
+    .dash-bar .dash-account { flex: 1 1 100%; justify-content: flex-end; }
+    .mobile-tabs { inset-block-start: 106px; }
     .usage-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
     .usage-card { padding: var(--s-3); }
     .usage-head { margin-bottom: var(--s-2); }
@@ -166,13 +177,23 @@
     .quick-form.scan-form button { grid-column: 1 / -1; justify-self: start; }
     .panel-head { display: grid; align-items: start; }
   }
-  @media (max-width: 390px) {
-    .dash-bar { gap: 8px; padding-inline: 10px; }
+  @media (max-width: 600px) {
+    .dash-bar { gap: 8px; padding-block: 8px; padding-inline: 12px; }
+    .dash-bar .grow { display: none; }
     .dash-bar .u-logo small { display: none; }
+    .dash-bar .dash-command { width: 34px; padding: 0; overflow: hidden; font-size: 0; }
+    .dash-bar .dash-command::after { content: "⌘"; font-size: 0.9rem; }
+    .dash-account .account-email { display: none; }
+    .setup-list { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 390px) {
+    .dash-bar { padding-inline: 10px; }
     .dash-bar .u-aud { max-width: calc(100vw - 160px); min-width: 0; }
     .dash-bar .u-aud a { padding-inline: 4px; font-size: 0.6rem; }
     .dash-bar .dash-command { width: 34px; padding: 0; overflow: hidden; font-size: 0; }
     .dash-bar .dash-command::after { content: "⌘"; font-size: 0.9rem; }
+    .dash-bar .u-logo { font-size: 0.88rem; }
+    .dash-account .u-btn { padding-inline: 8px; }
     .mobile-tabs .tab-list { gap: 2px; }
     .mobile-tabs .tab { flex: 1 1 0; min-width: 0; padding-inline: 4px; font-size: var(--fs-xs); }
     .metric-label { font-size: 0.74rem; }
@@ -189,12 +210,17 @@
 </head>
 <body>
 <header class="u-bar dash-bar">
-  <a class="u-logo" href="/dashboard"><mark>Unprompted</mark><small>Intelligence, together</small></a>
+  <a class="u-logo" href="/dashboard"><mark>Unprompted</mark><small>Dashboard</small></a>
   <nav class="u-aud" aria-label="Who it's for">
     <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
   </nav>
   <span class="grow"></span>
   <button class="u-btn u-btn-ghost u-btn-sm dash-command" type="button" id="command" aria-label="Open command palette">Commands</button>
+  <div class="dash-account">
+    <span class="account-email" id="user-email"></span>
+    <span class="u-pill" id="plan-pill"></span>
+    <div class="account-actions" id="account-actions"></div>
+  </div>
 </header>
 
 <main class="dash-main">
@@ -203,10 +229,6 @@
       <div class="dash-kicker">Your signal, in one place</div>
       <h1 class="dash-title" id="greeting" data-split>Good morning<em>Let's see what moved.</em></h1>
       <p class="dash-intro">Your creator receipts, brand discoveries and roster reports, grounded in evidence.</p>
-    </div>
-    <div class="account-block">
-      <div class="account-line"><span class="account-email" id="user-email"></span><span class="u-pill" id="plan-pill"></span></div>
-      <div class="account-actions" id="account-actions"></div>
     </div>
   </section>
 
@@ -250,6 +272,7 @@ const compact = (value) => U.fmt(value || 0, 'compact');
 const date = (value) => value ? U.date(value) : '—';
 const displayPlan = { free: 'Free', open: 'Free', leads: 'Weekly leads', pro: 'Pro', roster: 'Roster' };
 let data = null;
+let chartTooltipId = 0;
 
 function localGreeting() {
   const hour = new Date().getHours();
@@ -304,8 +327,7 @@ async function openBilling() {
 function renderAccountHeader() {
   const user = data.user;
   $('#greeting').replaceChildren(
-    document.createTextNode(`${localGreeting()}, `),
-    h('span', {}, (user.email || '').split('@')[0]),
+    document.createTextNode(`${localGreeting()}.`),
     h('em', {}, "Let's see what moved."),
   );
   $('#user-email').textContent = user.email;
@@ -349,6 +371,24 @@ function usageSection() {
     usageCard('Brand searches', data.usage.searches),
     usageCard('Creator checks', data.usage.checks));
 }
+function setupChecklist() {
+  const { creator: c, brand: b, licenses: l, manager: m } = data;
+  const items = [
+    [c.scans > 0, 'Run your first scan', '/creators/?home=1'],
+    [b.searches > 0, 'Save a brand search', '/brands/?home=1'],
+    [b.digests.active > 0, 'Turn on a weekly digest', '/brands/?home=1'],
+    [l.verifiedHandles > 0, 'Verify a handle for license offers', '/creators/licenses'],
+    [m.creators > 0, 'Add a creator to your roster', '/creators/roster'],
+  ];
+  if (items.every(([done]) => done)) return null;
+  return h('section', { class: 'setup-card u-card', 'aria-labelledby': 'setup-title', 'data-reveal': '' },
+    h('header', { class: 'setup-head' }, h('h2', { id: 'setup-title' }, 'Get set up'), h('p', {}, `${items.filter(([done]) => done).length} of ${items.length} complete`)),
+    h('ul', { class: 'setup-list' }, ...items.map(([done, label, href]) =>
+      h('li', { class: `setup-item${done ? ' is-done' : ''}` },
+        h('span', { class: 'setup-check', 'aria-label': done ? 'Complete' : 'Incomplete' }, done ? '✓' : '·'),
+        h('span', { class: 'setup-label' }, label),
+        h('a', { href }, done ? 'View' : 'Start')))));
+}
 function metric(label, value, note, formatName = 'compact') {
   return h('article', { class: 'metric u-card u-card-pad', 'data-reveal': '' },
     h('span', { class: 'metric-label' }, label),
@@ -375,40 +415,102 @@ function svgEl(name, attrs = {}, text = '') {
   if (text) el.textContent = text;
   return el;
 }
-function chartCard(title, description, rows, type) {
+function chartCard(title, description, rows, type, emptyTarget = 'scan') {
   const figure = h('figure', { class: 'chart-card content-card u-card u-card-pad' });
   figure.append(h('figcaption', { class: 'chart-head' },
     h('div', {}, h('h3', {}, title), h('p', {}, description))));
-  const svg = svgEl('svg', { class: 'chart-svg', viewBox: '0 0 960 250', role: 'img', 'aria-label': description, focusable: 'false' });
-  for (const y of [36, 82, 128, 174, 220]) svg.append(svgEl('line', { x1: 36, y1: y, x2: 940, y2: y, class: 'chart-gridline' }));
-  const max = Math.max(1, ...rows.map((row) => row.value));
-  if (type === 'area') {
-    const pts = rows.map((row, i) => ({ x: 38 + i * (900 / Math.max(1, rows.length - 1)), y: 218 - (row.value / max) * 165 }));
-    const linePath = `M ${pts.map((pt) => `${pt.x} ${pt.y}`).join(' L ')}`;
-    const areaPath = `${linePath} L ${pts.at(-1).x} 220 L ${pts[0].x} 220 Z`;
-    svg.append(svgEl('path', { d: areaPath, class: 'chart-area' }));
-    const path = svgEl('path', { d: linePath, class: 'chart-line' });
-    svg.append(path, ...pts.map((pt) => svgEl('circle', { cx: pt.x, cy: pt.y, r: 4, class: 'chart-dot' })));
-    if (!U.reduced()) {
-      const length = path.getTotalLength();
-      path.style.strokeDasharray = String(length);
-      path.style.strokeDashoffset = String(length);
-      requestAnimationFrame(() => { path.style.transition = 'stroke-dashoffset 900ms var(--ease-out)'; path.style.strokeDashoffset = '0'; });
-    }
-    const step = Math.max(1, Math.ceil(rows.length / 6));
-    rows.forEach((row, i) => {
-      if (i % step !== 0 && i !== rows.length - 1) return;
-      const pt = pts[i];
-      svg.append(svgEl('text', { x: pt.x, y: 244, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
-    });
+  if (!rows.some((row) => row.value > 0)) {
+    const target = emptyTarget === 'scan' ? '/creators/?home=1' : '/brands/?home=1';
+    const action = emptyTarget === 'scan' ? 'Run a scan' : 'Save a brand search';
+    figure.append(h('div', { class: 'chart-wrap' },
+      h('div', { class: 'chart-empty' }, h('p', {}, 'Your chart will take shape when new mentions arrive.'),
+        h('a', { class: 'u-btn u-btn-sm', href: target }, action))));
   } else {
-    rows.forEach((row, i) => {
-      const x = 52 + i * 112, height = row.value ? Math.max(4, (row.value / max) * 164) : 2;
-      svg.append(svgEl('rect', { x, y: 218 - height, width: 58, height, rx: 4, class: 'chart-bar', style: `animation-delay:${i * 35}ms` }));
-      svg.append(svgEl('text', { x: x + 29, y: 242, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
-    });
+    const svg = svgEl('svg', { class: 'chart-svg', viewBox: '0 0 360 270', preserveAspectRatio: 'none', role: 'group', 'aria-label': description });
+    const plot = { left: 78, right: 350, top: 30, bottom: 218 };
+    const max = Math.max(1, ...rows.map((row) => row.value));
+    let lastTick = null;
+    for (let i = 0; i <= 4; i++) {
+      const y = plot.top + (plot.bottom - plot.top) * i / 4;
+      const value = Math.round(max * (4 - i) / 4);
+      svg.append(svgEl('line', { x1: plot.left, y1: y, x2: plot.right, y2: y, class: 'chart-gridline' }));
+      if (value !== lastTick || i === 4) {
+        svg.append(svgEl('text', { x: plot.left - 6, y: y + 4, 'text-anchor': 'end', class: 'chart-y' }, format(value)));
+      }
+      lastTick = value;
+    }
+    const wrap = h('div', { class: 'chart-wrap' }, svg, h('div', { class: 'chart-tooltip', role: 'tooltip', hidden: true }));
+    const tooltip = $('.chart-tooltip', wrap);
+    tooltip.id = `chart-tooltip-${++chartTooltipId}`;
+    const attachPoint = (point, row) => {
+      point.classList.add('chart-point');
+      point.setAttribute('tabindex', '0');
+      point.setAttribute('role', 'img');
+      point.setAttribute('aria-label', `${row.label}: ${format(row.value)} mentions`);
+      point.setAttribute('aria-describedby', tooltip.id);
+      point.append(svgEl('title', {}, `${row.label}: ${format(row.value)} mentions`));
+      const show = (event) => {
+        tooltip.textContent = `${row.label}: ${format(row.value)} mentions`;
+        tooltip.hidden = false;
+        const box = wrap.getBoundingClientRect(), target = point.getBoundingClientRect();
+        const x = event.clientX ? event.clientX - box.left : target.left + target.width / 2 - box.left;
+        const y = event.clientY ? event.clientY - box.top : target.top - box.top;
+        tooltip.style.left = `${Math.max(4, Math.min(box.width - 188, x))}px`;
+        tooltip.style.top = `${Math.max(4, y - 34)}px`;
+      };
+      point.addEventListener('mouseenter', show);
+      point.addEventListener('mousemove', show);
+      point.addEventListener('mouseleave', () => { tooltip.hidden = true; });
+      point.addEventListener('focus', show);
+      point.addEventListener('blur', () => { tooltip.hidden = true; });
+      point.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') { tooltip.hidden = true; point.blur(); }
+      });
+    };
+    if (type === 'area') {
+      const pts = rows.map((row, i) => ({
+        x: plot.left + i * ((plot.right - plot.left) / Math.max(1, rows.length - 1)),
+        y: plot.bottom - (row.value / max) * (plot.bottom - plot.top),
+      }));
+      const linePath = `M ${pts.map((pt) => `${pt.x} ${pt.y}`).join(' L ')}`;
+      const areaPath = `${linePath} L ${pts.at(-1).x} ${plot.bottom} L ${pts[0].x} ${plot.bottom} Z`;
+      svg.append(svgEl('path', { d: areaPath, class: 'chart-area' }));
+      const path = svgEl('path', { d: linePath, class: 'chart-line' });
+      svg.append(path);
+      rows.forEach((row, i) => {
+        const dot = svgEl('circle', { cx: pts[i].x, cy: pts[i].y, r: 4, class: 'chart-dot' });
+        attachPoint(dot, row);
+        if (i % 2 === 0) {
+          svg.append(svgEl('text', { x: pts[i].x, y: 254, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
+        }
+        svg.append(dot);
+      });
+      if (!U.reduced()) {
+        const length = path.getTotalLength();
+        path.style.strokeDasharray = String(length);
+        path.style.strokeDashoffset = String(length);
+        requestAnimationFrame(() => { path.style.transition = 'stroke-dashoffset 900ms var(--ease-out)'; path.style.strokeDashoffset = '0'; });
+      }
+    } else {
+      const step = (plot.right - plot.left) / rows.length;
+      const barWidth = Math.min(24, step * 0.58);
+      rows.forEach((row, i) => {
+        const x = plot.left + step * i + (step - barWidth) / 2;
+        const height = row.value ? Math.max(4, (row.value / max) * (plot.bottom - plot.top)) : 2;
+        const y = plot.bottom - height;
+        const bar = svgEl('rect', {
+          x, y, width: barWidth, height, rx: 4, class: 'chart-bar', style: `animation-delay:${i * 35}ms`,
+        });
+        attachPoint(bar, row);
+        svg.append(bar);
+        if (row.value) svg.append(svgEl('text', { x: x + barWidth / 2, y: Math.max(plot.top + 12, y - 7), 'text-anchor': 'middle', class: 'chart-value' }, row.value >= 1000 ? compact(row.value) : format(row.value)));
+        if (i % 2 === 0) {
+          svg.append(svgEl('text', { x: x + barWidth / 2, y: 254, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
+        }
+      });
+    }
+    figure.append(wrap);
   }
-  figure.append(h('div', { class: 'chart-wrap' }, svg));
   const table = h(
     'table',
     { class: 'chart-table' },
@@ -424,10 +526,16 @@ function chartCard(title, description, rows, type) {
   return figure;
 }
 function timelineRows() {
-  return data.creator.timeline.map((row) => ({ label: row.month.slice(5), value: row.mentions }));
+  return data.creator.timeline.map((row) => ({
+    label: new Intl.DateTimeFormat(undefined, { month: 'short', timeZone: 'UTC' }).format(new Date(`${row.month}-01T12:00:00Z`)),
+    value: row.mentions,
+  }));
 }
 function weeklyRows() {
-  return data.brand.weekly.map((row) => ({ label: row.week.slice(5), value: row.mentions }));
+  return data.brand.weekly.map((row) => ({
+    label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${row.week}T12:00:00Z`)),
+    value: row.mentions,
+  }));
 }
 function avatar(src, handle) {
   if (src) return h('img', { class: 'avatar', width: 38, height: 38, src, alt: '', loading: 'lazy', onerror: (event) => event.target.replaceWith(avatar(null, handle)) });
@@ -472,13 +580,24 @@ function card(title, content, href, linkText = 'View all') {
 }
 function activityLabel(item) {
   const detail = item.data || {};
+  const plan = displayPlan[detail.plan] || 'plan';
+  if (item.name === 'signup') return 'Created your account';
   if (item.name === 'scan') return `Scanned @${detail.handle || 'a creator'}`;
-  if (item.name === 'search' || item.name === 'brand_search') return `Searched for ${detail.brand || 'a brand'}`;
-  if (item.name === 'checkout_intent') return `Explored the ${displayPlan[detail.plan] || 'plan'} upgrade`;
-  if (item.name.startsWith('offer_')) return `${item.name.slice(6)[0].toUpperCase()}${item.name.slice(7)} a license offer`;
-  if (item.name === 'report') return 'Sent product feedback';
-  if (item.name === 'share') return 'Published a receipt page';
-  return item.name.replaceAll('_', ' ').replace(/^\w/, (c) => c.toUpperCase());
+  if (item.name === 'share') return 'Shared a receipt page';
+  if (item.name === 'checkout_intent') return `Explored the ${plan} upgrade`;
+  if (item.name === 'checkout_started') return `Started checkout for ${plan}`;
+  if (item.name === 'subscribed') return `Upgraded to ${displayPlan[detail.plan] || 'Pro'}`;
+  if (item.name === 'digest_subscribe') return `Started a weekly digest for ${detail.brand || 'a brand'}`;
+  if (item.name === 'digest_confirm') return `Confirmed the weekly digest for ${detail.brand || 'a brand'}`;
+  if (item.name === 'offer_accept') return 'Accepted a license offer';
+  if (item.name === 'offer_decline') return 'Declined a license offer';
+  if (item.name === 'roster_creator_added') return `Added @${detail.handle || 'a creator'} to your roster`;
+  if (item.name === 'roster_creator_removed') return `Removed @${detail.handle || 'a creator'} from your roster`;
+  if (item.name === 'roster_deal') return `Recorded a deal for @${detail.handle || 'a creator'}`;
+  if (item.name === 'roster_report') return 'Created a roster report';
+  if (item.name === 'roster_commit') return 'Started the Roster plan';
+  if (item.name === 'roster_pilot_request') return 'Requested roster access';
+  return 'Workspace update';
 }
 function activityList(rows) {
   if (!rows.length) return emptyState('Your next signal starts here', 'New scans, brand searches and offers will appear in this activity stream.', 'scan', 'Run a first scan', '·');
@@ -518,13 +637,11 @@ function launchForms() {
 }
 function renderOverview() {
   const panel = $('#panel-overview'), c = data.creator, b = data.brand, l = data.licenses;
-  panel.replaceChildren(
+  const setup = setupChecklist();
+  panel.replaceChildren(...[
     panelHead('At a glance', 'Overview', 'A living picture of what your creators say and what your brands hear.'),
     usageSection(),
-    h('div', { class: 'welcome', 'data-reveal': '' },
-      h('div', {}, h('strong', {}, c.scans || b.searches ? 'Your workspace is warming up.' : 'Your next good mention starts here.'),
-        h('p', {}, c.scans || b.searches ? 'Keep the signal moving with a scan or brand search.' : 'Run a first scan or find your brand in the creator conversation.')),
-      h('span', { class: 'u-pill' }, `${format(data.activity.length)} recent events`)),
+    setup,
     h('div', { class: 'metric-grid' },
       metric("Brands you've mentioned", c.brands, `${format(c.scans)} scans across ${format(c.handles.length)} handles`),
       metric('Receipts with proof', c.receipts, 'Quotes, timestamps and frames'),
@@ -533,15 +650,16 @@ function renderOverview() {
       metric('Mentions tracked for your brands', b.mentions, `${compact(b.views)} views in your searches`),
       metric('Active weekly digests', b.digests.active, `${format(b.digests.pending)} awaiting confirmation`)),
     h('div', { class: 'split-grid' },
-      chartCard('Mentions over time', 'Receipts grouped by the video publish month, across your latest scan per handle.', timelineRows(), 'area'),
-      chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar')),
+      chartCard('Mentions over time', 'Receipts grouped by the video publish month, across your latest scan per handle.', timelineRows(), 'area', 'scan'),
+      chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar', 'brand')),
     h('div', { class: 'content-grid' },
       card('Recent activity', activityList(data.activity)),
       card('Latest creator signals', c.recent.length ? scanList(c.recent) : emptyState('No scans yet', 'Run your first scan to turn your mentions into shareable receipts.', 'scan', 'Run a first scan'))),
     launchForms(),
     h('div', { class: 'action-grid section-gap' },
       h('a', { class: 'u-btn', href: '/creators/licenses' }, 'Open license offers'),
-      h('a', { class: 'u-btn', href: '/creators/roster' }, 'Open manager roster')));
+      h('a', { class: 'u-btn', href: '/creators/roster' }, 'Open manager roster')),
+  ].filter(Boolean));
   animateCounts(panel);
 }
 function renderCreator() {
@@ -586,7 +704,7 @@ function renderBrand() {
       card('Saved searches', searches, '/brands/', 'Open brand search'),
       card('Weekly digests', digest, '/brands/', 'Manage digests')),
     h('div', { class: 'split-grid' },
-      chartCard('New mentions per week', 'Distinct videos in your brand searches, by publish week.', weeklyRows(), 'bar'),
+      chartCard('New mentions per week', 'Distinct videos in your brand searches, by publish week.', weeklyRows(), 'bar', 'brand'),
       card('Top creators', b.topCreators.length ? topCreatorList(b.topCreators) : emptyState('No creators found yet', 'Creators will appear as searches find on-camera brand mentions.', 'brand', 'Start a brand search'))),
     card('License requests', funnel, '/brands/', 'Review brand dashboard'),
   ].filter(Boolean));

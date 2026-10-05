@@ -38,9 +38,11 @@ def view(user):
             (user_id,),
         ).fetchone()
         brand_counts = db.execute(
-            "SELECT count(*) AS mentions, coalesce(sum(v.views), 0) AS views "
-            "FROM searches s JOIN mentions m ON m.search_id = s.id JOIN videos v ON v.id = m.video_id "
-            "WHERE s.user_id = %s AND m.kind NOT IN ('owned', 'unverified')",
+            "SELECT count(*) AS mentions, coalesce(sum(unique_videos.views), 0) AS views FROM ("
+            "SELECT DISTINCT v.id, v.views FROM searches s JOIN mentions m ON m.search_id = s.id "
+            "JOIN videos v ON v.id = m.video_id "
+            "WHERE s.user_id = %s AND m.kind NOT IN ('owned', 'unverified')"
+            ") unique_videos",
             (user_id,),
         ).fetchone()
         utc_today = datetime.now(timezone.utc).date()
@@ -78,7 +80,18 @@ def view(user):
             (user_id,),
         ).fetchone()
         activity = db.execute(
-            'SELECT name, data, created_at AS "createdAt" FROM events WHERE user_id = %s ORDER BY created_at DESC, id DESC LIMIT 10',
+            'WITH meaningful AS ('
+            "SELECT name, data, created_at, id, "
+            "lag(name) OVER (ORDER BY created_at DESC, id DESC) AS previous_name, "
+            "lag(data) OVER (ORDER BY created_at DESC, id DESC) AS previous_data "
+            "FROM events WHERE user_id = %s AND name IN ("
+            "'signup', 'scan', 'share', 'checkout_intent', 'checkout_started', 'subscribed', "
+            "'digest_subscribe', 'digest_confirm', 'offer_accept', 'offer_decline', "
+            "'roster_pilot_request', 'roster_deal', 'roster_commit', 'roster_report', "
+            "'roster_creator_added', 'roster_creator_removed')) "
+            'SELECT name, data, created_at AS "createdAt" FROM meaningful '
+            "WHERE name IS DISTINCT FROM previous_name OR data IS DISTINCT FROM previous_data "
+            "ORDER BY created_at DESC, id DESC LIMIT 10",
             (user_id,),
         ).fetchall()
 

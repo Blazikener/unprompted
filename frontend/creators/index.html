@@ -6,9 +6,7 @@
 <title>Receipts by Unprompted</title>
 <meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with the brands that will pay: pitch them, or answer licence requests for your best videos.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Host+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap">
-<link rel="stylesheet" href="/ui/ui.css?v=2">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
 <script src="/ui/motion.js?v=1" defer></script>
 <style>
@@ -54,7 +52,7 @@
   .hero-top { display: flex; justify-content: space-between; gap: var(--s-4); padding-bottom: var(--s-3); border-bottom: 1px solid var(--border);
               font: 500 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); }
   .hero-h { font: 600 clamp(2.9rem, 0.9rem + 8.2vw, 9.6rem)/0.86 var(--display); letter-spacing: -0.055em; text-transform: uppercase; max-width: 11ch; text-wrap: balance; }
-  .hero-h .u-voice { display: block; text-transform: none; font-size: 0.86em; line-height: 0.95; letter-spacing: -0.03em; --split-delay: 250ms; }
+  .hero-h .u-voice { display: block; text-transform: none; font-size: 0.86em; line-height: 0.95; letter-spacing: -0.03em; }
   .hero-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--s-6) var(--s-8); align-items: end; }
   .hero-lead { max-width: 46ch; color: var(--text-2); }
   .hero-form { display: grid; gap: var(--s-3); max-width: 620px; padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border);
@@ -372,7 +370,7 @@
     <button class="u-btn u-btn-sm glass-pause no-present" id="glass-pause" type="button" hidden>Pause animation</button>
     <div class="u-wide hero-in">
       <div class="hero-top" aria-hidden="true"><span>Receipts</span><span>TikTok / Instagram</span><span class="no-narrow">Brand mentions, proven</span></div>
-      <h1 class="hero-h" id="hero-h" data-split>The brands you talk about <span class="u-voice u-iris">should be paying you.</span></h1>
+      <h1 class="hero-h" id="hero-h">The brands you talk about <span class="u-voice u-iris">should be paying you.</span></h1>
       <div class="hero-row">
         <p class="u-lead hero-lead" data-reveal>Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer the brands that want to pay to run your videos as ads.</p>
         <div class="hero-form" data-reveal>
