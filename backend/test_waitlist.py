@@ -89,7 +89,7 @@ def test_join_returns_code_and_queue_position(base):
     status, out = join(base, "one@wl.test", handle="one", platform="tiktok", size="m", pay="9")
     assert status == 200
     assert out == {
-        "code": out["code"], "position": 1, "total": 1, "referrals": 0,
+        "code": out["code"], "position": waitlist.QUEUE_BASE + 1, "total": waitlist.QUEUE_BASE + 1, "referrals": 0,
         "role": "creator", "alreadyJoined": False, "jump": 5,
     }
     assert len(out["code"]) == 8
@@ -142,8 +142,8 @@ def test_referral_moves_referrer_up_and_unknown_or_self_referral_is_ignored(base
     status, b = join(base, "b@wl.test", ref=a["code"])
     assert status == 200
     status, a_after = request(base, "/api/waitlist/" + a["code"])
-    assert status == 200 and a_after["position"] == 1 and a_after["referrals"] == 1
-    assert b["total"] == 8
+    assert status == 200 and a_after["position"] == waitlist.QUEUE_BASE + 1 and a_after["referrals"] == 1
+    assert b["total"] == waitlist.QUEUE_BASE + 8
 
     _, unknown = request(base, "/api/waitlist", {"email": "unknown@wl.test", "role": "creator", "ref": "missing-code"},
                          headers={"X-Forwarded-For": "198.51.100.10"})
@@ -166,7 +166,7 @@ def test_rate_limit_allows_eight_new_joins_per_ip(base):
 def test_get_signup_and_not_found(base):
     _, result = join(base, "lookup@wl.test")
     status, out = request(base, "/api/waitlist/" + result["code"])
-    assert status == 200 and out["code"] == result["code"] and out["position"] == 1
+    assert status == 200 and out["code"] == result["code"] and out["position"] == waitlist.QUEUE_BASE + 1
     status, out = request(base, "/api/waitlist/no-such-code")
     assert status == 404 and "error" in out
 
@@ -175,7 +175,7 @@ def test_public_stats(base):
     join(base, "creator@wl.test", role="creator")
     request(base, "/api/waitlist", {"email": "brand@wl.test", "role": "brand"})
     status, out = request(base, "/api/waitlist/stats")
-    assert status == 200 and out["total"] == 2 and out["today"] == 2
+    assert status == 200 and out["total"] == waitlist.QUEUE_BASE + 2 and out["today"] == 2
     assert out["byRole"]["creator"] == 1 and out["byRole"]["brand"] == 1 and out["byRole"]["manager"] == 0
 
 
@@ -236,7 +236,7 @@ def test_welcome_email_uses_share_link_and_marks_sent(base, monkeypatch):
         time.sleep(0.01)
     assert welcomed is not None and len(sent) == 1
     to, subject, body = sent[0]
-    assert to == "welcome@wl.test" and subject == "You're #1 on the Receipts waitlist"
+    assert to == "welcome@wl.test" and subject == "You're #%d on the Receipts waitlist" % (waitlist.QUEUE_BASE + 1)
     assert "https://u.test/waitlist?ref=" + out["code"] in body and "moves you up 5 spots" in body
     assert "<script>" not in body
 
@@ -325,4 +325,4 @@ def test_each_referral_moves_referrer_exactly_jump_spots(base):
     status, _ = join(base, "friend@wl.test", ref=codes[6])
     assert status == 200
     _, after = request(base, "/api/waitlist/" + codes[6])
-    assert after["position"] == 7 - waitlist.REFERRAL_JUMP and after["referrals"] == 1
+    assert after["position"] == waitlist.QUEUE_BASE + 7 - waitlist.REFERRAL_JUMP and after["referrals"] == 1

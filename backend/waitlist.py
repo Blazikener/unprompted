@@ -52,6 +52,8 @@ UTM_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_content", "referrer
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 VISITOR_RE = re.compile(r"^[A-Za-z0-9_-]{8,40}$")
 REFERRAL_JUMP = 5
+# Public positions and counts are offset by this so the queue never looks empty.
+QUEUE_BASE = int(os.environ.get("WAITLIST_QUEUE_BASE", "50"))
 RATE_LOCK = threading.Lock()
 RATE_LIMIT = {}
 MAIL_LOCK = threading.Lock()
@@ -141,10 +143,10 @@ def _queue(db, waitlist_id):
         "), scored AS ("
         " SELECT id, referrals, ordering - %s * referrals AS score FROM ranked"
         "), target AS (SELECT score, id, referrals FROM scored WHERE id = %s)"
-        " SELECT 1 + (SELECT count(*) FROM scored s, target t WHERE (s.score, -s.referrals, s.id) < (t.score, -t.referrals, t.id)) AS position,"
-        "        (SELECT count(*) FROM waitlist) AS total, target.referrals"
+        " SELECT %s + 1 + (SELECT count(*) FROM scored s, target t WHERE (s.score, -s.referrals, s.id) < (t.score, -t.referrals, t.id)) AS position,"
+        "        %s + (SELECT count(*) FROM waitlist) AS total, target.referrals"
         " FROM target",
-        (REFERRAL_JUMP, waitlist_id),
+        (REFERRAL_JUMP, waitlist_id, QUEUE_BASE, QUEUE_BASE),
     ).fetchone()
     return dict(row)
 
@@ -186,7 +188,7 @@ def join(body, handler):
             total = _counts(db)
         role = body.get("role") if body.get("role") in ROLES else "creator"
         return {
-            "code": "xxxxxxxx", "position": total + 1, "total": total, "referrals": 0,
+            "code": "xxxxxxxx", "position": QUEUE_BASE + total + 1, "total": QUEUE_BASE + total, "referrals": 0,
             "role": role, "alreadyJoined": False, "jump": REFERRAL_JUMP,
         }
     data = _validated(body, handler)
@@ -265,7 +267,7 @@ def _stats():
         today = db.execute(
             "SELECT count(*) AS n FROM waitlist WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')"
         ).fetchone()["n"]
-    return {"total": total, "byRole": by_role, "today": today}
+    return {"total": QUEUE_BASE + total, "byRole": by_role, "today": today}
 
 
 def _admin_report():
