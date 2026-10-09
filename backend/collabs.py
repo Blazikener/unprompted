@@ -493,7 +493,7 @@ def run_weekly(force=False):
 # ---------------------------------------------------------------- routes
 
 def dispatch(handler):
-    """GET  /api/collabs/mine | /partners | /t/<token>
+    """GET  /api/collabs/mine | /partners | /t/<token> | /proof?v=&platform=&handle= (brand) | /digest/<token>?v=
     POST /api/collabs/propose (brand) | /pitch (creator) | /watch (creator) | /profile (brand)
          /t/<token> (either side, no account) | /<id> (either side, signed in)
          /digest/<token> (a brand from its weekly report link)"""
@@ -510,6 +510,11 @@ def dispatch(handler):
             d, _, _ = digest.load_digest(dg.group(1))
             vid = (parse_qs(urlparse(handler.path).query).get("v") or [""])[0][:64]
             return {"brand": d["brand"], "video": digest.license_video(d, vid)}
+        if path == "/proof":
+            creator.require_role(handler.headers, "brand")
+            q = parse_qs(urlparse(handler.path).query)
+            platform, handle = licenses.norm((q.get("platform") or [""])[0], (q.get("handle") or [""])[0])
+            return {"proof": video_proof((q.get("v") or [""])[0][:64], platform, handle)}
         if path == "/partners":
             return {"partners": [{"brand": p["brand"], "about": p["about"]} for p in partners()]}
         raise ApiError(404, "Not found.")

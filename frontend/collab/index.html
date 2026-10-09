@@ -69,6 +69,10 @@
         ctx = { brand: q.get('brand') || mine.profile?.brand || '', platform: q.get('platform') || 'tiktok', handle: (q.get('handle') || '').replace(/^@/, ''),
                 videoId: q.get('v') || '', brandEditable: true };
         if (!ctx.handle) return fail('Pick a creator first.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Search creators who mention you'));
+        if (ctx.videoId) {
+          const p = await C.call(`/api/collabs/proof?${new URLSearchParams({ v: ctx.videoId, platform: ctx.platform, handle: ctx.handle })}`).catch(() => ({}));
+          ctx.proof = p.proof || null;
+        }
       }
     } catch (e) { return fail(e.message); }
     const t = C.termsForm({ budgetUsd: '' });
