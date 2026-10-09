@@ -115,8 +115,15 @@
         section('Creator pitches', profile))];
   }
 
+  function roleSwitch() {
+    if ((data.roles || []).length < 2) return null;
+    return h('nav', { class: 'c-actions', 'aria-label': 'Account side' }, ...data.roles.map((r) => h('a', {
+      class: `u-btn u-btn-sm${r === data.role ? ' u-btn-primary' : ''}`, href: `/collabs?as=${r}`, 'aria-current': r === data.role ? 'page' : null,
+    }, r === 'brand' ? 'As a brand' : 'As a creator')));
+  }
+
   function render() {
-    show(...(data.role === 'brand' ? brandView() : creatorView()));
+    show(roleSwitch(), ...(data.role === 'brand' ? brandView() : creatorView()));
   }
 
   async function load() {
@@ -128,15 +135,15 @@
       }
       $('#who').replaceChildren(h('span', { class: 'email' }, me.email), h('a', { href: '/dashboard' }, 'Dashboard'),
         h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await C.call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
-      if (me.role === 'manager') {
+      if (!U.hasRole(me, 'creator') && !U.hasRole(me, 'brand')) {
         return show(h('div', { class: 'c-card', role: 'status' }, h('h1', { class: 'u-h3' }, "You're signed in with a manager account."),
           h('p', {}, 'Collabs belong to creator and brand accounts. Track your roster’s brands and deals from the roster page.'),
           h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/roster' }, 'Open your roster'))));
       }
-      data = await C.call('/api/collabs/mine');
+      data = await C.call(`/api/collabs/mine${params.get('as') ? `?as=${encodeURIComponent(params.get('as'))}` : ''}`);
       render();
       const pitch = params.get('pitch');
-      if (pitch && me.role === 'creator') { history.replaceState(null, '', location.pathname); pitchDialog(pitch); }
+      if (pitch && data.role === 'creator') { history.replaceState(null, '', location.pathname + location.search); pitchDialog(pitch); }
     } catch (e) {
       show(h('div', { class: 'c-card', role: 'alert' }, h('p', {}, e.message)));
     }

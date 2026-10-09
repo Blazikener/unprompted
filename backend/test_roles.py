@@ -187,3 +187,35 @@ def test_role_backfill_is_idempotent_and_creator_with_scans_stays_creator():
     }
     assert not_null and constraint
     assert len(search_ids) == 2
+
+
+def test_listed_accounts_use_both_creator_and_brand_sides(base, monkeypatch):
+    dual, plain = Client(base), Client(base)
+    status, signed = signup(dual)
+    assert status == 201 and signed["user"]["roles"] == ["creator"]
+    assert signup(plain)[0] == 201
+    monkeypatch.setenv("MULTI_ROLE_ACCOUNTS", "someone@else.test, %s" % signed["user"]["email"].upper())
+
+    me = dual.request("GET", "/api/creators/me")[1]["user"]
+    assert me["role"] == "creator" and me["roles"] == ["creator", "brand"]
+    status, profile = dual.request("POST", "/api/collabs/profile", {"brand": "RolesTest Dual", "about": "", "open": True})
+    assert status == 200 and profile["brand"] == "RolesTest Dual"
+    assert dual.request("GET", "/api/searches")[0] == 200
+
+    inbox = dual.request("GET", "/api/collabs/mine")[1]
+    assert inbox["role"] == "creator" and inbox["roles"] == ["creator", "brand"] and "watch" in inbox
+    brand_inbox = dual.request("GET", "/api/collabs/mine?as=brand")[1]
+    assert brand_inbox["role"] == "brand" and brand_inbox["profile"]["brand"] == "RolesTest Dual"
+
+    as_brand = dual.request("GET", "/api/creators/dashboard?as=brand")[1]
+    assert as_brand["role"] == "brand" and as_brand["brand"] is not None and as_brand["creator"] is None
+    assert dual.request("GET", "/api/creators/dashboard")[1]["role"] == "creator"
+    assert dual.request("GET", "/api/creators/dashboard?as=manager")[1]["role"] == "creator"
+    assert dual.request("GET", "/api/rosters/mine")[0] == 403
+
+    status, error = plain.request("POST", "/api/collabs/profile", {"brand": "RolesTest Plain", "about": "", "open": True})
+    assert status == 403 and error["role"] == "creator"
+    assert plain.request("GET", "/api/creators/me")[1]["user"]["roles"] == ["creator"]
+
+    monkeypatch.setenv("MULTI_ROLE_ACCOUNTS", "@example.test")
+    assert plain.request("GET", "/api/creators/me")[1]["user"]["roles"] == ["creator", "brand"]

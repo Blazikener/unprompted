@@ -290,7 +290,7 @@ def subscribe(body, user=None):
     params = {"variants": variants, "platform": p["platform"], "lang": p["lang"]}
     if p.get("about"):
         params["about"] = p["about"]
-    brand_user = user if user and user["role"] == "brand" else None
+    brand_user = user if user and creator.has_role(user, "brand") else None
     search_id = body.get("searchId")
     with connect() as db:
         db.execute("SELECT pg_advisory_xact_lock(471478344)")

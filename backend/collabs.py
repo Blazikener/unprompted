@@ -133,10 +133,10 @@ def set_profile(user, body):
 def partners():
     """Brands open to pitches: one row per brand name (the newest profile wins)."""
     with connect() as db:
-        rows = db.execute("SELECT DISTINCT ON (lower(p.brand)) p.brand, p.about, p.user_id, u.email FROM brand_profiles p"
-                          " JOIN users u ON u.id = p.user_id WHERE p.open AND u.role = 'brand'"
+        rows = db.execute("SELECT DISTINCT ON (lower(p.brand)) p.brand, p.about, p.user_id, u.email, u.role FROM brand_profiles p"
+                          " JOIN users u ON u.id = p.user_id WHERE p.open"
                           " ORDER BY lower(p.brand), p.updated_at DESC").fetchall()
-    return rows
+    return [r for r in rows if creator.has_role(r, "brand")]
 
 
 def partner(name):
@@ -275,9 +275,9 @@ def load_mine(user, cid):
 
 
 def side_of(user, c):
-    if user["role"] == "brand" and c["brand_user_id"] == user["id"]:
+    if c["brand_user_id"] == user["id"] and creator.has_role(user, "brand"):
         return "brand"
-    if user["role"] == "creator" and (c["creator_user_id"] == user["id"] or owns(user, c)):
+    if creator.has_role(user, "creator") and (c["creator_user_id"] == user["id"] or owns(user, c)):
         return "creator"
     return None
 
@@ -333,12 +333,14 @@ def view(c, side):
             "createdAt": c["created_at"], "updatedAt": c["updated_at"]}
 
 
-def mine(user):
+def mine(user, as_role=None):
     """The inbox for a creator (by account or verified handle) or a brand account, newest first."""
-    if user["role"] == "brand":
+    sides = [r for r in creator.roles_of(user) if r in ("creator", "brand")]
+    role = as_role if as_role in sides else next(iter(sides), user["role"])
+    if role == "brand":
         sql, args = "brand_user_id = %s", (user["id"],)
         side = "brand"
-    elif user["role"] == "creator":
+    elif role == "creator":
         sql = ("creator_user_id = %s OR (platform, handle) IN (SELECT platform, handle FROM creator_handles"
                " WHERE user_id = %s AND verified_at IS NOT NULL)")
         args, side = (user["id"], user["id"]), "creator"
@@ -347,7 +349,7 @@ def mine(user):
     with connect() as db:
         rows = db.execute("SELECT * FROM collabs WHERE " + sql + " ORDER BY updated_at DESC LIMIT 100", args).fetchall()
     items = [view(c, side) for c in rows]
-    out = {"role": user["role"], "collabs": items,
+    out = {"role": role, "roles": sides, "collabs": items,
            "counts": {"yourTurn": sum(i["yourTurn"] for i in items), "waiting": sum(i["status"] in OPEN and not i["yourTurn"] for i in items),
                       "booked": sum(i["status"] == "accepted" for i in items),
                       "bookedUsd": sum(i["budgetUsd"] for i in items if i["status"] == "accepted")}}
@@ -468,13 +470,16 @@ def run_weekly(force=False):
     """Monday email to every creator with a collab waiting on them or a watched brand that just opened to pitches."""
     with connect() as db:
         users = db.execute(
-            "SELECT DISTINCT u.* FROM users u LEFT JOIN collab_weekly s ON s.user_id = u.id WHERE u.role = 'creator'"
-            " AND (u.id IN (SELECT user_id FROM creator_watch) OR u.id IN (SELECT creator_user_id FROM collabs WHERE status IN ('sent', 'countered'))"
+            "SELECT DISTINCT u.* FROM users u LEFT JOIN collab_weekly s ON s.user_id = u.id"
+            " WHERE (u.id IN (SELECT user_id FROM creator_watch)"
+            " OR u.id IN (SELECT creator_user_id FROM collabs WHERE status IN ('sent', 'countered'))"
             " OR u.id IN (SELECT h.user_id FROM creator_handles h JOIN collabs c ON c.platform = h.platform AND c.handle = h.handle"
             " WHERE h.verified_at IS NOT NULL AND c.status IN ('sent', 'countered')))"
             " AND (%s OR s.sent_at IS NULL OR s.sent_at < now() - %s)", (force, WEEKLY_EVERY)).fetchall()
     sent = 0
     for u in users:
+        if not creator.has_role(u, "creator"):
+            continue
         mail = weekly(u)
         if not mail:
             continue
@@ -504,7 +509,7 @@ def dispatch(handler):
             c, side = load_token(tok.group(1))
             return view(c, side)
         if path == "/mine":
-            return mine(creator.require_user(handler.headers))
+            return mine(creator.require_user(handler.headers), (parse_qs(urlparse(handler.path).query).get("as") or [None])[0])
         dg = re.fullmatch(r"/digest/([A-Za-z0-9_-]{16,32})", path)
         if dg:
             d, _, _ = digest.load_digest(dg.group(1))

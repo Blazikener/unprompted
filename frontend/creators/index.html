@@ -648,7 +648,7 @@ function handleCreatorRoleError(err) {
   return true;
 }
 function canUseCreatorFeatures() {
-  if (!S.user || S.user.role === 'creator') return true;
+  if (!S.user || U.hasRole(S.user, 'creator')) return true;
   showCreatorRoleNotice(S.user.role);
   return false;
 }
@@ -883,7 +883,7 @@ async function openScan(id) {
   try { showScan(await api('/scans/' + id), true); } catch (e) { if (!handleCreatorRoleError(e)) toast(e.message, 'error'); }
 }
 async function loadHistory() {
-  const rows = S.user?.role === 'creator' ? await api('/scans').catch((e) => { handleCreatorRoleError(e); return []; }) : [];
+  const rows = U.hasRole(S.user, 'creator') ? await api('/scans').catch((e) => { handleCreatorRoleError(e); return []; }) : [];
   S.history = rows;
   $('#history').replaceChildren(...(rows.length ? rows.map((r) => h('li', {}, h('button', { type: 'button', 'data-id': r.id, onclick: () => openScan(+r.id) },
     h('b', {}, h('bdi', {}, '@' + r.handle)), ` · ${PLATFORM[r.platform]}`, h('small', {}, `${r.brands} brands · ${date(r.createdAt)}`))))

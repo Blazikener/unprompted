@@ -63,9 +63,9 @@
       } else {
         const me = await C.call('/api/creators/me');
         if (!me.user) return fail('Sign in with your brand account to invite creators.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Go to brand sign-in'));
-        if (me.user.role !== 'brand') return fail(`You're signed in with a ${me.user.role} account.`, h('p', {}, 'Invites are sent by brand accounts. Creators pitch brands from their collabs inbox.', ' ', h('a', { href: '/collabs' }, 'Open your collabs')));
+        if (!U.hasRole(me.user, 'brand')) return fail(`You're signed in with a ${me.user.role} account.`, h('p', {}, 'Invites are sent by brand accounts. Creators pitch brands from their collabs inbox.', ' ', h('a', { href: '/collabs' }, 'Open your collabs')));
         who(me.user);
-        const mine = await C.call('/api/collabs/mine');
+        const mine = await C.call('/api/collabs/mine?as=brand');
         ctx = { brand: q.get('brand') || mine.profile?.brand || '', platform: q.get('platform') || 'tiktok', handle: (q.get('handle') || '').replace(/^@/, ''),
                 videoId: q.get('v') || '', brandEditable: true };
         if (!ctx.handle) return fail('Pick a creator first.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Search creators who mention you'));

@@ -296,14 +296,13 @@ function activateTab(name, updateUrl = true) {
   }
 }
 function buildTabs() {
-  const role = data.role;
-  const label = role[0].toUpperCase() + role.slice(1);
-  tabs = [['overview', 'Overview'], [role, label], ['account', 'Account']];
+  const cap = (r) => r[0].toUpperCase() + r.slice(1);
+  tabs = [['overview', 'Overview'], ...(data.roles || [data.role]).map((r) => [r, cap(r)]), ['account', 'Account']];
   for (const nav of [$('#desktop-tabs'), $('#mobile-tabs')]) {
     nav.replaceChildren(...tabs.map(([id, label]) => h('button', {
       id: `tab-${nav.id}-${id}`, type: 'button', class: 'tab', role: 'tab', 'data-tab': id,
       'aria-controls': `panel-${id}`, 'aria-selected': 'false', tabindex: -1,
-      onclick: () => activateTab(id),
+      onclick: () => (id !== data.role && (data.roles || []).includes(id) ? location.assign(`/dashboard?as=${id}`) : activateTab(id)),
       onkeydown: (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -334,7 +333,8 @@ function renderAccountHeader() {
     h('em', {}, "Let's see what moved."),
   );
   $('#user-email').textContent = user.email;
-  $('#role-pill').textContent = `${data.role[0].toUpperCase()}${data.role.slice(1)} account`;
+  $('#role-pill').textContent = (data.roles || [data.role]).length > 1
+    ? `${data.role[0].toUpperCase()}${data.role.slice(1)} view · ${data.roles.join(' + ')}` : `${data.role[0].toUpperCase()}${data.role.slice(1)} account`;
   $('#dash-intro').textContent = data.role === 'creator'
     ? 'Your receipts, scan activity and future collabs, grounded in evidence.'
     : data.role === 'brand' ? 'Your saved searches, creator mentions and weekly digests, grounded in evidence.'
@@ -815,12 +815,12 @@ function addPaletteActions() {
 
 (async () => {
   try {
-    data = await api('/dashboard');
-    data.role = data.user.role;
+    const asked = new URLSearchParams(location.search).get('as');
+    data = await api(`/dashboard${asked ? `?as=${encodeURIComponent(asked)}` : ''}`);
     buildTabs();
     render();
     addPaletteActions();
-    activateTab('overview', false);
+    activateTab(asked && asked === data.role && data.role !== data.user.role ? data.role : 'overview', false);
   } catch (error) {
     if (error.status === 401) { location.replace('/creators/?signin=1'); return; }
     $('#dashboard-error').hidden = false;

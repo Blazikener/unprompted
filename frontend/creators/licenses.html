@@ -433,7 +433,7 @@
     try {
       const me = await call('/api/creators/me');
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
-      if (me.user.role !== 'creator') { showRoleNotice(me.user.role); return; }
+      if (!U.hasRole(me.user, 'creator')) { showRoleNotice(me.user.role); return; }
       call('/api/creators/visit', { page: 'inbox' }).catch(() => {});   // a return visit, for the packaging test's week-4 count
       $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
         h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
