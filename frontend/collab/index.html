@@ -68,7 +68,7 @@
         const mine = await C.call('/api/collabs/mine');
         ctx = { brand: q.get('brand') || mine.profile?.brand || '', platform: q.get('platform') || 'tiktok', handle: (q.get('handle') || '').replace(/^@/, ''),
                 videoId: q.get('v') || '', brandEditable: true };
-        if (!ctx.handle) return fail('Pick a creator first.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Search creators who mention you'));
+        if (!ctx.handle) return pickCreator(ctx);
         if (ctx.videoId) {
           const p = await C.call(`/api/collabs/proof?${new URLSearchParams({ v: ctx.videoId, platform: ctx.platform, handle: ctx.handle })}`).catch(() => ({}));
           ctx.proof = p.proof || null;
@@ -93,11 +93,30 @@
       });
     } },
       ctx.brandEditable ? C.field('Brand', brand) : null, t.el, err, h('div', { class: 'c-actions' }, submit),
-      h('small', { class: 'u-hint' }, `@${ctx.handle} gets it by email and can accept, counter or decline. You'll hear back the same way.`));
+      h('small', { class: 'u-hint' }, `@${ctx.handle} can accept, counter or decline from a link, no account needed. If they're not on Receipts yet, we pass it on. You'll hear back by email.`));
     show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Invite to collab'),
         h('h1', {}, `Work with @${ctx.handle} on what's next.`),
         h('p', { class: 'u-lead' }, `They already talk about ${ctx.brand || 'you'} without being paid. Propose new content, in their style: what gets made, when, and the budget.`)),
       ctx.proof ? C.proof({ proof: ctx.proof, handle: ctx.handle, platform: ctx.platform }) : null, form);
+  }
+
+  function pickCreator(ctx) {
+    const platform = h('select', { class: 'u-select' }, h('option', { value: 'tiktok' }, 'TikTok'), h('option', { value: 'instagram' }, 'Instagram'));
+    const handle = h('input', { class: 'u-input', required: true, maxlength: 40, placeholder: '@handle', autocomplete: 'off', spellcheck: 'false' });
+    const form = h('form', { class: 'c-card', onsubmit: (e) => {
+      e.preventDefault();
+      const value = handle.value.trim().replace(/^@/, '');
+      if (!value) return;
+      location.assign(`/collab/new?${new URLSearchParams({ platform: platform.value, handle: value, brand: ctx.brand })}`);
+    } },
+      h('div', { class: 'c-two' }, C.field('Platform', platform), C.field('Creator', handle)),
+      h('div', { class: 'c-actions' }, h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Continue'),
+        h('a', { class: 'u-btn', href: '/brands/' }, 'Search creators who mention you')));
+    show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Invite to collab'),
+        h('h1', {}, 'Who do you want to work with?'),
+        h('p', { class: 'u-lead' }, 'Enter a creator you already know, or search for creators who mention you and attach their video as proof.')),
+      form);
+    handle.focus();
   }
 
   function who(user) {
