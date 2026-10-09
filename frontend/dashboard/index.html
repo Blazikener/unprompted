@@ -295,6 +295,11 @@ function activateTab(name, updateUrl = true) {
     history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
   }
 }
+function chooseTab(id) {
+  if (id !== data.role && (data.roles || []).includes(id)) { location.assign(`/dashboard?as=${id}`); return false; }
+  activateTab(id);
+  return true;
+}
 function buildTabs() {
   const cap = (r) => r[0].toUpperCase() + r.slice(1);
   tabs = [['overview', 'Overview'], ...(data.roles || [data.role]).map((r) => [r, cap(r)]), ['account', 'Account']];
@@ -302,14 +307,14 @@ function buildTabs() {
     nav.replaceChildren(...tabs.map(([id, label]) => h('button', {
       id: `tab-${nav.id}-${id}`, type: 'button', class: 'tab', role: 'tab', 'data-tab': id,
       'aria-controls': `panel-${id}`, 'aria-selected': 'false', tabindex: -1,
-      onclick: () => (id !== data.role && (data.roles || []).includes(id) ? location.assign(`/dashboard?as=${id}`) : activateTab(id)),
+      onclick: () => chooseTab(id),
       onkeydown: (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
         const index = tabs.findIndex(([key]) => key === id);
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
           : (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
-        activateTab(tabs[next][0]); $(`[data-tab="${tabs[next][0]}"]`, nav).focus();
+        if (chooseTab(tabs[next][0])) $(`[data-tab="${tabs[next][0]}"]`, nav).focus();
       },
     }, label)));
   }
@@ -333,8 +338,7 @@ function renderAccountHeader() {
     h('em', {}, "Let's see what moved."),
   );
   $('#user-email').textContent = user.email;
-  $('#role-pill').textContent = (data.roles || [data.role]).length > 1
-    ? `${data.role[0].toUpperCase()}${data.role.slice(1)} view · ${data.roles.join(' + ')}` : `${data.role[0].toUpperCase()}${data.role.slice(1)} account`;
+  $('#role-pill').textContent = `${data.role[0].toUpperCase()}${data.role.slice(1)} ${(data.roles || []).length > 1 ? 'view' : 'account'}`;
   $('#dash-intro').textContent = data.role === 'creator'
     ? 'Your receipts, scan activity and future collabs, grounded in evidence.'
     : data.role === 'brand' ? 'Your saved searches, creator mentions and weekly digests, grounded in evidence.'
@@ -820,7 +824,7 @@ function addPaletteActions() {
     buildTabs();
     render();
     addPaletteActions();
-    activateTab(asked && asked === data.role && data.role !== data.user.role ? data.role : 'overview', false);
+    activateTab(asked === data.role || asked === 'account' ? asked : 'overview', false);
   } catch (error) {
     if (error.status === 401) { location.replace('/creators/?signin=1'); return; }
     $('#dashboard-error').hidden = false;
