@@ -104,7 +104,7 @@ def test_weekly_run_finds_gifted_posters_and_reports_them(monkeypatch, mail):
     subject, body = mail[-1][1], mail[-1][2]
     assert subject.startswith("2 new creator mentions of Tim Hortons")
     assert "Gifted creators" in body and "2 of 4 gifted creators have posted, 1 only on camera" in body and "your own tracking had 1" in body
-    assert "@sara.eats" in body and "https://u.test/license/%s/sara_after" % d["token"] in body
+    assert "@sara.eats" in body and "https://u.test/collab/new/%s?v=sara_after" % d["token"] in body
     assert digest.license_view(d["token"], "sara_after")["video"]["handle"] == "sara.eats"   # the licence button works
 
     # A week with no new mentions but a gifted creator posting still sends, with its own subject.
@@ -114,7 +114,7 @@ def test_weekly_run_finds_gifted_posters_and_reports_them(monkeypatch, mail):
         db.execute("UPDATE seeding_gifts SET video_id = NULL, kind = NULL, checked_at = NULL WHERE shipped_on = %s", (TODAY - timedelta(days=5),))
     run = digest.run_due(force=True)["results"][0]
     assert run["new"] == 0 and run["giftedFound"] == 1 and mail[-1][1] == "1 gifted creator posted about Tim Hortons"
-    assert "License for ads" in mail[-1][2]                        # found through the creator's own page: stored with the run
+    assert "Invite to collab" in mail[-1][2]                        # found through the creator's own page: stored with the run
 
 
 def test_checks_never_overspend_oriane(monkeypatch, mail):

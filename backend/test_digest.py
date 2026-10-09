@@ -261,10 +261,10 @@ def test_license_button_records_one_request_and_tells_the_operator(monkeypatch):
     monkeypatch.setattr(server, "oriane", lambda *a, **k: page(organic, paid))
     digest.run_due()
 
-    # Only the organic mention gets a button; 1,200 views price at the $50/month floor.
+    # Only the organic mention gets an invite button; the email links to a future collab, never a licence.
     body = sent[-1][2]
-    assert "https://u.test/license/%s/lic1" % d["token"] in body and "/license/%s/lic2" % d["token"] not in body
-    assert "License for ads &middot; ~$50 / 30 days" in body
+    assert "https://u.test/collab/new/%s?v=lic1" % d["token"] in body and "?v=lic2" not in body
+    assert "Invite to collab" in body and "License for ads" not in body
 
     view = digest.license_view(d["token"], "lic1")
     assert view["request"] is None and view["video"]["handle"] == "ali" and view["video"]["kind"] == "spoken"

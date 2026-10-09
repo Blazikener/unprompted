@@ -199,7 +199,7 @@ def test_creator_rate_sets_the_price_brands_see(monkeypatch, mail, stripe):
     licenses.set_prefs(ali, {"rate30dUsd": 100})
     view = digest.license_view(d["token"], "pp5")
     assert view["prices"] == [{"days": 30, "usd": 118}, {"days": 60, "usd": 236}, {"days": 90, "usd": 353}]
-    assert "~$118 / 30 days" in digest.item_html({**video("pp5"), "id": "pp5", "handle": "ali", "views": 1200, "kind": "spoken",
+    assert "Invite to collab" in digest.item_html({**video("pp5"), "id": "pp5", "handle": "ali", "views": 1200, "kind": "spoken",
                                                   "url": "u", "quote": None}, d["token"])
     assert licenses.mine(ali)["prefs"]["rate30dUsd"] == 100
 

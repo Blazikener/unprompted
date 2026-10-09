@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collab · Unprompted</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
+<link rel="stylesheet" href="/collab/collab.css?v=1">
+<script src="/ui/ui.js?v=2"></script>
+<script src="/collab/collab.js?v=1"></script>
+</head>
+<body class="u-stage">
+<header class="u-bar">
+  <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
+  </nav>
+  <span class="grow"></span>
+  <span class="bar-note">Future collab</span>
+  <span id="who"></span>
+</header>
+<main class="page">
+  <section id="app" aria-busy="true" tabindex="-1"><p class="u-muted">Loading…</p></section>
+  <footer class="c-foot">A collab is new paid work: the creator's past video is the proof they already like you, not the thing being bought. Nothing is charged here.</footer>
+</main>
+<script>
+  const { h } = U;
+  const $ = (s) => document.querySelector(s);
+  const parts = location.pathname.split('/').filter(Boolean);       // ['collab', token] | ['collab', 'new'] | ['collab', 'new', digestToken]
+  const q = new URLSearchParams(location.search);
+  const app = $('#app');
+  const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); app.focus({ preventScroll: true }); };
+  const fail = (msg, extra) => show(h('div', { class: 'c-card', role: 'alert' }, h('h1', { class: 'u-h3' }, msg), extra || null));
+
+  // ---------------------------------------------------------------- one collab, answered from its link (no account)
+  async function viewCollab(token) {
+    const api = `/api/collabs/t/${token}`;
+    const render = (c) => {
+      document.title = `${C.headline(c)} · Unprompted`;
+      show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, c.side === 'creator' ? 'For @' + c.handle : 'For ' + c.brand),
+          h('h1', {}, C.headline(c), '.')),
+        h('div', { class: 'c-card' },
+          h('div', { class: 'c-head' }, h('div', {}, h('div', { class: 'c-amount' }, C.usd(c.budgetUsd)), h('small', { class: 'u-muted' }, `${c.deliverables} · ${c.timing}`)), C.pill(c)),
+          h('p', { role: 'status' }, C.status(c)),
+          C.actions(c, (body) => C.call(api, body), render),
+          C.termsList(c)),
+        C.proof(c),
+        h('p', { class: 'u-muted' }, h('a', { href: '/collabs' }, 'All your collabs'), ' · signed-in creators and brands see these in one inbox.'));
+    };
+    try { render(await C.call(api)); } catch (e) { fail(e.message); }
+  }
+
+  // ---------------------------------------------------------------- composing a brand's invite
+  async function compose() {
+    const digestToken = parts[2];
+    let ctx;                                   // { brand, platform, handle, proof, brandEditable }
+    try {
+      if (digestToken) {
+        const d = await C.call(`/api/collabs/digest/${digestToken}?v=${encodeURIComponent(q.get('v') || '')}`);
+        const v = d.video;
+        ctx = { brand: d.brand, platform: v.platform, handle: v.handle, proof: v };
+      } else {
+        const me = await C.call('/api/creators/me');
+        if (!me.user) return fail('Sign in with your brand account to invite creators.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Go to brand sign-in'));
+        if (me.user.role !== 'brand') return fail(`You're signed in with a ${me.user.role} account.`, h('p', {}, 'Invites are sent by brand accounts. Creators pitch brands from their collabs inbox.', ' ', h('a', { href: '/collabs' }, 'Open your collabs')));
+        who(me.user);
+        const mine = await C.call('/api/collabs/mine');
+        ctx = { brand: q.get('brand') || mine.profile?.brand || '', platform: q.get('platform') || 'tiktok', handle: (q.get('handle') || '').replace(/^@/, ''),
+                videoId: q.get('v') || '', brandEditable: true };
+        if (!ctx.handle) return fail('Pick a creator first.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Search creators who mention you'));
+        if (ctx.videoId) {
+          const p = await C.call(`/api/collabs/proof?${new URLSearchParams({ v: ctx.videoId, platform: ctx.platform, handle: ctx.handle })}`).catch(() => ({}));
+          ctx.proof = p.proof || null;
+        }
+      }
+    } catch (e) { return fail(e.message); }
+    const t = C.termsForm({ budgetUsd: '' });
+    const brand = h('input', { class: 'u-input', value: ctx.brand, required: true, maxlength: 60 });
+    const err = h('p', { class: 'u-error', role: 'alert' });
+    const submit = h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Send the proposal');
+    const form = h('form', { class: 'c-card', onsubmit: (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      C.pending(submit, async () => {
+        try {
+          const body = { ...t.read(), videoId: ctx.videoId || q.get('v') || '' };
+          const c = digestToken ? await C.call(`/api/collabs/digest/${digestToken}`, body)
+            : await C.call('/api/collabs/propose', { ...body, brand: brand.value.trim(), platform: ctx.platform, handle: ctx.handle });
+          U.toast(`Proposal sent to @${c.handle}`, { kind: 'ok' });
+          location.replace(c.url.replace(/^https?:\/\/[^/]+/, ''));
+        } catch (ex) { err.textContent = ex.message; }
+      });
+    } },
+      ctx.brandEditable ? C.field('Brand', brand) : null, t.el, err, h('div', { class: 'c-actions' }, submit),
+      h('small', { class: 'u-hint' }, `@${ctx.handle} gets it by email and can accept, counter or decline. You'll hear back the same way.`));
+    show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Invite to collab'),
+        h('h1', {}, `Work with @${ctx.handle} on what's next.`),
+        h('p', { class: 'u-lead' }, `They already talk about ${ctx.brand || 'you'} without being paid. Propose new content, in their style: what gets made, when, and the budget.`)),
+      ctx.proof ? C.proof({ proof: ctx.proof, handle: ctx.handle, platform: ctx.platform }) : null, form);
+  }
+
+  function who(user) {
+    $('#who').replaceChildren(h('span', { class: 'email' }, user.email), h('a', { href: '/collabs' }, 'Collabs'), h('a', { href: '/dashboard' }, 'Dashboard'));
+  }
+
+  if (parts[1] === 'new') compose();
+  else if (/^[0-9a-f]{32}$/.test(parts[1] || '')) viewCollab(parts[1]);
+  else fail("This collab link isn't valid.");
+</script>
+</body>
+</html>
