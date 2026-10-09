@@ -676,7 +676,7 @@ def flag_mention(body, user):
 
 def list_searches(user=None):
     """The user's 20 latest searches; `watch` is set when they watch that brand and filters (any period)."""
-    if not user:
+    if not user or user["role"] != "brand":
         return []
     with connect() as db:
         rows = db.execute(
@@ -697,10 +697,7 @@ def list_searches(user=None):
 
 
 def require_brand_user(headers):
-    user = creator.current_user(headers)
-    if not user:
-        raise ApiError(401, "Sign in to search.")
-    return user
+    return creator.require_role(headers, "brand", "Sign in to search.")
 
 
 def not_found():
@@ -750,6 +747,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: digest.dispatch(self))
         elif path.startswith("/api/licenses/") or path.startswith("/api/admin/handles"):
             self.api(lambda: licenses.dispatch(self))
+        elif path.startswith("/api/collabs/"):
+            self.api(lambda: collabs.dispatch(self))
         elif path.startswith("/api/rosters/") or path == "/api/admin/rosters":
             self.api(lambda: rosters.dispatch(self))
         elif path == "/api/admin/seeding":
@@ -793,6 +792,10 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/license/index.html"
             elif re.fullmatch(r"/offer/[^/]+", path):
                 self.path = "/offer/index.html"
+            elif re.fullmatch(r"/collab/(?:new(?:/[^/]+)?|[0-9a-f]{32})", path):
+                self.path = "/collab/index.html"
+            elif path in ("/collabs", "/collabs/"):
+                self.path = "/collabs/index.html"
             elif path in ("/creators/licenses", "/creators/licenses/"):
                 self.path = "/creators/licenses.html"
             elif path in ("/creators/roster", "/creators/roster/"):
@@ -824,6 +827,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: waitlist.dispatch(self))
         if self.path.startswith("/api/licenses/") or self.path.startswith("/api/admin/handles"):
             return self.api(lambda: licenses.dispatch(self))
+        if self.path.startswith("/api/collabs/"):
+            return self.api(lambda: collabs.dispatch(self))
         if self.path.startswith("/api/rosters/") or self.path == "/api/admin/rosters":
             return self.api(lambda: rosters.dispatch(self))
         if self.path.startswith("/api/admin/eval/"):
@@ -892,6 +897,7 @@ sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us ba
 import creator  # noqa: E402
 import digest  # noqa: E402
 import licenses  # noqa: E402
+import collabs  # noqa: E402
 import payments  # noqa: E402
 import rosters  # noqa: E402
 import seeding  # noqa: E402
@@ -912,11 +918,13 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS checks_user ON checks (user_id, created_at DESC)")
         db.execute(digest.SCHEMA)
         db.execute(licenses.SCHEMA)
+        db.execute(collabs.SCHEMA)
         db.execute(payments.SCHEMA)
         db.execute(rosters.SCHEMA)
         db.execute(seeding.SCHEMA)
         db.execute(eval_mentions.SCHEMA)
         db.execute(packaging.SCHEMA)
+        db.execute(creator.ROLE_MIGRATION)
         db.execute(waitlist.SCHEMA)
 
 

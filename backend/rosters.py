@@ -357,6 +357,8 @@ def admin_grant(body):
         u = db.execute("SELECT * FROM users WHERE lower(email) = %s", (email,)).fetchone()
         if not u:
             raise ApiError(404, "No account with that email: ask them to sign up at /creators/roster first.")
+        if u["role"] != "manager":
+            raise ApiError(409, "That account isn't a manager account; ask them to sign up at /creators/roster.")
         db.execute("INSERT INTO rosters (user_id, pilot_until) VALUES (%s, now() + %s * interval '1 week')"
                    " ON CONFLICT (user_id) DO UPDATE SET pilot_until = now() + %s * interval '1 week'", (u["id"], weeks, weeks))
     licenses.notify("Your Unprompted roster pilot is on (%d weeks)" % weeks,
@@ -378,7 +380,7 @@ def dispatch(handler):
             return admin_grant(digest.read_json(handler))
         raise ApiError(404, "Not found.")
     path = path.removeprefix("/api/rosters")
-    user = creator.require_user(handler.headers)
+    user = creator.require_role(handler.headers, "manager")
     if method == "GET" and path == "/mine":
         return mine(user)
     if method != "POST":

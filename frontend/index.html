@@ -660,6 +660,7 @@
   </aside>
 
   <main class="main">
+    <section id="brand-role-notice" class="role-notice u-card u-card-pad" role="status" aria-live="polite" hidden></section>
     <section id="landing" class="landing" aria-labelledby="landing-h">
       <header class="u-bar landing-top">
         <a class="u-logo wordmark home" href="/brands/">Un<mark>prompted</mark></a>
@@ -775,7 +776,7 @@
 
       <section class="belt" aria-labelledby="b-belt-h">
         <h2 class="u-eyebrow belt-h" id="b-belt-h">What brands find when they listen</h2>
-        <div class="m-marquee belt-track"><ul><li>Said on camera</li><li aria-hidden="true" class="star">✳</li><li>Tagged</li><li aria-hidden="true" class="star">✳</li><li>never in the caption</li><li aria-hidden="true" class="star">✳</li><li>Paid partnership</li><li aria-hidden="true" class="star">✳</li><li>Untapped advocates</li><li aria-hidden="true" class="star">✳</li><li>with the timestamp</li><li aria-hidden="true" class="star">✳</li><li>Weekly report</li><li aria-hidden="true" class="star">✳</li><li>Licensed clips</li><li aria-hidden="true" class="star">✳</li></ul></div>
+        <div class="m-marquee belt-track"><ul><li>Said on camera</li><li aria-hidden="true" class="star">✳</li><li>Tagged</li><li aria-hidden="true" class="star">✳</li><li>never in the caption</li><li aria-hidden="true" class="star">✳</li><li>Paid partnership</li><li aria-hidden="true" class="star">✳</li><li>Untapped advocates</li><li aria-hidden="true" class="star">✳</li><li>with the timestamp</li><li aria-hidden="true" class="star">✳</li><li>Weekly report</li><li aria-hidden="true" class="star">✳</li><li>Future collabs</li><li aria-hidden="true" class="star">✳</li></ul></div>
       </section>
 
       <section class="band b-gap u-gridlines" aria-labelledby="b-gap-h">
@@ -832,7 +833,7 @@
                 <li><b class="story-n">01</b><h3>Search your brand once</h3><p>Type the name and how people say it out loud. We read the last 12 months of creator videos on Instagram and TikTok.</p></li>
                 <li><b class="story-n">02</b><h3>Meet your advocates</h3><p>Creators ranked by how often, how recently and to how many people they said your name, with the quote and the frame for every mention.</p></li>
                 <li><b class="story-n">03</b><h3>Hear the next ones first</h3><p>Press <b>Watch weekly</b>. Every 7 days you get only the new videos by email. No new mentions, no email.</p></li>
-                <li><b class="story-n">04</b><h3>License the clip</h3><p>Ask a creator to run their video as a 30-day Spark Ad or partnership ad, with the price up front. They accept, and it's yours to run.</p></li>
+                <li><b class="story-n">04</b><h3>Invite them to collab</h3><p>Propose new content in their style: what they make, when it posts, the budget. They accept or counter, and the collab is booked.</p></li>
               </ol>
               <div class="story-meter" aria-hidden="true"><i></i></div>
             </div>
@@ -845,7 +846,7 @@
               </ol>
               <div class="bsv bsv-mail"><span class="bsv-k">Weekly report · Monday</span><b>4 new creator mentions of Tim Hortons this week</b><div class="bsv-mail-row"><img src="/demo/thumbs/maya-05.jpg" alt=""><p>“grabbed a <mark>Tim Hortons</mark> on the way to set”</p></div><div class="bsv-mail-row"><img src="/demo/thumbs/maya-17.jpg" alt=""><p>“the <mark>Timmies</mark> here hits different”</p></div></div>
               <span class="b-sv-note">Sample data</span>
-              <div class="bsv bsv-lic"><img src="/demo/thumbs/maya-00.jpg" alt=""><div><span class="bsv-k">Licence request</span><b>30-day Spark Ad</b><span class="bsv-price">$240</span><span class="bsv-ok">Creator accepted</span></div></div>
+              <div class="bsv bsv-lic"><img src="/demo/thumbs/maya-00.jpg" alt=""><div><span class="bsv-k">Collab proposal</span><b>2 TikToks + 1 story · June</b><span class="bsv-price">$2,600</span><span class="bsv-ok">Creator accepted</span></div></div>
             </div>
           </div>
         </div>
@@ -995,8 +996,9 @@
 <dialog id="brand-auth" class="u-dialog" aria-labelledby="brand-auth-title">
   <div class="u-dialog-body">
     <button class="u-btn u-btn-ghost u-btn-icon brand-auth-close" type="button" aria-label="Close sign-in dialog">&times;</button>
-    <h2 id="brand-auth-title" class="u-h3">Create your account</h2>
+    <h2 id="brand-auth-title" class="u-h3">Create your brand account</h2>
     <p class="u-hint">Free: 2 brand searches and 3 creator checks a week.</p>
+    <p class="u-hint" id="brand-auth-role-links" hidden></p>
     <form id="brand-auth-form" class="brand-auth-form">
       <label class="u-label" for="brand-auth-email">Email</label>
       <input id="brand-auth-email" class="u-input" name="email" type="email" required autocomplete="email">
@@ -1114,9 +1116,40 @@
     return body;
   }
 
-  let brandUser = null, brandUsage = null, brandAuthMode = 'signup', brandAuthPromise = null, resolveBrandAuth = null;
+  let brandUser = null, brandUsage = null, brandAccountReady = false, brandAuthMode = 'signup', brandAuthPromise = null, resolveBrandAuth = null;
   const brandAuth = $('#brand-auth');
   const brandAuthForm = $('#brand-auth-form');
+
+  function showBrandRoleNotice(role) {
+    const notice = $('#brand-role-notice');
+    notice.replaceChildren(
+      h('strong', {}, `You're signed in with a ${role || 'different'} account.`),
+      h('p', {}, 'Brand searches and creator checks are for brand accounts.'),
+      h('div', { class: 'u-row' },
+        h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/dashboard' }, 'Go to your dashboard'),
+        h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOutBrand }, 'Sign out')));
+    notice.hidden = false;
+  }
+  function brandRoleError() {
+    const error = new Error('Brand searches and creator checks are for brand accounts.');
+    error.status = 403;
+    error.data = { role: brandUser?.role };
+    return error;
+  }
+  function canUseBrandFeatures() {
+    if (!brandUser || brandUser.role === 'brand') return true;
+    showBrandRoleNotice(brandUser.role);
+    return false;
+  }
+  async function canUseBrandFeaturesAsync() {
+    if (!brandAccountReady) await refreshBrandAccount();
+    return canUseBrandFeatures();
+  }
+  function handleBrandRoleError(error) {
+    if (error.status !== 403 || !error.data?.role) return false;
+    showBrandRoleNotice(error.data.role);
+    return true;
+  }
 
   function finishBrandAuth(ok) {
     const resolve = resolveBrandAuth;
@@ -1128,7 +1161,11 @@
   function setBrandAuthMode(mode) {
     brandAuthMode = mode;
     const signup = mode === 'signup';
-    $('#brand-auth-title').textContent = signup ? 'Create your account' : 'Sign in';
+    $('#brand-auth-title').textContent = signup ? 'Create your brand account' : 'Sign in';
+    const links = $('#brand-auth-role-links');
+    links.hidden = !signup;
+    if (signup) links.replaceChildren('Creator or manager? Sign up on the ',
+      h('a', { href: '/creators/' }, 'Creators'), ' / ', h('a', { href: '/creators/roster' }, 'Managers'), ' page.');
     $('#brand-auth-submit').textContent = signup ? 'Create account' : 'Sign in';
     $('#brand-auth-toggle').textContent = signup ? 'I already have an account' : 'Create an account';
     $('#brand-auth-password').autocomplete = signup ? 'new-password' : 'current-password';
@@ -1150,16 +1187,20 @@
   }
 
   async function authorizedApi(path, options) {
+    if (!await canUseBrandFeaturesAsync()) throw brandRoleError();
     try { return await api(path, options); } catch (err) {
       if (err.status !== 401 || !await requireBrandAuth()) throw err;
+      if (!await canUseBrandFeaturesAsync()) throw brandRoleError();
       return api(path, options);
     }
   }
 
   async function authorizedFetch(path, options) {
+    if (!await canUseBrandFeaturesAsync()) throw brandRoleError();
     let res;
     try { res = await fetch(path, options); } catch { throw new Error("Can't reach the Unprompted server."); }
     if (res.status === 401 && await requireBrandAuth()) {
+      if (!await canUseBrandFeaturesAsync()) throw brandRoleError();
       try { res = await fetch(path, options); } catch { throw new Error("Can't reach the Unprompted server."); }
     }
     return res;
@@ -1180,6 +1221,13 @@
       target.replaceChildren();
       if (!brandUser) {
         target.append(h('button', { type: 'button', class: 'u-btn u-btn-sm', onclick: () => openBrandAuth('login') }, 'Sign in'));
+        continue;
+      }
+      if (brandUser.role !== 'brand') {
+        target.append(h('span', { class: 'brand-account-chip' },
+          h('span', { class: 'brand-account-email', title: brandUser.email }, brandUser.email),
+          h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Dashboard'),
+          h('button', { type: 'button', class: 'u-btn u-btn-ghost u-btn-sm', onclick: signOutBrand }, 'Sign out')));
         continue;
       }
       const limit = brandUsage?.searches?.limit ?? 2;
@@ -1204,6 +1252,7 @@
       brandUser = me.user;
       brandUsage = me.brandUsage;
     } catch {}
+    brandAccountReady = true;
     renderBrandAccount();
   }
 
@@ -1229,7 +1278,8 @@
     $('#brand-auth-error').textContent = '';
     try {
       const result = await api(`/api/creators/${brandAuthMode}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(brandAuthMode === 'signup' ? { ...payload, role: 'brand' } : payload),
       });
       brandUser = result.user;
       await refreshBrandAccount();
@@ -1241,7 +1291,7 @@
         brandEl.value = pendingBrand;
         history.replaceState({}, '', '/brands/');
         form.requestSubmit();
-      } else if (!hasPendingAction) location.href = '/dashboard?as=brand';
+      } else if (!hasPendingAction) location.href = '/dashboard';
     } catch (err) {
       $('#brand-auth-error').textContent = err.message;
     } finally {
@@ -1319,7 +1369,7 @@
     } catch (err) {
       setBusy(false, '');
       view(state.data ? 'results' : 'intro');
-      setError(`${failText} ${err.message}`);
+      if (!handleBrandRoleError(err)) setError(`${failText} ${err.message}`);
     }
     await refreshBrandAccount();
     flushPending();
@@ -1336,8 +1386,9 @@
     };
   }
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!await canUseBrandFeaturesAsync()) return;
     if (state.busy) { state.pending = true; return; }
     const body = formBody();
     // Searches stream in (rows land as Oriane answers) wherever the browser can read a response stream.
@@ -1775,7 +1826,10 @@
           h('h2', { id: 'detail-h', tabindex: '-1' }, h('bdi', {}, c.name || c.handle), c.verified ? icon('verified', 'icon verified') : null),
           h('p', { class: 'handle' }, icon(c.platform), h('span', { class: 'handle-text' }, h('bdi', {}, `@${c.handle}`), ` · ${c.followers == null ? 'followers unavailable' : `${fmt(c.followers)} followers`}`)),
           h('div', { class: 'detail-links' }, statusPill(c), h('span', { class: 'u-stamp' }, `#${rank} by score`),
-            h('a', { class: 'link', href: c.profileUrl, target: '_blank', rel: 'noopener' }, `View on ${PLATFORM[c.platform]} ↗`)))),
+            h('a', { class: 'link', href: c.profileUrl, target: '_blank', rel: 'noopener' }, `View on ${PLATFORM[c.platform]} ↗`)),
+          h('a', { class: 'u-btn u-btn-sm u-btn-primary detail-invite', 'aria-label': `Invite @${c.handle} to a future collab`,
+            href: `/collab/new?${new URLSearchParams({ platform: c.platform, handle: c.handle, brand, v: best && best.kind !== 'sponsored' ? best.id : '' })}` },
+            'Invite to collab'))),
       h('section', { class: 'd-sec', 'aria-labelledby': 'd-receipts-h' },
         h('h3', { id: 'd-receipts-h' }, h('span', {}, 'Receipts ', h('span', { class: 'count' }, vids.length))),
         h('ol', { class: 'moments' }, shown.map((v) => h('li', {}, moment(v, { c, flaggable: true })))),
@@ -1873,6 +1927,7 @@
   }
 
   async function runCheck(c, fresh = false) {
+    if (!await canUseBrandFeaturesAsync()) return;
     if (state.checking) return;
     const k = key(c), searchId = state.data.search.id, previous = state.checks[k];
     state.checking = k;
@@ -1894,7 +1949,8 @@
       $('#status').textContent = `Score check for @${c.handle}: ${res.verdict}, ${res.total} out of 100.`;
     } else {
       if (previous) state.checks[k] = previous;
-      state.checkError[k] = `Score check failed. ${failed.message}`;
+      if (handleBrandRoleError(failed)) delete state.checkError[k];
+      else state.checkError[k] = `Score check failed. ${failed.message}`;
     }
     renderBoard();
     renderDetail(true);
@@ -1977,6 +2033,14 @@
   let savedSearches = [];
   const WATCH_TAG = { active: 'Watching · weekly', paused: 'Watch paused', pending: 'Watch: confirm email' };
   async function loadSaved() {
+    if (!brandUser) await refreshBrandAccount();
+    if (brandUser && brandUser.role !== 'brand') {
+      savedSearches = [];
+      $('#saved').replaceChildren(h('li', { class: 'muted small' }, 'Saved searches are for brand accounts.'));
+      $('#recent').hidden = true;
+      $('#recent-list').replaceChildren();
+      return;
+    }
     let list;
     try { list = savedSearches = await api('/api/searches'); } catch {
       $('#saved').replaceChildren(h('li', { class: 'muted small' }, "Couldn't load saved searches."));
@@ -2125,7 +2189,10 @@
       const res = await authorizedFetch('/api/searches/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
-        throw new Error(b.error || `Request failed (${res.status}).`);
+        const error = new Error(b.error || `Request failed (${res.status}).`);
+        error.status = res.status;
+        error.data = b;
+        throw error;
       }
       await readLines(res, async (ev) => {
         if (ev.type === 'error') throw new Error(ev.error);
@@ -2142,7 +2209,7 @@
       endLive();
       setBusy(false, '');
       if (state.data) show(state.data); else view('intro');
-      setError(`Search failed. ${err.message}`);
+      if (!handleBrandRoleError(err)) setError(`Search failed. ${err.message}`);
     }
     await refreshBrandAccount();
     flushPending();
@@ -2551,11 +2618,12 @@
     const q = new URLSearchParams(location.search);
     const pendingBrand = q.get('brand');
     if (pendingBrand) {
+      if (!canUseBrandFeatures()) return;
       brandEl.value = pendingBrand;
       history.replaceState({}, '', '/brands/');
       form.requestSubmit();
     } else if (['/brands', '/brands/'].includes(location.pathname) && !location.search && !location.hash) {
-      location.replace('/dashboard?as=brand');
+      location.replace('/dashboard');
     }
   });
 </script>

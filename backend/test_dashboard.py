@@ -21,10 +21,11 @@ def init_dashboard_schema():
     server.init_db()
 
 
-def new_user():
+def new_user(role="creator"):
     email = "dashboard-%s@example.test" % secrets.token_hex(8)
     with server.connect() as db:
-        return db.execute("INSERT INTO users (email, password) VALUES (%s, 'test') RETURNING *", (email,)).fetchone()
+        return db.execute("INSERT INTO users (email, password, role) VALUES (%s, 'test', %s) RETURNING *",
+                          (email, role)).fetchone()
 
 
 def delete_user(user):
@@ -37,6 +38,20 @@ def delete_user(user):
 @pytest.fixture
 def user():
     row = new_user()
+    yield row
+    delete_user(row)
+
+
+@pytest.fixture
+def brand_user():
+    row = new_user("brand")
+    yield row
+    delete_user(row)
+
+
+@pytest.fixture
+def manager_user():
+    row = new_user("manager")
     yield row
     delete_user(row)
 
@@ -102,21 +117,16 @@ def monday(offset_weeks=0):
 def test_empty_dashboard_has_zeroed_series_and_authenticated_route(user, monkeypatch):
     monkeypatch.setattr(server, "oriane", lambda *args, **kwargs: pytest.fail("dashboard must not call Oriane"))
     out = dashboard.view(user)
+    assert out["role"] == out["user"]["role"] == "creator"
     assert out["user"]["id"] == user["id"] and out["memberSince"]
-    assert out["usage"]["scans"]["used"] == 0 and out["usage"]["scans"]["limit"] == creator.PLANS["free"]["scansPerWeek"]
-    assert out["usage"]["searches"]["used"] == out["usage"]["checks"]["used"] == 0
+    assert out["usage"] == {"scans": {"used": 0, "limit": creator.PLANS["free"]["scansPerWeek"]}}
+    assert out["brand"] is out["manager"] is None
     assert out["creator"] == {
         "scans": 0, "handles": [], "brands": 0, "receipts": 0, "organicViews": 0, "unpaid": 0,
         "topBrands": [], "timeline": [{"month": month, "mentions": 0} for month in dashboard.month_keys()], "recent": [],
     }
-    assert out["brand"]["searches"] == out["brand"]["mentions"] == out["brand"]["views"] == 0
-    assert out["brand"]["digests"] == {"active": 0, "pending": 0}
-    assert set(out["brand"]["licenseRequests"].values()) == {0}
-    assert len(out["brand"]["weekly"]) == 8 and all(row["mentions"] == 0 for row in out["brand"]["weekly"])
-    assert out["brand"]["recentSearches"] == out["brand"]["topCreators"] == []
-    assert out["manager"]["hasRoster"] is False
-    assert out["manager"]["creators"] == out["manager"]["reports"] == out["manager"]["deals"] == out["manager"]["dealsUsd"] == 0
-    assert out["licenses"]["verifiedHandles"] == out["licenses"]["waiting"] == out["licenses"]["accepted"] == 0
+    assert out["licenses"]["verifiedHandles"] == 0
+    assert out["licenses"]["waiting"] == out["licenses"]["accepted"] == out["licenses"]["live"] == 0
     assert out["licenses"]["paidUsd"] == out["licenses"]["owedUsd"] == out["licenses"]["live"] == 0
     assert out["activity"] == []
 
@@ -167,8 +177,9 @@ def test_creator_aggregates_use_latest_scan_per_handle_and_receipt_months(user):
     assert len(creator_data["recent"]) == 3
 
 
-def test_brand_aggregates_are_user_scoped_and_filter_owned_kinds(user):
-    other = new_user()
+def test_brand_aggregates_are_user_scoped_and_filter_owned_kinds(brand_user):
+    user = brand_user
+    other = new_user("brand")
     try:
         now = datetime.now(UTC)
         prefix = secrets.token_hex(4)
@@ -262,7 +273,8 @@ def test_activity_filters_noise_and_collapses_consecutive_duplicates(user):
     assert [row["name"] for row in activity] == ["offer_accept", "digest_confirm", "scan", "signup"]
 
 
-def test_manager_roster_summary_reuses_roster_access(user):
+def test_manager_roster_summary_reuses_roster_access(manager_user):
+    user = manager_user
     now = datetime.now(UTC)
     with server.connect() as db:
         roster_id = db.execute(
@@ -279,6 +291,10 @@ def test_manager_roster_summary_reuses_roster_access(user):
             (roster_id, roster_id),
         )
     manager = dashboard.view(user)["manager"]
+    out = dashboard.view(user)
+    assert out["role"] == "manager"
+    assert out["creator"] is out["brand"] is out["licenses"] is None
+    assert out["usage"] == {}
     assert manager == {
         "hasRoster": True, "access": "pilot", "creators": 2, "reports": 2,
         "lastReportAt": now.isoformat(), "deals": 2, "dealsUsd": 250,

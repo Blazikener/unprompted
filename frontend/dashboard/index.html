@@ -53,7 +53,7 @@
   .setup-item.is-done .setup-check { border-color: var(--highlight); background: color-mix(in oklch, var(--highlight) 20%, var(--surface)); color: var(--text); }
   .setup-label { flex: 1; min-width: 0; font-size: var(--fs-sm); }
   .setup-item a { flex: none; font-size: var(--fs-xs); }
-  .usage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
+  .usage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
   .usage-card { padding: var(--s-4); }
   .usage-head { display: flex; justify-content: space-between; gap: var(--s-2); margin-bottom: var(--s-3); color: var(--text-2); font-size: var(--fs-sm); }
   .usage-head b { color: var(--text); font: 500 var(--fs-sm) var(--mono); }
@@ -117,6 +117,7 @@
   .empty-state h3 { font: 500 var(--fs-xl)/1.2 var(--display); }
   .empty-state p { max-width: 52ch; color: var(--text-2); }
   .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--s-5); }
+  .quick-grid > :only-child { grid-column: 1 / -1; }
   .quick-card { display: grid; align-content: start; gap: var(--s-3); }
   .quick-card h3 { font-size: var(--fs-lg); }
   .quick-card p { color: var(--text-2); font-size: var(--fs-sm); }
@@ -218,6 +219,7 @@
   <button class="u-btn u-btn-ghost u-btn-sm dash-command" type="button" id="command" aria-label="Open command palette">Commands</button>
   <div class="dash-account">
     <span class="account-email" id="user-email"></span>
+    <span class="u-pill role-pill" id="role-pill"></span>
     <span class="u-pill" id="plan-pill"></span>
     <div class="account-actions" id="account-actions"></div>
   </div>
@@ -228,7 +230,7 @@
     <div>
       <div class="dash-kicker">Your signal, in one place</div>
       <h1 class="dash-title" id="greeting" data-split>Good morning<em>Let's see what moved.</em></h1>
-      <p class="dash-intro">Your creator receipts, brand discoveries and roster reports, grounded in evidence.</p>
+      <p class="dash-intro" id="dash-intro"></p>
     </div>
   </section>
 
@@ -264,9 +266,7 @@ const api = async (path, options = {}) => {
   if (!res.ok) { const error = new Error(data.error || res.statusText); error.status = res.status; throw error; }
   return data;
 };
-const tabs = [
-  ['overview', 'Overview'], ['creator', 'Creator'], ['brand', 'Brand'], ['manager', 'Manager'], ['account', 'Account'],
-];
+let tabs = [];
 const format = (value) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value || 0);
 const compact = (value) => U.fmt(value || 0, 'compact');
 const date = (value) => value ? U.date(value) : '—';
@@ -296,6 +296,9 @@ function activateTab(name, updateUrl = true) {
   }
 }
 function buildTabs() {
+  const role = data.role;
+  const label = role[0].toUpperCase() + role.slice(1);
+  tabs = [['overview', 'Overview'], [role, label], ['account', 'Account']];
   for (const nav of [$('#desktop-tabs'), $('#mobile-tabs')]) {
     nav.replaceChildren(...tabs.map(([id, label]) => h('button', {
       id: `tab-${nav.id}-${id}`, type: 'button', class: 'tab', role: 'tab', 'data-tab': id,
@@ -331,6 +334,13 @@ function renderAccountHeader() {
     h('em', {}, "Let's see what moved."),
   );
   $('#user-email').textContent = user.email;
+  $('#role-pill').textContent = `${data.role[0].toUpperCase()}${data.role.slice(1)} account`;
+  $('#dash-intro').textContent = data.role === 'creator'
+    ? 'Your receipts, scan activity and future collabs, grounded in evidence.'
+    : data.role === 'brand' ? 'Your saved searches, creator mentions and weekly digests, grounded in evidence.'
+      : 'Your roster, weekly reports and deals, grounded in evidence.';
+  $('.rail-note').textContent = data.role === 'creator' ? 'Your creator receipts, all in one place.'
+    : data.role === 'brand' ? 'Your brand listening, all in one place.' : 'Your managed creators, all in one place.';
   $('#plan-pill').textContent = displayPlan[user.plan] || 'Free';
   $('#plan-pill').className = `u-pill${['pro', 'roster'].includes(user.plan) ? ' u-pill-ok' : ''}`;
   const actions = [];
@@ -366,20 +376,20 @@ function usageCard(title, meter) {
     h('small', { class: 'usage-caption' }, `${format(Math.max(0, limit - used))} remaining this week`));
 }
 function usageSection() {
-  return h('div', { class: 'usage-grid', 'data-reveal': '' },
-    usageCard('Creator scans', data.usage.scans),
-    usageCard('Brand searches', data.usage.searches),
-    usageCard('Creator checks', data.usage.checks));
+  const meters = data.role === 'creator' ? [['Creator scans', data.usage.scans]]
+    : data.role === 'brand' ? [['Brand searches', data.usage.searches], ['Creator checks', data.usage.checks]] : [];
+  return meters.length ? h('div', { class: 'usage-grid', 'data-reveal': '' }, ...meters.map(([label, value]) => usageCard(label, value))) : null;
 }
 function setupChecklist() {
-  const { creator: c, brand: b, licenses: l, manager: m } = data;
-  const items = [
+  const { creator: c, brand: b, collabs: k, manager: m } = data;
+  const items = data.role === 'creator' ? [
     [c.scans > 0, 'Run your first scan', '/creators/?home=1'],
+    [k.watching > 0, 'Track a brand you want to work with', '/collabs'],
+  ] : data.role === 'brand' ? [
     [b.searches > 0, 'Save a brand search', '/brands/?home=1'],
     [b.digests.active > 0, 'Turn on a weekly digest', '/brands/?home=1'],
-    [l.verifiedHandles > 0, 'Verify a handle for license offers', '/creators/licenses'],
-    [m.creators > 0, 'Add a creator to your roster', '/creators/roster'],
-  ];
+    [k.openToPitches, 'Open your brand to creator pitches', '/collabs'],
+  ] : [[m.creators > 0, 'Add a creator to your roster', '/creators/roster']];
   if (items.every(([done]) => done)) return null;
   return h('section', { class: 'setup-card u-card', 'aria-labelledby': 'setup-title', 'data-reveal': '' },
     h('header', { class: 'setup-head' }, h('h2', { id: 'setup-title' }, 'Get set up'), h('p', {}, `${items.filter(([done]) => done).length} of ${items.length} complete`)),
@@ -589,6 +599,11 @@ function activityLabel(item) {
   if (item.name === 'subscribed') return `Upgraded to ${displayPlan[detail.plan] || 'Pro'}`;
   if (item.name === 'digest_subscribe') return `Started a weekly digest for ${detail.brand || 'a brand'}`;
   if (item.name === 'digest_confirm') return `Confirmed the weekly digest for ${detail.brand || 'a brand'}`;
+  if (item.name === 'collab_propose') return `Invited a creator to collab with ${detail.brand || 'your brand'}`;
+  if (item.name === 'collab_pitch') return `Pitched ${detail.brand || 'a brand'} a collab`;
+  if (item.name === 'collab_accept') return `Booked a collab${detail.budget ? ` at $${format(detail.budget)}` : ''}`;
+  if (item.name === 'collab_counter') return 'Sent a counter-offer';
+  if (item.name === 'collab_decline') return 'Declined a collab';
   if (item.name === 'offer_accept') return 'Accepted a license offer';
   if (item.name === 'offer_decline') return 'Declined a license offer';
   if (item.name === 'roster_creator_added') return `Added @${detail.handle || 'a creator'} to your roster`;
@@ -607,91 +622,126 @@ function activityList(rows) {
     h('time', { datetime: row.createdAt || '' }, date(row.createdAt)))));
 }
 function launchForms() {
-  const scan = h('article', { class: 'quick-card u-card u-card-pad', 'data-reveal': '' },
-    h('span', { class: 'panel-kicker' }, 'Creator loop'), h('h3', {}, 'Start a fresh scan'),
-    h('p', {}, 'Bring your latest brand mentions into the receipts timeline.'),
-    h('form', { class: 'quick-form scan-form', id: 'scan-launch' },
-      h('label', { class: 'u-field wide-field' }, h('span', { class: 'u-label' }, 'Handle'),
-        h('input', { class: 'u-input', name: 'handle', placeholder: '@yourhandle', autocomplete: 'off', required: true })),
-      h('label', { class: 'u-field' }, h('span', { class: 'u-label' }, 'Platform'),
-        h('select', { class: 'u-select', name: 'platform' }, h('option', { value: 'tiktok' }, 'TikTok'), h('option', { value: 'instagram' }, 'Instagram'))),
-      h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Scan handle')));
-  scan.querySelector('form').addEventListener('submit', (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const query = new URLSearchParams({ scan: form.elements.handle.value.trim().replace(/^@/, ''), platform: form.elements.platform.value });
-    location.href = `/creators/?${query}`;
-  });
-  const brand = h('article', { class: 'quick-card u-card u-card-pad', 'data-reveal': '' },
-    h('span', { class: 'panel-kicker' }, 'Brand loop'), h('h3', {}, 'Search once. Keep listening.'),
-    h('p', {}, 'Find on-camera mentions, then turn the search into a weekly inbox.'),
-    h('form', { class: 'quick-form', id: 'brand-launch' },
-      h('label', { class: 'u-field wide-field' }, h('span', { class: 'u-label' }, 'Brand name'),
-        h('input', { class: 'u-input', name: 'brand', placeholder: 'e.g. Patagonia', autocomplete: 'off', required: true })),
-      h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Find mentions')));
-  brand.querySelector('form').addEventListener('submit', (event) => {
-    event.preventDefault();
-    location.href = `/brands/?brand=${encodeURIComponent(event.currentTarget.elements.brand.value.trim())}`;
-  });
-  return h('div', { class: 'quick-grid' }, scan, brand);
+  if (data.role === 'creator') {
+    const scan = h('article', { class: 'quick-card u-card u-card-pad', 'data-reveal': '' },
+      h('span', { class: 'panel-kicker' }, 'Creator loop'), h('h3', {}, 'Start a fresh scan'),
+      h('p', {}, 'Bring your latest brand mentions into the receipts timeline.'),
+      h('form', { class: 'quick-form scan-form', id: 'scan-launch' },
+        h('label', { class: 'u-field wide-field' }, h('span', { class: 'u-label' }, 'Handle'),
+          h('input', { class: 'u-input', name: 'handle', placeholder: '@yourhandle', autocomplete: 'off', required: true })),
+        h('label', { class: 'u-field' }, h('span', { class: 'u-label' }, 'Platform'),
+          h('select', { class: 'u-select', name: 'platform' }, h('option', { value: 'tiktok' }, 'TikTok'), h('option', { value: 'instagram' }, 'Instagram'))),
+        h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Scan handle')));
+    scan.querySelector('form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const query = new URLSearchParams({ scan: form.elements.handle.value.trim().replace(/^@/, ''), platform: form.elements.platform.value });
+      location.href = `/creators/?${query}`;
+    });
+    return h('div', { class: 'quick-grid' }, scan);
+  }
+  if (data.role === 'brand') {
+    const brand = h('article', { class: 'quick-card u-card u-card-pad', 'data-reveal': '' },
+      h('span', { class: 'panel-kicker' }, 'Brand loop'), h('h3', {}, 'Search once. Keep listening.'),
+      h('p', {}, 'Find on-camera mentions, then turn the search into a weekly inbox.'),
+      h('form', { class: 'quick-form', id: 'brand-launch' },
+        h('label', { class: 'u-field wide-field' }, h('span', { class: 'u-label' }, 'Brand name'),
+          h('input', { class: 'u-input', name: 'brand', placeholder: 'e.g. Patagonia', autocomplete: 'off', required: true })),
+        h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Find mentions')));
+    brand.querySelector('form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      location.href = `/brands/?brand=${encodeURIComponent(event.currentTarget.elements.brand.value.trim())}`;
+    });
+    return h('div', { class: 'quick-grid' }, brand);
+  }
+  return h('div', { class: 'quick-grid' },
+    h('article', { class: 'quick-card u-card u-card-pad', 'data-reveal': '' },
+      h('span', { class: 'panel-kicker' }, 'Manager loop'), h('h3', {}, 'Bring your roster together'),
+      h('p', {}, 'Add creators and keep an eye on the brands they mention.'),
+      h('a', { class: 'u-btn u-btn-primary', href: '/creators/roster' }, 'Open your roster')));
 }
 function renderOverview() {
-  const panel = $('#panel-overview'), c = data.creator, b = data.brand, l = data.licenses;
-  const setup = setupChecklist();
-  panel.replaceChildren(...[
-    panelHead('At a glance', 'Overview', 'A living picture of what your creators say and what your brands hear.'),
-    usageSection(),
-    setup,
-    h('div', { class: 'metric-grid' },
+  const panel = $('#panel-overview');
+  const { creator: c, brand: b, collabs: k, manager: m } = data;
+  let metrics = [], chart = null, signal = null, actions = null, summary = '';
+  if (data.role === 'creator') {
+    summary = 'Your receipts, collabs and scan activity, all in one place.';
+    metrics = [
       metric("Brands you've mentioned", c.brands, `${format(c.scans)} scans across ${format(c.handles.length)} handles`),
       metric('Receipts with proof', c.receipts, 'Quotes, timestamps and frames'),
       metric('Organic views on your mentions', c.organicViews, 'Views on spoken or tagged posts'),
-      metric('Offers waiting for you', l.waiting, 'Answer from your license inbox'),
-      metric('Mentions tracked for your brands', b.mentions, `${compact(b.views)} views in your searches`),
-      metric('Active weekly digests', b.digests.active, `${format(b.digests.pending)} awaiting confirmation`)),
-    h('div', { class: 'split-grid' },
-      chartCard('Mentions over time', 'Receipts grouped by the video publish month, across your latest scan per handle.', timelineRows(), 'area', 'scan'),
-      chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar', 'brand')),
-    h('div', { class: 'content-grid' },
-      card('Recent activity', activityList(data.activity)),
-      card('Latest creator signals', c.recent.length ? scanList(c.recent) : emptyState('No scans yet', 'Run your first scan to turn your mentions into shareable receipts.', 'scan', 'Run a first scan'))),
+      metric('Collabs waiting for you', k.yourTurn, `${format(k.booked)} booked · tracking ${format(k.watching)} brands`),
+    ];
+    chart = chartCard('Mentions over time', 'Receipts grouped by the video publish month, across your latest scan per handle.', timelineRows(), 'area', 'scan');
+    signal = card('Latest creator signals', c.recent.length ? scanList(c.recent) : emptyState('No scans yet', 'Run your first scan to turn your mentions into shareable receipts.', 'scan', 'Run a first scan'));
+    actions = h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs');
+  } else if (data.role === 'brand') {
+    summary = 'Saved searches, creator mentions and weekly digests for your brands.';
+    metrics = [
+      metric('Saved brand searches', b.searches, 'Listening posts you own'),
+      metric('Mentions tracked', b.mentions, `${compact(b.views)} views across your searches`),
+      metric('Active weekly digests', b.digests.active, `${format(b.digests.pending)} awaiting confirmation`),
+      metric('Collabs booked', k.booked, `$${format(k.bookedUsd)} committed · ${format(k.yourTurn)} pitches waiting`),
+    ];
+    chart = chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar', 'brand');
+    signal = card('Recent brand searches', b.recentSearches.length ? searchList(b.recentSearches) : emptyState('No saved brand searches yet', 'Search for a brand and keep listening with a weekly digest.', 'brand', 'Find your first brand'));
+    actions = h('div', { class: 'action-grid' }, h('a', { class: 'u-btn', href: '/brands/' }, 'Manage brand searches'), h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs'));
+  } else {
+    summary = 'Creators, reports and deals from the roster you manage.';
+    metrics = [
+      metric('Creators in your roster', m.creators, m.hasRoster ? 'Creators you represent' : 'Start with your first creator'),
+      metric('Reports created', m.reports, 'Weekly roster reports'),
+      metric('Deals in progress', m.deals, 'Recorded roster deals'),
+      metric('Deal value', m.dealsUsd, 'Recorded deal value', 'money'),
+    ];
+    signal = card('Roster snapshot', m.hasRoster
+      ? h('div', { class: 'u-stack' }, h('p', {}, `Access: ${m.access || 'not active'}`), h('p', {}, `Last report: ${date(m.lastReportAt)}`))
+      : emptyState('Build your first creator roster', 'Add the creators you represent and get a weekly picture of brand mentions.', '/creators/roster', 'Set up your roster'));
+    actions = h('a', { class: 'u-btn', href: '/creators/roster' }, 'Open manager roster');
+  }
+  const recent = card('Recent activity', activityList(data.activity));
+  panel.replaceChildren(...[
+    panelHead('At a glance', 'Overview', summary),
+    usageSection(),
+    setupChecklist(),
+    h('div', { class: 'metric-grid' }, ...metrics),
+    chart,
+    h('div', { class: 'content-grid' }, recent, signal),
     launchForms(),
-    h('div', { class: 'action-grid section-gap' },
-      h('a', { class: 'u-btn', href: '/creators/licenses' }, 'Open license offers'),
-      h('a', { class: 'u-btn', href: '/creators/roster' }, 'Open manager roster')),
+    h('div', { class: 'action-grid section-gap' }, actions),
   ].filter(Boolean));
   animateCounts(panel);
 }
 function renderCreator() {
-  const panel = $('#panel-creator'), c = data.creator, l = data.licenses;
+  const panel = $('#panel-creator'), c = data.creator, k = data.collabs;
   const summary = `Across ${format(c.handles.length)} handles, keeping the newest scan for each one.`;
   const brands = c.topBrands.length ? brandList(c.topBrands, 8) : emptyState('No brand receipts yet', 'Scan a TikTok or Instagram handle to surface brands you already mention.', 'scan', 'Run your first scan');
   const scans = c.recent.length ? scanList(c.recent) : emptyState('Your first scan is one step away', 'We will find the receipts and keep them together here.', 'scan', 'Scan a handle');
-  const license = h('div', { class: 'u-stack' },
+  const collab = h('div', { class: 'u-stack' },
     h('div', { class: 'stat-strip' },
-      ...[['Waiting', l.waiting], ['Accepted', l.accepted], ['Live', l.live], ['Verified handles', l.verifiedHandles]].map(([label, value]) =>
+      ...[['Waiting for you', k.yourTurn], ['Waiting on brands', k.waiting], ['Booked', k.booked], ['Brands tracked', k.watching]].map(([label, value]) =>
         h('div', { class: 'stat-box' }, h('strong', {}, format(value)), h('small', {}, label)))),
     h('div', { class: 'action-grid' },
-      h('span', { class: 'u-pill' }, `$${format(l.paidUsd)} paid`), h('span', { class: 'u-pill' }, `$${format(l.owedUsd)} owed`),
-      h('a', { class: 'u-btn u-btn-sm', href: '/creators/licenses' }, 'Manage offers and handles')));
+      h('span', { class: 'u-pill' }, `$${format(k.bookedUsd)} booked`), h('span', { class: 'u-pill' }, `${format(k.partners)} brands taking pitches`),
+      h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs')));
   panel.replaceChildren(...[
     panelHead('Creator', 'Your receipts', summary),
-    c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and license offers will gather here after the first scan.', 'scan', 'Run your first scan'),
+    c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and collabs will gather here after the first scan.', 'scan', 'Run your first scan'),
     c.scans ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('scan-launch') }, 'New scan')) : null,
     h('div', { class: 'content-grid section-gap' },
       card('Top brands', brands, '/creators/', 'Open receipts'),
       card('Recent scans', scans, '/creators/', 'Open Receipts')),
-    card('License inbox', license, '/creators/licenses', 'Open inbox'),
+    card('Future collabs', collab, '/collabs', 'Open collabs'),
   ].filter(Boolean));
   animateCounts(panel);
 }
 function renderBrand() {
-  const panel = $('#panel-brand'), b = data.brand, r = b.licenseRequests;
+  const panel = $('#panel-brand'), b = data.brand, k = data.collabs;
   const searches = b.recentSearches.length ? searchList(b.recentSearches) :
     emptyState('No saved brand searches yet', 'Search for a brand, then save a weekly digest to keep new on-camera mentions coming.', 'brand', 'Find your first brand');
-  const maxRequest = Math.max(1, r.requested, r.accepted, r.live, r.declined);
+  const maxRequest = Math.max(1, k.yourTurn, k.waiting, k.booked);
   const funnel = h('div', { class: 'request-funnel' },
-    ...[['Requested', r.requested], ['Accepted', r.accepted], ['Live', r.live], ['Declined', r.declined]].map(([label, value]) =>
+    ...[['Pitches for you', k.yourTurn], ['Waiting on creators', k.waiting], ['Booked', k.booked]].map(([label, value]) =>
       h('div', { class: 'funnel-row' }, h('span', {}, label), h('span', { class: 'funnel-track' }, h('i', { style: `width:${Math.max(0, value / maxRequest * 100)}%` })), h('b', {}, format(value)))));
   const digest = h('div', { class: 'stat-strip' },
     h('div', { class: 'stat-box' }, h('strong', {}, format(b.digests.active)), h('small', {}, 'Active digests')),
@@ -706,7 +756,7 @@ function renderBrand() {
     h('div', { class: 'split-grid' },
       chartCard('New mentions per week', 'Distinct videos in your brand searches, by publish week.', weeklyRows(), 'bar', 'brand'),
       card('Top creators', b.topCreators.length ? topCreatorList(b.topCreators) : emptyState('No creators found yet', 'Creators will appear as searches find on-camera brand mentions.', 'brand', 'Start a brand search'))),
-    card('License requests', funnel, '/brands/', 'Review brand dashboard'),
+    card(k.openToPitches ? 'Collabs · open to pitches' : 'Collabs', funnel, '/collabs', 'Open collabs'),
   ].filter(Boolean));
   animateCounts(panel);
 }
@@ -723,7 +773,8 @@ function renderManager() {
   panel.replaceChildren(panelHead('Manager', 'Your roster', summary), content);
 }
 function renderAccount() {
-  const panel = $('#panel-account'), user = data.user, usage = data.usage;
+  const panel = $('#panel-account'), user = data.user;
+  const weeklyUsage = usageSection();
   const facts = h('dl', { class: 'account-facts' },
     h('dt', {}, 'Email'), h('dd', {}, user.email),
     h('dt', {}, 'Plan'), h('dd', {}, h('span', { class: `u-pill${['pro', 'roster'].includes(user.plan) ? ' u-pill-ok' : ''}` }, displayPlan[user.plan] || 'Free')),
@@ -734,32 +785,42 @@ function renderAccount() {
       : ['pro', 'roster'].includes(user.plan) ? h('span', { class: 'u-pill u-pill-ok' }, `${displayPlan[user.plan] || 'Pro'} plan`)
         : h('a', { class: 'u-btn u-btn-primary', href: '/creators/?upgrade=pro' }, 'Explore Pro'),
     h('button', { class: 'u-btn', type: 'button', onclick: signOut }, 'Sign out'));
-  panel.replaceChildren(panelHead('Account', 'Your account', 'Plan, access and billing, without leaving your workspace.'),
+  panel.replaceChildren(...[
+    panelHead('Account', 'Your account', 'Plan, access and billing, without leaving your workspace.'),
     h('div', { class: 'account-card' }, card('Membership', facts), card('Actions', actions)),
-    h('section', { class: 'section-gap' }, h('h3', {}, 'Weekly usage'), usageSection()));
+    weeklyUsage ? h('section', { class: 'section-gap' }, h('h3', {}, 'Weekly usage'), weeklyUsage) : null,
+  ].filter(Boolean));
 }
 function render() {
   renderAccountHeader();
   renderOverview();
-  renderCreator();
-  renderBrand();
-  renderManager();
+  if (data.role === 'creator') renderCreator();
+  if (data.role === 'brand') renderBrand();
+  if (data.role === 'manager') renderManager();
   renderAccount();
   window.M?.scan(document);
 }
 $('#command').addEventListener('click', () => U.palette.open());
-U.palette.add({ id: 'dashboard-home', label: 'Dashboard', hint: 'Your shared creator, brand and manager workspace', group: 'Go to', keywords: 'overview analytics dashboard', run: () => { location.href = '/dashboard'; } });
-U.palette.add({ id: 'dashboard-creator', label: 'Creator dashboard', group: 'Go to', keywords: 'receipts mentions', run: () => { location.href = '/dashboard?as=creator'; } });
-U.palette.add({ id: 'dashboard-brand', label: 'Brand dashboard', group: 'Go to', keywords: 'search weekly digest', run: () => { location.href = '/dashboard?as=brand'; } });
-U.palette.add({ id: 'dashboard-manager', label: 'Manager dashboard', group: 'Go to', keywords: 'roster reports', run: () => { location.href = '/dashboard?as=manager'; } });
+function addPaletteActions() {
+  U.palette.add({ id: 'dashboard-home', label: 'Dashboard overview', hint: 'Your role-specific workspace', group: 'Go to', keywords: 'overview analytics dashboard', run: () => { location.href = '/dashboard'; } });
+  if (data.role === 'creator') {
+    U.palette.add({ id: 'dashboard-receipts', label: 'Creator receipts', group: 'Go to', keywords: 'scans mentions', run: () => { location.href = '/creators/'; } });
+    U.palette.add({ id: 'dashboard-collabs', label: 'Collabs', group: 'Go to', keywords: 'collab invites pitches offers', run: () => { location.href = '/collabs'; } });
+  } else if (data.role === 'brand') {
+    U.palette.add({ id: 'dashboard-searches', label: 'Brand searches', group: 'Go to', keywords: 'brand weekly digest mentions', run: () => { location.href = '/brands/'; } });
+  } else {
+    U.palette.add({ id: 'dashboard-roster', label: 'Manager roster', group: 'Go to', keywords: 'creators reports deals', run: () => { location.href = '/creators/roster'; } });
+  }
+}
 
 (async () => {
-  buildTabs();
   try {
     data = await api('/dashboard');
+    data.role = data.user.role;
+    buildTabs();
     render();
-    const as = new URLSearchParams(location.search).get('as') || 'overview';
-    activateTab(as, false);
+    addPaletteActions();
+    activateTab('overview', false);
   } catch (error) {
     if (error.status === 401) { location.replace('/creators/?signin=1'); return; }
     $('#dashboard-error').hidden = false;

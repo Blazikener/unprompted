@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Receipts by Unprompted</title>
-<meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with the brands that will pay: pitch them, or answer licence requests for your best videos.">
+<meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with brands for future paid collabs: pitch them, or answer their invites.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/ui/ui.css?v=3">
 <script src="/ui/ui.js?v=2"></script>
@@ -23,7 +23,7 @@
     .u-bar nav.u-aud { gap: 1px; }
     .u-bar .u-aud a { padding-inline: 3px; }
     #account { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
-    .u-logo small, .cmdk-btn, .u-bar .u-bar-link[href="/creators/licenses"] { display: none; }
+    .u-logo small, .cmdk-btn, .u-bar .u-bar-link[href="/collabs"] { display: none; }
   }
 
   .avatar { width: var(--size, 40px); height: var(--size, 40px); border-radius: 50%; object-fit: cover; background: var(--surface-3); flex: none; display: block; }
@@ -355,7 +355,7 @@
   </nav>
   <span class="grow"></span>
   <nav class="no-present" aria-label="Main">
-    <a class="u-bar-link" href="/creators/licenses">License offers</a>
+    <a class="u-bar-link" href="/collabs">Collabs</a>
   </nav>
   <button class="u-btn u-btn-ghost u-btn-sm cmdk-btn" type="button" id="cmdk" aria-label="Commands (Ctrl+K)">Commands <kbd class="u-kbd">Ctrl</kbd><kbd class="u-kbd">K</kbd></button>
   <div id="account" class="no-present"></div>
@@ -372,9 +372,10 @@
       <div class="hero-top" aria-hidden="true"><span>Receipts</span><span>TikTok / Instagram</span><span class="no-narrow">Brand mentions, proven</span></div>
       <h1 class="hero-h" id="hero-h" data-split>The brands you talk about <span class="u-voice u-iris">should be paying you.</span></h1>
       <div class="hero-row">
-        <p class="u-lead hero-lead" data-reveal>Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer the brands that want to pay to run your videos as ads.</p>
+        <p class="u-lead hero-lead" data-reveal>Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer brands that invite you to make new paid content.</p>
         <div class="hero-form" data-reveal>
         <form class="scan-form" id="scan-form">
+          <section id="role-notice" class="role-notice u-card u-card-pad" role="status" aria-live="polite" hidden></section>
           <label class="u-label" for="handle">Your handle or profile link</label>
           <input class="u-input u-input-lg" id="handle" placeholder="@yourhandle or paste your profile link" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="go" required aria-describedby="handle-hint">
           <div class="scan-controls">
@@ -406,12 +407,12 @@
       <div class="role-grid">
         <article class="role-card u-card u-card-pad" data-reveal data-tilt>
           <h3>Creators</h3>
-          <p>See every brand you've mentioned, with receipts. Answer license offers from brands in one inbox; you keep ownership.</p>
+          <p>See every brand you've mentioned, with receipts. Track the brands you want to work with and pitch them future collabs.</p>
           <div class="role-card-actions"><a class="u-btn u-btn-primary" href="#handle" data-scan-focus>Scan my handle</a></div>
         </article>
         <article class="role-card u-card u-card-pad" data-reveal data-tilt>
           <h3>Brands</h3>
-          <p>Save a brand search once. Every week, new on-camera mentions land in your inbox, and you can license a clip in one click.</p>
+          <p>Save a brand search once. Every week, new on-camera mentions land in your inbox, and you can invite those creators to a paid collab.</p>
           <div class="role-card-actions">
             <a class="u-btn u-btn-primary" href="/brands/">Open the brand dashboard</a>
             <a class="role-card-secondary" href="/digest/sample">See a sample weekly report</a>
@@ -468,7 +469,7 @@
           <ol class="story-steps">
             <li><b class="story-n">01</b><h3>Scan your last 100 videos</h3><p>Transcripts, captions, hashtags and @mentions, across 300+ brands creators actually get paid by.</p></li>
             <li><b class="story-n">02</b><h3>Get the receipt</h3><p>Every unpaid mention with the exact quote, timestamp, frame and view count. Disclosed ads are kept separate.</p></li>
-            <li><b class="story-n">03</b><h3>Get paid, two ways</h3><p>Pitch the brands paying creators now with a draft that quotes your own words, or accept a licence request when a brand wants to run one of your videos as an ad.</p></li>
+            <li><b class="story-n">03</b><h3>Get paid, two ways</h3><p>Pitch the brands paying creators now with a draft that quotes your own words, or accept a collab invite when a brand that found your receipts wants new content from you.</p></li>
           </ol>
           <div class="story-meter" aria-hidden="true"><i></i></div>
         </div>
@@ -501,19 +502,19 @@
           <h3 class="u-h3">If you create</h3>
           <ul>
             <li><b>A receipt for every mention.</b> Quote, timestamp, frame and views, on a public page you can drop into a pitch or media kit.</li>
-            <li><b>An inbox for licence offers.</b> A brand asks to run one of your videos as a paid ad for 30 days. You see the price, then accept, counter or decline. Set a minimum and auto-yes or auto-no brands, and requests answer themselves.</li>
-            <li><b>You keep ownership, and 85%.</b> The brand pays before the ad goes live. You never post anything new, and nothing is exclusive.</li>
-            <li><b>A weekly email, only when something needs you:</b> offers waiting, licences ending, money owed. Never an empty one.</li>
+            <li><b>An inbox for future collabs.</b> A brand that found your receipts proposes new content: what you make, when it posts, the budget. You accept, counter or decline.</li>
+            <li><b>Pitch the brands you already love.</b> Track brands; when one opens to pitches, send a proposal with your receipt as proof.</li>
+            <li><b>A Monday email, only when something needs you:</b> collabs waiting for your answer, tracked brands now taking pitches. Never an empty one.</li>
           </ul>
-          <a class="u-btn u-btn-sm" href="/creators/licenses">Open my offers</a>
+          <a class="u-btn u-btn-sm" href="/collabs">Open my collabs</a>
         </div>
         <div class="side u-card u-card-pad" data-tilt>
           <h3 class="u-h3">If you're a brand</h3>
           <ul>
             <li><b>Find the creators already saying your name.</b> Ranked as advocates, with the exact quote and frame, including mentions no caption or hashtag tool sees.</li>
             <li><b>Watch weekly.</b> Save a search and get a report of new on-camera mentions each week.</li>
-            <li><b>License a clip in one click.</b> Request a 30-day Spark Ad or partnership-ad licence with the price up front. The creator consents, so there's no chasing and no unlicensed reuse.</li>
-            <li><b>Month-to-month, no contracts.</b> Pay per licence, and renew with one click a week before it ends.</li>
+            <li><b>Invite them to collab.</b> Propose new content in their style: deliverables, timing, budget. The creator accepts or counters.</li>
+            <li><b>Hear pitches from fans.</b> Open your brand to pitches and creators who already mention you propose collabs, receipts attached.</li>
           </ul>
           <a class="u-btn u-btn-sm" href="/brands/">Search my brand</a>
         </div>
@@ -527,7 +528,7 @@
       <span class="u-eyebrow">004 / Pricing</span>
       <h2 class="u-mega-2" id="pricing-h" data-split>Free to find out. <span class="u-voice">Pro to get paid.</span></h2>
       <div class="pricing" data-reveal="2">
-      <div class="price u-card u-card-pad"><h3>Free <span>$0</span></h3><ul><li>1 scan a week</li><li>Top 3 brands with full receipts</li><li>Counts for everything else</li><li>Licence inbox: always free</li></ul></div>
+      <div class="price u-card u-card-pad"><h3>Free <span>$0</span></h3><ul><li>1 scan a week</li><li>Top 3 brands with full receipts</li><li>Counts for everything else</li><li>Collabs inbox: always free</li></ul></div>
       <div class="price pro u-card u-card-pad"><h3>Pro <span>$<span data-price>29</span>/mo</span></h3><ul><li>Every brand, every receipt</li><li>Who's paying creators for each brand right now</li><li>Pitch drafts with your rate range</li><li>50 scans a week, re-scan anytime</li></ul></div>
     </div>
     </div>
@@ -539,7 +540,7 @@
       <div class="end-row">
         <button class="u-btn u-btn-primary u-btn-lg" type="button" id="end-scan" data-magnetic>Scan my handle, free</button>
         <nav class="end-links" aria-label="More">
-          <a href="/creators/licenses">License offers</a><a href="/creators/roster">For managers</a><a href="/brands/">For brands</a><a href="/creators/?sample=1">Sample report</a>
+          <a href="/collabs">Collabs</a><a href="/creators/roster">For managers</a><a href="/brands/">For brands</a><a href="/creators/?sample=1">Sample report</a>
         </nav>
       </div>
     </div>
@@ -580,6 +581,7 @@
     <div class="u-dialog-body">
       <div class="dlg-head"><h2 class="u-h3" id="auth-title">Create your account</h2><button class="u-btn u-btn-ghost u-btn-sm u-btn-icon" type="button" aria-label="Close" id="auth-close">×</button></div>
       <p class="u-muted">Free scan, no card. We'll save your receipts here.</p>
+      <p class="u-hint" id="auth-role-links" hidden></p>
       <div class="u-field"><label class="u-label" for="auth-email">Email</label><input class="u-input" id="auth-email" name="email" type="email" required autocomplete="email"></div>
       <div class="u-field"><label class="u-label" for="auth-password">Password</label><input class="u-input" id="auth-password" name="password" type="password" required minlength="8" autocomplete="new-password"><span class="u-hint">At least 8 characters.</span></div>
       <p class="u-error" id="auth-err" role="alert"></p>
@@ -629,15 +631,36 @@ async function api(path, body, method) {
   return data;
 }
 const toast = (msg, kind) => U.toast(msg, kind ? { kind } : {});
+function showCreatorRoleNotice(role) {
+  const name = role || 'different';
+  const notice = $('#role-notice');
+  notice.replaceChildren(
+    h('strong', {}, `You're signed in with a ${name} account.`),
+    h('p', {}, 'Scanning your own videos needs a creator account.'),
+    h('div', { class: 'u-row' },
+      h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/dashboard' }, 'Go to your dashboard'),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out')));
+  notice.hidden = false;
+}
+function handleCreatorRoleError(err) {
+  if (err.status !== 403 || !err.data?.role) return false;
+  showCreatorRoleNotice(err.data.role);
+  return true;
+}
+function canUseCreatorFeatures() {
+  if (!S.user || S.user.role === 'creator') return true;
+  showCreatorRoleNotice(S.user.role);
+  return false;
+}
 
 // ---- the packaging test (backend/packaging.py): which offer this browser sees. Offer (a) is the page as written.
 const PLAN_NAME = { free: 'Free', open: 'Free', pro: 'Pro', leads: 'Weekly leads', roster: 'Roster' };
 const OFFER_COPY = {
   b: {
-    fine: 'Free, for good: every brand you mention, with receipts and pitch drafts. Brands pay to run your videos as ads, and you keep 85%.',
+    fine: 'Free, for good: every brand you mention, with receipts and pitch drafts. Brands that find your receipts invite you to paid collabs.',
     cards: [['Free', '$0', ['1 scan a week', 'Every brand, every receipt', 'Pitch drafts with your rate range', 'A public receipt page for pitches']],
-      ['Licences', 'you keep 85%', ['Brands that find your videos ask to run them as ads', 'Accept their price, counter, or set your own rate',
-        'Paid before the ad goes live', 'Nothing to post, nothing exclusive']]],
+      ['Collabs', 'free', ['Brands that find your receipts invite you to make new content', 'Accept their budget, counter, or decline',
+        'Pitch brands that are open to creators', 'Track brands; hear on Mondays when they open']]],
   },
   c: {
     fine: 'Free: your top 3 brands with receipts. Weekly leads ($9/mo): every Monday, the brands you mention that are paying creators that week.',
@@ -695,12 +718,17 @@ async function openPortal() { try { location.href = (await api('/billing/portal'
 async function signOut() {
   try { await api('/logout', {}); } catch (e) { toast(e.message, 'error'); return; }
   S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory();
+  $('#role-notice').hidden = true;
 }
 
 // ---- auth
 function openAuth(mode) {
   S.mode = mode;
-  $('#auth-title').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
+  $('#auth-title').textContent = mode === 'signup' ? 'Create your creator account' : 'Welcome back';
+  const links = $('#auth-role-links');
+  links.hidden = mode !== 'signup';
+  if (mode === 'signup') links.replaceChildren('Brand or manager? Sign up on the ',
+    h('a', { href: '/brands/' }, 'Brands'), ' / ', h('a', { href: '/creators/roster' }, 'Managers'), ' page.');
   $('#auth-toggle').textContent = mode === 'signup' ? 'I already have an account' : 'Create an account instead';
   $('#auth-password').setAttribute('autocomplete', mode === 'signup' ? 'new-password' : 'current-password');
   $('#auth-err').textContent = '';
@@ -713,11 +741,13 @@ $('#auth-form').onsubmit = async (e) => {
   const f = new FormData(e.target), submit = $('#auth-submit');
   submit.disabled = true; submit.setAttribute('aria-busy', 'true');
   try {
-    const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', { email: f.get('email'), password: f.get('password') });
+    const payload = { email: f.get('email'), password: f.get('password') };
+    if (S.mode === 'signup') payload.role = 'creator';
+    const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', payload);
     S.user = user; $('#auth').close(); renderAccount();
     if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); }
     else if (S.upgradePlan) { loadHistory(); openUpgrade(); }
-    else { loadHistory(); location.href = '/dashboard?as=creator'; }
+    else { loadHistory(); location.href = '/dashboard'; }
   } catch (err) { $('#auth-err').textContent = err.message; }
   submit.disabled = false; submit.removeAttribute('aria-busy');
 };
@@ -816,6 +846,7 @@ function newScan() { showLanding(); window.scrollTo({ top: 0 }); $('#handle').fo
 
 // ---- scanning
 function startScan(platform, handle) {
+  if (!canUseCreatorFeatures()) return;
   if (!S.user) { S.pending = { platform, handle }; openAuth('signup'); return; }
   runScan(platform, handle);
 }
@@ -839,16 +870,20 @@ function scanProgress(platform, handle) {
   return () => { clearInterval(timer); box.hidden = true; };
 }
 async function runScan(platform, handle) {
+  if (!canUseCreatorFeatures()) return;
   const btn = $('#scan-btn'), inp = $('#handle'); $('#miss').hidden = true;
   btn.disabled = inp.disabled = true; btn.setAttribute('aria-busy', 'true');
   const done = scanProgress(platform, handle);
   try { const scan = await api('/scans', { platform, handle }); done(); showScan(scan, true); loadHistory(); }
-  catch (e) { done(); if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!(await paywalled(e))) toast(e.message, 'error'); }
+  catch (e) { done(); if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!handleCreatorRoleError(e) && !(await paywalled(e))) toast(e.message, 'error'); }
   btn.disabled = inp.disabled = false; btn.removeAttribute('aria-busy');
 }
-async function openScan(id) { try { showScan(await api('/scans/' + id), true); } catch (e) { toast(e.message, 'error'); } }
+async function openScan(id) {
+  if (!canUseCreatorFeatures()) return;
+  try { showScan(await api('/scans/' + id), true); } catch (e) { if (!handleCreatorRoleError(e)) toast(e.message, 'error'); }
+}
 async function loadHistory() {
-  const rows = S.user ? await api('/scans').catch(() => []) : [];
+  const rows = S.user?.role === 'creator' ? await api('/scans').catch((e) => { handleCreatorRoleError(e); return []; }) : [];
   S.history = rows;
   $('#history').replaceChildren(...(rows.length ? rows.map((r) => h('li', {}, h('button', { type: 'button', 'data-id': r.id, onclick: () => openScan(+r.id) },
     h('b', {}, h('bdi', {}, '@' + r.handle)), ` · ${PLATFORM[r.platform]}`, h('small', {}, `${r.brands} brands · ${date(r.createdAt)}`))))
@@ -1002,7 +1037,8 @@ function brandCard(b, i) {
     ro ? null : h('div', { class: 'actions' },
       S.offer.arm === 'b' ? null : h('button', { class: 'u-btn u-btn-sm', type: 'button', 'data-act': 'activity', onclick: (e) => action('activity', i, e.currentTarget) },
         'Who\'s paying for ', h('bdi', {}, b.brand), ' right now?'),
-      h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', 'data-act': 'pitch', onclick: (e) => action('pitch', i, e.currentTarget) }, 'Draft my pitch')),
+      h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', 'data-act': 'pitch', onclick: (e) => action('pitch', i, e.currentTarget) }, 'Draft my pitch'),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: (e) => watchBrand(b.brand, e.currentTarget) }, 'Track brand')),
     P.activity ? activityPanel(P.activity) : null, P.pitch ? pitchPanel(P.pitch, i, b) : null) : null;
   return h('article', { class: `brand u-card${open ? ' open' : ''}`, id: `brand-${i}` }, h('h3', { class: 'brand-h' }, headBtn), body);
 }
@@ -1049,6 +1085,17 @@ function activityPanel(a) {
     a.examples.length ? h('ul', { class: 'examples' }, ...a.examples.map((e) => h('li', {}, h('bdi', {}, '@' + e.handle), ` (${num(e.followers)}) · `,
       e.url && e.url !== '#demo' ? h('a', { href: e.url, target: '_blank', rel: 'noopener' }, `${num(e.views)} views ↗`) : `${num(e.views)} views`, ` · ${date(e.publishedAt)}`))) : null);
 }
+async function watchBrand(brand, btn) {
+  btn.setAttribute('aria-busy', 'true');
+  try {
+    const res = await fetch('/api/collabs/watch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    const w = data.watch.find((x) => x.brand.toLowerCase() === brand.toLowerCase());
+    toast(w?.open ? `${brand} is taking pitches. Pitch them from Collabs.` : `Tracking ${brand}. We'll email you on Mondays when they open to pitches.`, 'ok');
+    btn.textContent = 'Tracking'; btn.disabled = true;
+  } catch (e) { toast(e.message, 'error'); } finally { btn.removeAttribute('aria-busy'); }
+}
 function pitchPanel(pt, i, b) {
   const subj = h('input', { class: 'u-input', id: `subj-${i}`, value: pt.subject, dir: 'auto', oninput: (e) => { pt.subject = e.target.value; } });
   const body = h('textarea', { class: 'u-textarea grow', id: `body-${i}`, dir: 'auto', oninput: (e) => { pt.body = e.target.value; grow(e.target); } }, pt.body);
@@ -1070,23 +1117,25 @@ const fieldSizing = window.CSS && CSS.supports && CSS.supports('field-sizing', '
 function grow(ta) { if (fieldSizing) return; ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight + 2}px`; }
 function autoGrow(root) { if (!fieldSizing && root) requestAnimationFrame(() => $$('textarea.grow', root).forEach(grow)); }
 async function action(act, i, btn) {
+  if (!canUseCreatorFeatures()) return;
   const b = S.scan.brands[i]; btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   try {
     const out = await api(`/scans/${S.scan.id}/brands/${encodeURIComponent(b.brand)}/${act}`, {});
     S.panels[i] = { ...(S.panels[i] || {}), [act]: out };
     const card = updateCard(i);
     $(`[data-panel="${act}"] h4`, card)?.focus({ preventScroll: false });
-  } catch (e) { if (!(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message, 'error'); }
+  } catch (e) { if (!handleCreatorRoleError(e) && !(await paywalled(e, act === 'activity' ? `${S.offer.name} checks which brands are paying creators right now.` : `${S.offer.name} drafts pitches that quote your own videos.`))) toast(e.message, 'error'); }
   btn.disabled = false; btn.removeAttribute('aria-busy');
 }
 $('#share').onclick = async () => {
+  if (!canUseCreatorFeatures()) return;
   const btn = $('#share');
   btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   try {
     const { url } = await api(`/scans/${S.scan.id}/share`, {});
     const out = $('#share-url'); out.value = url; out.hidden = false; S.shareUrl = url; $('#share-present').hidden = false;
     await navigator.clipboard.writeText(url).then(() => toast('Public link copied', 'ok')).catch(() => { out.select(); toast('Link ready, copy it below'); });
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { if (!handleCreatorRoleError(e)) toast(e.message, 'error'); }
   btn.disabled = false; btn.removeAttribute('aria-busy');
 };
 $('#share-present').onclick = () => { if (S.shareUrl) U.copy(presentUrl(S.shareUrl), 'Present-mode link copied'); };
@@ -1105,7 +1154,7 @@ U.palette.add({ id: 'r-new', label: 'New scan', hint: 'Scan a TikTok or Instagra
 U.palette.add({ id: 'r-scans', search: () => S.history.map((r) => ({ id: `r-scan-${r.id}`, label: `Open scan: @${r.handle}`, group: 'Your scans',
   hint: `${PLATFORM[r.platform]} · ${r.brands} brands · ${date(r.createdAt)}`, keywords: `${r.name || ''} ${r.platform}`, run: () => openScan(+r.id) })) });
 U.palette.add({ id: 'r-sample', label: 'Sample report', hint: 'A made-up creator in the real format', group: 'Receipts', keywords: 'example demo', run: () => openSample() });
-U.palette.add({ id: 'r-licenses', label: 'License offers', hint: 'Brands asking to run your videos as ads', group: 'Go to', keywords: 'licence inbox offers', run: () => { location.href = '/creators/licenses'; } });
+U.palette.add({ id: 'r-collabs', label: 'Collabs', hint: 'Invites from brands, your pitches, tracked brands', group: 'Go to', keywords: 'collab inbox offers pitch watchlist', run: () => { location.href = '/collabs'; } });
 U.palette.add({ id: 'r-roster', label: 'Roster for managers', group: 'Go to', keywords: 'manager monday report', run: () => { location.href = '/creators/roster'; } });
 U.palette.add({ id: 'r-dashboard', label: 'Dashboard', hint: 'Your shared workspace', group: 'Go to', keywords: 'analytics overview brand manager', run: () => { location.href = '/dashboard'; } });
 U.palette.add({ id: 'r-account', search: () => (S.user ? [{ id: 'r-signout', label: 'Sign out', hint: S.user.email, group: 'Account', run: signOut }]
@@ -1175,7 +1224,7 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
     history.replaceState({}, '', '/creators/');
   } else if (q.get('upgrade') === '1') { openUpgrade(); history.replaceState({}, '', '/creators/'); }
   else if (q.get('signin') === '1') {
-    if (S.user) location.replace('/dashboard?as=creator');
+    if (S.user) location.replace('/dashboard');
     else { openAuth('login'); history.replaceState({}, '', '/creators/'); }
   } else if (q.has('scan')) {
     const parsed = parseHandle(q.get('scan'));
@@ -1191,7 +1240,7 @@ $('#end-scan').addEventListener('click', () => { const i = $('#handle'); i.scrol
     history.replaceState({}, '', '/creators/');
     openScan(scanId);
   } else if (S.user && ['/', '/creators/'].includes(location.pathname) && !location.search && !location.hash && q.get('home') !== '1') {
-    location.replace('/dashboard?as=creator');
+    location.replace('/dashboard');
   }
 })();
 </script>

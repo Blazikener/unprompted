@@ -225,11 +225,12 @@ def summary(d):
             "gifts": [{"platform": g["platform"], "handle": g["handle"], "shippedOn": g["shipped_on"], "tracked": g["tracked"],
                        "kind": g["kind"], "postedOn": g["posted_on"], "url": g["video_url"], "quote": g["quote"],
                        "checkedAt": g["checked_at"], "videoId": g["video_id"],
-                       "licenseUrl": digest.license_url(d["token"], g["video_id"]) if g["video_id"] and g["kind"] != "sponsored" else None}
+                       "licenseUrl": digest.license_url(d["token"], g["video_id"]) if g["video_id"] and g["kind"] != "sponsored" else None,
+                       "collabUrl": digest.collab_url(d["token"], g["video_id"]) if g["video_id"] and g["kind"] != "sponsored" else None}
                       for g in gifts]}
 
 
-def email_section(d, found, license_url):
+def email_section(d, found, collab_url):
     """The seeding block for the weekly email: the running tally and the gifted creators found posting this week."""
     import digest
     s = summary(d)
@@ -242,7 +243,7 @@ def email_section(d, found, license_url):
             font, e(g["handle"]), "said it on camera only" if g["kind"] == "spoken" else "tagged" if g["kind"] == "tagged" else "disclosed",
             e("%d %s" % (g["posted_on"].day, g["posted_on"].strftime("%b")) if g["posted_on"] else ""),
             ' <a href="%s" style="color:#2f6b4f;">Watch &rarr;</a>' % e(g["video_url"]) if g["video_url"] else "",
-            ' <a href="%s" style="color:#2f6b4f;">License for ads &rarr;</a>' % e(license_url(g["video_id"])) if g["kind"] != "sponsored" else "")
+            ' <a href="%s" style="color:#2f6b4f;">Invite to collab &rarr;</a>' % e(collab_url(g["video_id"])) if g["kind"] != "sponsored" else "")
         for g in found)
     tally = "%d of %d gifted creators have posted%s%s." % (
         s["posted"], s["gifted"], ", %d only on camera (no tag to track)" % s["spokenOnly"] if s["spokenOnly"] else "",

@@ -77,7 +77,8 @@ class Client:
 
 def manager(base):
     m = Client(base)
-    assert m("POST", "/api/creators/signup", {"email": MANAGER, "password": "password-123"})[0] == 201
+    assert m("POST", "/api/creators/signup",
+             {"email": MANAGER, "password": "password-123", "role": "manager"})[0] == 201
     return m
 
 

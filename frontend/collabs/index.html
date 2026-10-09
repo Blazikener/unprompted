@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collabs · Unprompted</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/ui/ui.css?v=3">
+<link rel="stylesheet" href="/collab/collab.css?v=1">
+<script src="/ui/ui.js?v=2"></script>
+<script src="/collab/collab.js?v=1"></script>
+</head>
+<body class="u-stage">
+<header class="u-bar">
+  <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
+  </nav>
+  <span class="grow"></span>
+  <span class="bar-note">Collabs</span>
+  <span id="who"></span>
+</header>
+<main class="page page-wide">
+  <section id="app" aria-busy="true" tabindex="-1"><p class="u-muted">Loading your collabs…</p></section>
+</main>
+<script>
+  const { h } = U;
+  const $ = (s) => document.querySelector(s);
+  const app = $('#app');
+  const params = new URLSearchParams(location.search);
+  let me = null, data = null;
+  const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); };
+  const stat = (n, label, hint) => h('div', { class: 'c-stat' }, h('b', {}, n), h('span', {}, label), hint ? h('small', {}, hint) : null);
+  const section = (title, ...kids) => h('section', { class: 'c-section' }, h('h2', {}, title), ...kids);
+  const empty = (text, cta) => h('div', { class: 'c-empty' }, h('span', {}, text), cta || null);
+
+  function row(c) {
+    const who = c.side === 'creator' ? c.brand : `@${c.handle}`;
+    return h('a', { class: 'c-row', href: c.url.replace(/^https?:\/\/[^/]+/, '') },
+      h('div', {}, h('b', {}, `${who} · ${C.usd(c.budgetUsd)}`), h('small', {}, `${c.deliverables} · ${c.timing} · ${c.origin === c.side ? 'you started it' : 'they started it'}`)),
+      h('div', { class: 'c-row-side' }, C.pill(c)));
+  }
+
+  function list(items) {
+    const turn = items.filter((c) => c.yourTurn), rest = items.filter((c) => !c.yourTurn);
+    return [turn.length ? section('Your turn', h('div', { class: 'c-list' }, ...turn.map(row))) : null,
+            rest.length ? section(turn.length ? 'Everything else' : 'All collabs', h('div', { class: 'c-list' }, ...rest.map(row))) : null];
+  }
+
+  // ---------------------------------------------------------------- creators: pitch partner brands, watch the rest
+  async function pitchDialog(brand) {
+    const scans = await C.call('/api/creators/scans').catch(() => []);
+    const t = C.termsForm();
+    const latest = scans[0];
+    C.dialog({ title: `Pitch ${brand} a collab`, confirm: 'Send pitch',
+      lead: latest ? `Your best ${brand} receipt from your @${latest.handle} scan goes with it, as proof you already talk about them.`
+        : 'Scan your videos first so your receipts go with the pitch.',
+      body: [t.el],
+      run: async () => {
+        const c = await C.call('/api/collabs/pitch', { ...t.read(), brand, ...(latest ? { scanId: latest.id } : {}) });
+        U.toast(`Pitch sent to ${c.brand}`, { kind: 'ok' });
+        await load();
+      } });
+  }
+
+  function creatorView() {
+    const n = data.counts;
+    const input = h('input', { class: 'u-input', placeholder: 'A brand you want to work with', maxlength: 60, 'aria-label': 'Brand to watch' });
+    const add = h('button', { class: 'u-btn', type: 'submit' }, 'Watch');
+    const watch = async (brand, remove) => { data.watch = (await C.call('/api/collabs/watch', { brand, remove })).watch; render(); };
+    const watchList = data.watch.length ? h('div', { class: 'c-chips' }, ...data.watch.map((w) => h('span', { class: 'c-chip' },
+        h('span', {}, w.brand), w.open ? h('button', { type: 'button', onclick: () => pitchDialog(w.brand) }, 'Pitch →') : h('small', { class: 'u-muted' }, 'not open yet'),
+        h('button', { type: 'button', 'aria-label': `Stop watching ${w.brand}`, onclick: () => watch(w.brand, true) }, '×'))))
+      : empty('Add the brands you want to work with. Every Monday we email you which ones are taking pitches and any offers waiting.');
+    const watched = new Set(data.watch.map((w) => w.brand.toLowerCase()));
+    const partners = data.partners.length ? h('div', { class: 'c-list' }, ...data.partners.map((p) => h('div', { class: 'c-row' },
+        h('div', {}, h('b', {}, p.brand), h('small', {}, p.about || 'Open to creator pitches')),
+        h('div', { class: 'c-row-side' }, watched.has(p.brand.toLowerCase()) ? null : h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: () => watch(p.brand) }, 'Watch'),
+          h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => pitchDialog(p.brand) }, 'Pitch')))))
+      : empty('No brands are taking pitches yet. Watch the ones you want and we’ll tell you the week they open.');
+    return [h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Your collabs'),
+        h('h1', {}, 'Future work with brands. ', h('span', { class: 'u-voice' }, 'On your terms.')),
+        h('p', { class: 'u-lead' }, 'Brands that find your receipts invite you to make new content. Pitch the brands you already talk about. Accept, counter or decline every offer.')),
+      h('div', { class: 'c-stats' }, stat(n.yourTurn, 'Waiting for you'), stat(n.waiting, 'Waiting on brands'), stat(n.booked, 'Booked'), stat(C.usd(n.bookedUsd), 'Booked value')),
+      h('div', { class: 'c-grid' },
+        h('div', { class: 'c-section' }, ...(data.collabs.length ? list(data.collabs)
+          : [section('Collabs', empty('No collabs yet. Pitch a brand on the right, or scan your videos so brands can find your receipts.',
+              h('a', { class: 'u-btn u-btn-sm', href: '/creators/' }, 'Scan your videos')))])),
+        h('div', { class: 'c-section' },
+          section('Brands taking pitches', partners),
+          section('Your watchlist', h('form', { class: 'c-inline', onsubmit: (e) => { e.preventDefault(); const b = input.value.trim(); if (b) C.pending(add, () => watch(b).then(() => { input.value = ''; }).catch((ex) => U.toast(ex.message, { kind: 'error' }))); } }, input, add), watchList)))];
+  }
+
+  // ---------------------------------------------------------------- brands: their profile, invites and pitches
+  function brandView() {
+    const n = data.counts, p = data.profile;
+    const name = h('input', { class: 'u-input', value: p?.brand || '', required: true, maxlength: 60, placeholder: 'Your brand' });
+    const about = h('input', { class: 'u-input', value: p?.about || '', maxlength: 120, placeholder: 'What you sell, e.g. hand-poured candles' });
+    const open = h('input', { type: 'checkbox', checked: p ? p.open : true });
+    const save = h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'submit' }, p ? 'Save' : 'Open to pitches');
+    const profile = h('form', { class: 'c-card', onsubmit: (e) => { e.preventDefault(); C.pending(save, async () => {
+        try { data.profile = await C.call('/api/collabs/profile', { brand: name.value.trim(), about: about.value.trim(), open: open.checked }); U.toast('Saved', { kind: 'ok' }); render(); }
+        catch (ex) { U.toast(ex.message, { kind: 'error' }); }
+      }); } },
+      C.field('Brand', name), C.field('About', about), h('label', { class: 'c-switch' }, open, 'Let creators pitch us collabs'), h('div', {}, save),
+      h('small', { class: 'u-hint' }, 'Creators who already mention you can send proposals. Each one shows up here with their receipt.'));
+    return [h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Collabs'),
+        h('h1', {}, 'Book the creators ', h('span', { class: 'u-voice' }, 'who already love you.')),
+        h('p', { class: 'u-lead' }, 'Invite creators from your search results or weekly report to make new content, and answer the pitches creators send you.')),
+      h('div', { class: 'c-stats' }, stat(n.yourTurn, 'Waiting for you'), stat(n.waiting, 'Waiting on creators'), stat(n.booked, 'Booked'), stat(C.usd(n.bookedUsd), 'Committed')),
+      h('div', { class: 'c-grid' },
+        h('div', { class: 'c-section' }, ...(data.collabs.length ? list(data.collabs)
+          : [section('Collabs', empty('No collabs yet. Find creators who already mention you, then press Invite to collab.',
+              h('a', { class: 'u-btn u-btn-sm u-btn-primary', href: '/brands/' }, 'Search creators')))])),
+        section('Creator pitches', profile))];
+  }
+
+  function render() {
+    show(...(data.role === 'brand' ? brandView() : creatorView()));
+  }
+
+  async function load() {
+    try {
+      me = me || (await C.call('/api/creators/me')).user;
+      if (!me) {
+        return show(h('div', { class: 'c-card' }, h('h1', { class: 'u-h3' }, 'Sign in to see your collabs.'),
+          h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/' }, 'Creator sign-in'), h('a', { class: 'u-btn', href: '/brands/' }, 'Brand sign-in'))));
+      }
+      $('#who').replaceChildren(h('span', { class: 'email' }, me.email), h('a', { href: '/dashboard' }, 'Dashboard'),
+        h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await C.call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
+      if (me.role === 'manager') {
+        return show(h('div', { class: 'c-card', role: 'status' }, h('h1', { class: 'u-h3' }, "You're signed in with a manager account."),
+          h('p', {}, 'Collabs belong to creator and brand accounts. Track your roster’s brands and deals from the roster page.'),
+          h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/roster' }, 'Open your roster'))));
+      }
+      data = await C.call('/api/collabs/mine');
+      render();
+      const pitch = params.get('pitch');
+      if (pitch && me.role === 'creator') { history.replaceState(null, '', location.pathname); pitchDialog(pitch); }
+    } catch (e) {
+      show(h('div', { class: 'c-card', role: 'alert' }, h('p', {}, e.message)));
+    }
+  }
+  load();
+</script>
+</body>
+</html>
