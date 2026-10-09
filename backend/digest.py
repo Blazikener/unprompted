@@ -105,6 +105,10 @@ def manage_url(token):
     return "%s/digest/%s" % (app_url(), token)
 
 
+def collab_url(token, video_id):
+    return "%s/collab/new/%s?v=%s" % (app_url(), token, video_id)
+
+
 def license_url(token, video_id):
     return "%s/license/%s/%s" % (app_url(), token, video_id)
 
@@ -200,10 +204,10 @@ FONT = "-apple-system,Segoe UI,Helvetica,Arial,sans-serif"
 
 def item_html(v, token):
     kind, q = v["kind"], v.get("quote")
-    # Organic mentions get a license button; it opens a confirm page, so a mail scanner opening links requests nothing.
+    # Organic mentions get an invite button; it opens a proposal form, so a mail scanner opening links sends nothing.
     lic = ('<a href="%s" style="display:inline-block;margin-left:10px;padding:4px 11px;border-radius:999px;background:#d0f854;'
-           'color:#1b2a23;font:600 12px %s;text-decoration:none;">License for ads &middot; ~$%d / 30 days &rarr;</a>'
-           % (esc(license_url(token, v["id"])), FONT, quote(v, 30))) if kind in LICENSABLE else ""
+           'color:#1b2a23;font:600 12px %s;text-decoration:none;">Invite to collab &rarr;</a>'
+           % (esc(collab_url(token, v["id"])), FONT)) if kind in LICENSABLE else ""
     return TEMPLATES["item"].substitute(
         license=lic, profile=esc(profile_url(v["platform"], v["handle"])), handle=esc(v["handle"]),
         platform="TikTok" if v["platform"] == "tiktok" else "Instagram", views=fmt(v["views"]),
@@ -226,7 +230,7 @@ def render(d, sid, new, since, found=()):
                   else "Gifted creators posted about"), brand=esc(brand),
         since="%d %s" % (since.day, since.strftime("%b")), filters=esc(filter_text(d["params"])), parts=esc(", ".join(parts) + "." if parts else ""),
         items="".join(item_html(v, d["token"]) for v in new[:MAX_ITEMS]), more=more, dash=esc("%s/brands/#search=%d" % (app_url(), sid)),
-        seeding=seeding.email_section(d, found, lambda vid: license_url(d["token"], vid)),
+        seeding=seeding.email_section(d, found, lambda vid: collab_url(d["token"], vid)),
         credit=ORIANE_CREDIT, email=esc(d["email"]), manage=esc(manage_url(d["token"])))
     return subject, body
 
@@ -410,7 +414,7 @@ def sample():
     if not run:
         raise ApiError(404, "No sample digest yet.")
     sample_html = re.sub(
-        r'href="[^"]*/(?:digest/%s(?:\?unsubscribe=1)?|license/%s/[^"]*)"' % (re.escape(run["token"]), re.escape(run["token"])),
+        r'href="[^"]*/(?:digest/%s(?:\?unsubscribe=1)?|license/%s/[^"]*|collab/new/%s[^"]*)"' % ((re.escape(run["token"]),) * 3),
         lambda _: 'href="%s"' % esc("%s/brands/" % app_url()),
         run["html"])
     sample_html = sample_html.replace(run["token"], "sample")
@@ -527,7 +531,9 @@ def run_route(handler, body):
         import packaging
         import payments
         import rosters
+        import collabs
         for key, job in (("summaries", lambda: licenses.run_summaries(bool(body.get("forceSummaries")))),
+                         ("collabs", lambda: collabs.run_weekly(bool(body.get("forceSummaries")))),
                          ("licenses", payments.run_reminders), ("rosters", rosters.run_rosters), ("feeds", packaging.run_feeds)):
             try:
                 out[key] = job()
@@ -540,11 +546,12 @@ def run_route(handler, body):
 def jobs():
     """The background jobs the scheduler runs every pass: brand reports, creator summaries, licence reminders, rosters
     and the Weekly leads emails (packaging.py)."""
+    import collabs
     import licenses
     import packaging
     import payments
     import rosters
-    return (run_due, licenses.run_summaries, payments.run_reminders, rosters.run_rosters, packaging.run_feeds)
+    return (run_due, licenses.run_summaries, collabs.run_weekly, payments.run_reminders, rosters.run_rosters, packaging.run_feeds)
 
 
 def resend_last(digest_id):

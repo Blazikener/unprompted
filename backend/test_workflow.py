@@ -133,7 +133,7 @@ def test_the_whole_licence_workflow(base, monkeypatch):
     status, run = ops("POST", "/api/digests/run", {}, OP)
     assert status == 200 and run["ran"] == 1 and run["results"][0]["new"] == 1 and run["licenses"] == {"ended": 0, "reminded": 0}
     report = inbox(BRAND)[-1]
-    link = re.search(r'href="https://u\.test(/license/[^"]+/wf_new)"', report[1])
+    link = re.search(r'href="https://u\.test(/collab/new/[^"]+\?v=wf_new)"', report[1])
     assert report[0] == "1 new creator mention of Glow Recipe this week" and link
     api = "/api/digests/%s/license/wf_new" % watch["token"]
 

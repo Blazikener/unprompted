@@ -199,7 +199,7 @@
         h('span', { class: 'who' }, h('b', {}, h('bdi', {}, `@${g.handle}`)), h('span', { class: 'u-muted' }, `${g.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · shipped ${when(g.shippedOn)}${g.tracked ? ' · you tracked it' : ''}`)),
         g.videoId ? h('span', { class: 'end' }, h('span', { class: `u-kind ${cls}` }, label), h('span', { class: 'u-stamp' }, when(g.postedOn)),
           g.url ? h('a', { href: g.url, target: '_blank', rel: 'noopener' }, 'Watch ↗') : null,
-          g.licenseUrl ? h('a', { href: g.licenseUrl }, 'License for ads') : null)
+          g.collabUrl ? h('a', { href: g.collabUrl }, 'Invite to collab') : null)
           : h('span', { class: 'end u-muted' }, g.checkedAt ? `No post yet (checked ${when(g.checkedAt)})` : 'Checked in the next weekly run'));
     })) : null;
     box.replaceChildren(...[h('h2', { id: 'seeding-h' }, 'Gifted creators'), tally, h('p', { class: 'u-hint status-line', role: 'status' }),
