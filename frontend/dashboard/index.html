@@ -336,7 +336,7 @@ function renderAccountHeader() {
   $('#user-email').textContent = user.email;
   $('#role-pill').textContent = `${data.role[0].toUpperCase()}${data.role.slice(1)} account`;
   $('#dash-intro').textContent = data.role === 'creator'
-    ? 'Your receipts, scan activity and license offers, grounded in evidence.'
+    ? 'Your receipts, scan activity and future collabs, grounded in evidence.'
     : data.role === 'brand' ? 'Your saved searches, creator mentions and weekly digests, grounded in evidence.'
       : 'Your roster, weekly reports and deals, grounded in evidence.';
   $('.rail-note').textContent = data.role === 'creator' ? 'Your creator receipts, all in one place.'
@@ -381,13 +381,14 @@ function usageSection() {
   return meters.length ? h('div', { class: 'usage-grid', 'data-reveal': '' }, ...meters.map(([label, value]) => usageCard(label, value))) : null;
 }
 function setupChecklist() {
-  const { creator: c, brand: b, licenses: l, manager: m } = data;
+  const { creator: c, brand: b, collabs: k, manager: m } = data;
   const items = data.role === 'creator' ? [
     [c.scans > 0, 'Run your first scan', '/creators/?home=1'],
-    [l.verifiedHandles > 0, 'Verify a handle for license offers', '/creators/licenses'],
+    [k.watching > 0, 'Track a brand you want to work with', '/collabs'],
   ] : data.role === 'brand' ? [
     [b.searches > 0, 'Save a brand search', '/brands/?home=1'],
     [b.digests.active > 0, 'Turn on a weekly digest', '/brands/?home=1'],
+    [k.openToPitches, 'Open your brand to creator pitches', '/collabs'],
   ] : [[m.creators > 0, 'Add a creator to your roster', '/creators/roster']];
   if (items.every(([done]) => done)) return null;
   return h('section', { class: 'setup-card u-card', 'aria-labelledby': 'setup-title', 'data-reveal': '' },
@@ -598,6 +599,11 @@ function activityLabel(item) {
   if (item.name === 'subscribed') return `Upgraded to ${displayPlan[detail.plan] || 'Pro'}`;
   if (item.name === 'digest_subscribe') return `Started a weekly digest for ${detail.brand || 'a brand'}`;
   if (item.name === 'digest_confirm') return `Confirmed the weekly digest for ${detail.brand || 'a brand'}`;
+  if (item.name === 'collab_propose') return `Invited a creator to collab with ${detail.brand || 'your brand'}`;
+  if (item.name === 'collab_pitch') return `Pitched ${detail.brand || 'a brand'} a collab`;
+  if (item.name === 'collab_accept') return `Booked a collab${detail.budget ? ` at $${format(detail.budget)}` : ''}`;
+  if (item.name === 'collab_counter') return 'Sent a counter-offer';
+  if (item.name === 'collab_decline') return 'Declined a collab';
   if (item.name === 'offer_accept') return 'Accepted a license offer';
   if (item.name === 'offer_decline') return 'Declined a license offer';
   if (item.name === 'roster_creator_added') return `Added @${detail.handle || 'a creator'} to your roster`;
@@ -656,30 +662,30 @@ function launchForms() {
 }
 function renderOverview() {
   const panel = $('#panel-overview');
-  const { creator: c, brand: b, licenses: l, manager: m } = data;
+  const { creator: c, brand: b, collabs: k, manager: m } = data;
   let metrics = [], chart = null, signal = null, actions = null, summary = '';
   if (data.role === 'creator') {
-    summary = 'Your receipts, offers and scan activity, all in one place.';
+    summary = 'Your receipts, collabs and scan activity, all in one place.';
     metrics = [
       metric("Brands you've mentioned", c.brands, `${format(c.scans)} scans across ${format(c.handles.length)} handles`),
       metric('Receipts with proof', c.receipts, 'Quotes, timestamps and frames'),
       metric('Organic views on your mentions', c.organicViews, 'Views on spoken or tagged posts'),
-      metric('Offers waiting for you', l.waiting, 'Answer from your license inbox'),
+      metric('Collabs waiting for you', k.yourTurn, `${format(k.booked)} booked · tracking ${format(k.watching)} brands`),
     ];
     chart = chartCard('Mentions over time', 'Receipts grouped by the video publish month, across your latest scan per handle.', timelineRows(), 'area', 'scan');
     signal = card('Latest creator signals', c.recent.length ? scanList(c.recent) : emptyState('No scans yet', 'Run your first scan to turn your mentions into shareable receipts.', 'scan', 'Run a first scan'));
-    actions = h('a', { class: 'u-btn', href: '/creators/licenses' }, 'Open license offers');
+    actions = h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs');
   } else if (data.role === 'brand') {
     summary = 'Saved searches, creator mentions and weekly digests for your brands.';
     metrics = [
       metric('Saved brand searches', b.searches, 'Listening posts you own'),
       metric('Mentions tracked', b.mentions, `${compact(b.views)} views across your searches`),
       metric('Active weekly digests', b.digests.active, `${format(b.digests.pending)} awaiting confirmation`),
-      metric('License requests', b.licenseRequests.requested, `${format(b.licenseRequests.live)} live partnerships`),
+      metric('Collabs booked', k.booked, `$${format(k.bookedUsd)} committed · ${format(k.yourTurn)} pitches waiting`),
     ];
     chart = chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar', 'brand');
     signal = card('Recent brand searches', b.recentSearches.length ? searchList(b.recentSearches) : emptyState('No saved brand searches yet', 'Search for a brand and keep listening with a weekly digest.', 'brand', 'Find your first brand'));
-    actions = h('a', { class: 'u-btn', href: '/brands/' }, 'Manage brand searches');
+    actions = h('div', { class: 'action-grid' }, h('a', { class: 'u-btn', href: '/brands/' }, 'Manage brand searches'), h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs'));
   } else {
     summary = 'Creators, reports and deals from the roster you manage.';
     metrics = [
@@ -707,35 +713,35 @@ function renderOverview() {
   animateCounts(panel);
 }
 function renderCreator() {
-  const panel = $('#panel-creator'), c = data.creator, l = data.licenses;
+  const panel = $('#panel-creator'), c = data.creator, k = data.collabs;
   const summary = `Across ${format(c.handles.length)} handles, keeping the newest scan for each one.`;
   const brands = c.topBrands.length ? brandList(c.topBrands, 8) : emptyState('No brand receipts yet', 'Scan a TikTok or Instagram handle to surface brands you already mention.', 'scan', 'Run your first scan');
   const scans = c.recent.length ? scanList(c.recent) : emptyState('Your first scan is one step away', 'We will find the receipts and keep them together here.', 'scan', 'Scan a handle');
-  const license = h('div', { class: 'u-stack' },
+  const collab = h('div', { class: 'u-stack' },
     h('div', { class: 'stat-strip' },
-      ...[['Waiting', l.waiting], ['Accepted', l.accepted], ['Live', l.live], ['Verified handles', l.verifiedHandles]].map(([label, value]) =>
+      ...[['Waiting for you', k.yourTurn], ['Waiting on brands', k.waiting], ['Booked', k.booked], ['Brands tracked', k.watching]].map(([label, value]) =>
         h('div', { class: 'stat-box' }, h('strong', {}, format(value)), h('small', {}, label)))),
     h('div', { class: 'action-grid' },
-      h('span', { class: 'u-pill' }, `$${format(l.paidUsd)} paid`), h('span', { class: 'u-pill' }, `$${format(l.owedUsd)} owed`),
-      h('a', { class: 'u-btn u-btn-sm', href: '/creators/licenses' }, 'Manage offers and handles')));
+      h('span', { class: 'u-pill' }, `$${format(k.bookedUsd)} booked`), h('span', { class: 'u-pill' }, `${format(k.partners)} brands taking pitches`),
+      h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs')));
   panel.replaceChildren(...[
     panelHead('Creator', 'Your receipts', summary),
-    c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and license offers will gather here after the first scan.', 'scan', 'Run your first scan'),
+    c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and collabs will gather here after the first scan.', 'scan', 'Run your first scan'),
     c.scans ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('scan-launch') }, 'New scan')) : null,
     h('div', { class: 'content-grid section-gap' },
       card('Top brands', brands, '/creators/', 'Open receipts'),
       card('Recent scans', scans, '/creators/', 'Open Receipts')),
-    card('License inbox', license, '/creators/licenses', 'Open inbox'),
+    card('Future collabs', collab, '/collabs', 'Open collabs'),
   ].filter(Boolean));
   animateCounts(panel);
 }
 function renderBrand() {
-  const panel = $('#panel-brand'), b = data.brand, r = b.licenseRequests;
+  const panel = $('#panel-brand'), b = data.brand, k = data.collabs;
   const searches = b.recentSearches.length ? searchList(b.recentSearches) :
     emptyState('No saved brand searches yet', 'Search for a brand, then save a weekly digest to keep new on-camera mentions coming.', 'brand', 'Find your first brand');
-  const maxRequest = Math.max(1, r.requested, r.accepted, r.live, r.declined);
+  const maxRequest = Math.max(1, k.yourTurn, k.waiting, k.booked);
   const funnel = h('div', { class: 'request-funnel' },
-    ...[['Requested', r.requested], ['Accepted', r.accepted], ['Live', r.live], ['Declined', r.declined]].map(([label, value]) =>
+    ...[['Pitches for you', k.yourTurn], ['Waiting on creators', k.waiting], ['Booked', k.booked]].map(([label, value]) =>
       h('div', { class: 'funnel-row' }, h('span', {}, label), h('span', { class: 'funnel-track' }, h('i', { style: `width:${Math.max(0, value / maxRequest * 100)}%` })), h('b', {}, format(value)))));
   const digest = h('div', { class: 'stat-strip' },
     h('div', { class: 'stat-box' }, h('strong', {}, format(b.digests.active)), h('small', {}, 'Active digests')),
@@ -750,7 +756,7 @@ function renderBrand() {
     h('div', { class: 'split-grid' },
       chartCard('New mentions per week', 'Distinct videos in your brand searches, by publish week.', weeklyRows(), 'bar', 'brand'),
       card('Top creators', b.topCreators.length ? topCreatorList(b.topCreators) : emptyState('No creators found yet', 'Creators will appear as searches find on-camera brand mentions.', 'brand', 'Start a brand search'))),
-    card('License requests', funnel, '/brands/', 'Review brand dashboard'),
+    card(k.openToPitches ? 'Collabs · open to pitches' : 'Collabs', funnel, '/collabs', 'Open collabs'),
   ].filter(Boolean));
   animateCounts(panel);
 }
@@ -799,7 +805,7 @@ function addPaletteActions() {
   U.palette.add({ id: 'dashboard-home', label: 'Dashboard overview', hint: 'Your role-specific workspace', group: 'Go to', keywords: 'overview analytics dashboard', run: () => { location.href = '/dashboard'; } });
   if (data.role === 'creator') {
     U.palette.add({ id: 'dashboard-receipts', label: 'Creator receipts', group: 'Go to', keywords: 'scans mentions', run: () => { location.href = '/creators/'; } });
-    U.palette.add({ id: 'dashboard-licenses', label: 'License offers', group: 'Go to', keywords: 'creator handles offers', run: () => { location.href = '/creators/licenses'; } });
+    U.palette.add({ id: 'dashboard-collabs', label: 'Collabs', group: 'Go to', keywords: 'collab invites pitches offers', run: () => { location.href = '/collabs'; } });
   } else if (data.role === 'brand') {
     U.palette.add({ id: 'dashboard-searches', label: 'Brand searches', group: 'Go to', keywords: 'brand weekly digest mentions', run: () => { location.href = '/brands/'; } });
   } else {

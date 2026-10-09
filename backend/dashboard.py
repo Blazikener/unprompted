@@ -1,6 +1,7 @@
 """Authenticated, read-only account aggregates for the shared dashboard."""
 from datetime import datetime, timedelta, timezone
 
+import collabs
 import creator
 import licenses
 import rosters
@@ -20,7 +21,13 @@ def month_keys():
 def view(user):
     user_id = user["id"]
     role = user["role"]
-    creator_section = licenses_section = brand_section = manager_section = None
+    creator_section = licenses_section = brand_section = manager_section = collabs_section = None
+    if role in ("creator", "brand"):
+        inbox = collabs.mine(user)
+        collabs_section = {**inbox["counts"], "watching": len(inbox.get("watch") or []),
+                           "openWatched": sum(w["open"] for w in inbox.get("watch") or []),
+                           "partners": len(inbox.get("partners") or []),
+                           "openToPitches": bool(inbox.get("profile") and inbox["profile"]["open"])}
     usage = {}
 
     if role == "creator":
@@ -198,7 +205,8 @@ def view(user):
             "FROM events WHERE user_id = %s AND name IN ("
             "'signup', 'scan', 'share', 'checkout_intent', 'checkout_started', 'subscribed', "
             "'digest_subscribe', 'digest_confirm', 'offer_accept', 'offer_decline', 'offer_counter', 'offer_code', "
-            "'license_checkout', 'license_request', "
+            "'license_checkout', 'license_request', 'collab_propose', 'collab_pitch', 'collab_accept', 'collab_counter', "
+            "'collab_decline', "
             "'roster_pilot_request', 'roster_deal', 'roster_commit', 'roster_report', "
             "'roster_creator_added', 'roster_creator_removed')) "
             'SELECT name, data, created_at AS "createdAt" FROM meaningful '
@@ -214,6 +222,7 @@ def view(user):
         "usage": usage,
         "creator": creator_section,
         "licenses": licenses_section,
+        "collabs": collabs_section,
         "brand": brand_section,
         "manager": manager_section,
         "activity": [{**dict(row), "createdAt": stamp(row["createdAt"])} for row in activity],
