@@ -792,7 +792,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/license/index.html"
             elif re.fullmatch(r"/offer/[^/]+", path):
                 self.path = "/offer/index.html"
-            elif re.fullmatch(r"/collab/[^/]+(?:/[^/]+)?", path):
+            elif re.fullmatch(r"/collab/(?:new(?:/[^/]+)?|[0-9a-f]{32})", path):
                 self.path = "/collab/index.html"
             elif path in ("/collabs", "/collabs/"):
                 self.path = "/collabs/index.html"
