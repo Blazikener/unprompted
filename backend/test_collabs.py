@@ -132,14 +132,20 @@ def test_roles_cannot_see_each_others_collabs(mail):
     assert collabs.load_mine(ali, c["id"])[1] == "creator"
 
 
-def test_proposal_from_a_weekly_report_link(mail):
+def test_proposal_from_a_weekly_report_link(mail, monkeypatch):
     brand = new_user("brand")
+    seen = {"platform": "tiktok", "handle": "Collab.Ali", "url": "https://tiktok.test/v9", "quote": {"text": "Tims run", "start": 3},
+            "views": 900, "publishedAt": None, "kind": "spoken"}
+    monkeypatch.setattr(digest, "license_video", lambda d, vid: seen if vid == "v9" else (_ for _ in ()).throw(ApiError(404, "no")))
     with server.connect() as db:
         d = db.execute("INSERT INTO digests (email, brand, params, user_id, token) VALUES (%s, 'CollabTest Tims', %s, %s, %s)"
                        " RETURNING *", (brand["email"], Jsonb({}), brand["id"], secrets.token_urlsafe(16))).fetchone()
     try:
-        c = collabs.propose(None, {**TERMS, "platform": "tiktok", "handle": HANDLE}, d)
-        assert c["brand"] == "CollabTest Tims" and collabs.mine(brand)["collabs"][0]["id"] == c["id"]
+        c = collabs.propose(None, {**TERMS, "videoId": "v9", "handle": "someone.else"}, d)   # the handle comes from the report
+        assert c["brand"] == "CollabTest Tims" and c["handle"] == HANDLE and c["proof"]["views"] == 900
+        assert collabs.mine(brand)["collabs"][0]["id"] == c["id"]
+        with pytest.raises(ApiError):
+            collabs.propose(None, {**TERMS, "videoId": "nope"}, d)
     finally:
         with server.connect() as db:
             db.execute("DELETE FROM digests WHERE id = %s", (d["id"],))

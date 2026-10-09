@@ -12,7 +12,7 @@ which watched brands are open to pitches. No Oriane credits are spent anywhere i
 """
 import re
 from datetime import timedelta
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from psycopg.types.json import Jsonb
 
@@ -198,7 +198,14 @@ def jsonb(value):
 
 def propose(user, body, d=None):
     """A brand invites a creator: signed in with a brand account, or from its weekly report link (`d`, the digest)."""
-    platform, handle = licenses.norm(body.get("platform"), body.get("handle"))
+    vid = str(body.get("videoId") or "")[:64]
+    if d is not None:
+        video = digest.license_video(d, vid)               # from a report link: only creators in this brand's reports
+        platform, handle = video["platform"], video["handle"].lower()
+        proof = {k: video[k] for k in ("url", "quote", "views", "publishedAt", "kind")}
+    else:
+        platform, handle = licenses.norm(body.get("platform"), body.get("handle"))
+        proof = video_proof(vid, platform, handle) if vid else None
     deliverables, timing, budget, brief = terms(body)
     if d is not None:
         brand, email, brand_user_id, digest_id = d["brand"], d["email"], d["user_id"], d["id"]
@@ -213,8 +220,6 @@ def propose(user, body, d=None):
                           " AND created_at > now() - interval '1 day'", (email,)).fetchone()["n"]
     if sent >= BRAND_PER_DAY:
         raise ApiError(429, "That's %d proposals today. Send more tomorrow." % BRAND_PER_DAY)
-    vid = str(body.get("videoId") or "")[:64]
-    proof = video_proof(vid, platform, handle) if vid else None
     owner = creator_owner(platform, handle)
     c = insert({"origin": "brand", "brand": brand, "brand_user_id": brand_user_id, "brand_email": email, "digest_id": digest_id,
                 "creator_user_id": owner["id"] if owner else None, "platform": platform, "handle": handle,
@@ -500,6 +505,11 @@ def dispatch(handler):
             return view(c, side)
         if path == "/mine":
             return mine(creator.require_user(handler.headers))
+        dg = re.fullmatch(r"/digest/([A-Za-z0-9_-]{16,32})", path)
+        if dg:
+            d, _, _ = digest.load_digest(dg.group(1))
+            vid = (parse_qs(urlparse(handler.path).query).get("v") or [""])[0][:64]
+            return {"brand": d["brand"], "video": digest.license_video(d, vid)}
         if path == "/partners":
             return {"partners": [{"brand": p["brand"], "about": p["about"]} for p in partners()]}
         raise ApiError(404, "Not found.")
