@@ -30,7 +30,7 @@
   const parts = location.pathname.split('/').filter(Boolean);       // ['collab', token] | ['collab', 'new'] | ['collab', 'new', digestToken]
   const q = new URLSearchParams(location.search);
   const app = $('#app');
-  const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids); app.focus({ preventScroll: true }); };
+  const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); app.focus({ preventScroll: true }); };
   const fail = (msg, extra) => show(h('div', { class: 'c-card', role: 'alert' }, h('h1', { class: 'u-h3' }, msg), extra || null));
 
   // ---------------------------------------------------------------- one collab, answered from its link (no account)

@@ -91,7 +91,7 @@
   </section>
   <section class="block">
     <h2 id="preview-h" hidden>Latest email</h2>
-    <iframe id="preview" title="Latest digest email" hidden sandbox></iframe>
+    <iframe id="preview" title="Latest digest email" hidden sandbox="allow-popups allow-popups-to-escape-sandbox"></iframe>
   </section>
   <footer>Search and transcripts by <a href="https://oriane.xyz" target="_blank" rel="noopener">Oriane</a> · Unprompted is a community tool built on Oriane's API</footer>
 </main>
@@ -321,7 +321,7 @@
   function preview(html) {
     latestHtml = html;
     const old = $('#preview');
-    const frame = h('iframe', { id: 'preview', title: 'Latest digest email', sandbox: '', hidden: !html });
+    const frame = h('iframe', { id: 'preview', title: 'Latest digest email', sandbox: 'allow-popups allow-popups-to-escape-sandbox', hidden: !html });
     if (html) frame.srcdoc = html;
     old.replaceWith(frame);
   }

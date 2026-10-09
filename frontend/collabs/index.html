@@ -29,7 +29,7 @@
   const app = $('#app');
   const params = new URLSearchParams(location.search);
   let me = null, data = null;
-  const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids); };
+  const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); };
   const stat = (n, label, hint) => h('div', { class: 'c-stat' }, h('b', {}, n), h('span', {}, label), hint ? h('small', {}, hint) : null);
   const section = (title, ...kids) => h('section', { class: 'c-section' }, h('h2', {}, title), ...kids);
   const empty = (text, cta) => h('div', { class: 'c-empty' }, h('span', {}, text), cta || null);

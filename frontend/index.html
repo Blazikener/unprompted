@@ -1716,10 +1716,7 @@
       h('td', {}, h('span', { class: 'u-score' }, U.scoreRing(c.score.total, { size: 32, why: () => whyEl(c) }), U.meter(partsOf(c)))),
       h('td', { class: 'hide-sm hide-md' }, h('span', { class: 'row-actions' },
         h('a', { class: 'u-btn u-btn-sm u-btn-ghost', href: c.profileUrl, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation(),
-          'aria-label': `Open @${c.handle} on ${PLATFORM[c.platform]}` }, 'Profile ↗'),
-        best?.kind === 'sponsored' ? null : h('a', { class: 'u-btn u-btn-sm u-btn-primary', onclick: (e) => e.stopPropagation(),
-          href: `/collab/new?${new URLSearchParams({ platform: c.platform, handle: c.handle, brand: state.data.search.brand, v: best?.id || '' })}`,
-          'aria-label': `Invite @${c.handle} to a future collab` }, 'Invite to collab'))));
+          'aria-label': `Open @${c.handle} on ${PLATFORM[c.platform]}` }, 'Profile ↗')))));
   }
 
   const rowFor = (k) => [...$('#rows').children].find((tr) => tr.dataset.key === k);
@@ -1829,7 +1826,10 @@
           h('h2', { id: 'detail-h', tabindex: '-1' }, h('bdi', {}, c.name || c.handle), c.verified ? icon('verified', 'icon verified') : null),
           h('p', { class: 'handle' }, icon(c.platform), h('span', { class: 'handle-text' }, h('bdi', {}, `@${c.handle}`), ` · ${c.followers == null ? 'followers unavailable' : `${fmt(c.followers)} followers`}`)),
           h('div', { class: 'detail-links' }, statusPill(c), h('span', { class: 'u-stamp' }, `#${rank} by score`),
-            h('a', { class: 'link', href: c.profileUrl, target: '_blank', rel: 'noopener' }, `View on ${PLATFORM[c.platform]} ↗`)))),
+            h('a', { class: 'link', href: c.profileUrl, target: '_blank', rel: 'noopener' }, `View on ${PLATFORM[c.platform]} ↗`)),
+          h('a', { class: 'u-btn u-btn-sm u-btn-primary detail-invite', 'aria-label': `Invite @${c.handle} to a future collab`,
+            href: `/collab/new?${new URLSearchParams({ platform: c.platform, handle: c.handle, brand, v: best && best.kind !== 'sponsored' ? best.id : '' })}` },
+            'Invite to collab'))),
       h('section', { class: 'd-sec', 'aria-labelledby': 'd-receipts-h' },
         h('h3', { id: 'd-receipts-h' }, h('span', {}, 'Receipts ', h('span', { class: 'count' }, vids.length))),
         h('ol', { class: 'moments' }, shown.map((v) => h('li', {}, moment(v, { c, flaggable: true })))),
