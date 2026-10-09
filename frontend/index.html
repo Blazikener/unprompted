@@ -1716,7 +1716,7 @@
       h('td', {}, h('span', { class: 'u-score' }, U.scoreRing(c.score.total, { size: 32, why: () => whyEl(c) }), U.meter(partsOf(c)))),
       h('td', { class: 'hide-sm hide-md' }, h('span', { class: 'row-actions' },
         h('a', { class: 'u-btn u-btn-sm u-btn-ghost', href: c.profileUrl, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation(),
-          'aria-label': `Open @${c.handle} on ${PLATFORM[c.platform]}` }, 'Profile ↗')))));
+          'aria-label': `Open @${c.handle} on ${PLATFORM[c.platform]}` }, 'Profile ↗'))));
   }
 
   const rowFor = (k) => [...$('#rows').children].find((tr) => tr.dataset.key === k);
