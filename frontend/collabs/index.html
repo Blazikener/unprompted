@@ -111,7 +111,8 @@
       h('div', { class: 'c-grid' },
         h('div', { class: 'c-section' }, ...(data.collabs.length ? list(data.collabs)
           : [section('Collabs', empty('No collabs yet. Find creators who already mention you, then press Invite to collab.',
-              h('a', { class: 'u-btn u-btn-sm u-btn-primary', href: '/brands/' }, 'Search creators')))])),
+              h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-sm u-btn-primary', href: '/brands/' }, 'Search creators'),
+                h('a', { class: 'u-btn u-btn-sm', href: '/collab/new' }, 'Invite by handle'))))])),
         section('Creator pitches', profile))];
   }
 
