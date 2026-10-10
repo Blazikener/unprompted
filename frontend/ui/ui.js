@@ -552,6 +552,8 @@
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', boot) : boot();
 
+  const hasRole = (user, role) => Boolean(user) && (user.roles || [user.role]).includes(role);
+
   window.U = { h, svg, $, $$, fmt, clock, ago, date, transition, toast, optimistic, copy, countUp, receipt, quoteEl, scoreRing, band, meter, why, sparkline,
-               seg, tabs, card, keys, rovingList, palette, settings, shortcutSheet, type, scan, reduced, get prefs() { return { ...prefs }; }, setPref, PLATFORM, KIND };
+               seg, tabs, card, keys, rovingList, palette, settings, shortcutSheet, type, scan, reduced, get prefs() { return { ...prefs }; }, setPref, hasRole, PLATFORM, KIND };
 })();

@@ -18,12 +18,12 @@ def month_keys():
     return [f"{(index + offset) // 12:04d}-{(index + offset) % 12 + 1:02d}" for offset in range(-11, 1)]
 
 
-def view(user):
+def view(user, as_role=None):
     user_id = user["id"]
-    role = user["role"]
+    role = as_role if as_role and creator.has_role(user, as_role) else user["role"]
     creator_section = licenses_section = brand_section = manager_section = collabs_section = None
     if role in ("creator", "brand"):
-        inbox = collabs.mine(user)
+        inbox = collabs.mine(user, role)
         collabs_section = {**inbox["counts"], "watching": len(inbox.get("watch") or []),
                            "openWatched": sum(w["open"] for w in inbox.get("watch") or []),
                            "partners": len(inbox.get("partners") or []),
@@ -217,6 +217,7 @@ def view(user):
 
     return {
         "role": role,
+        "roles": creator.roles_of(user),
         "user": creator.public_user(user),
         "memberSince": stamp(user.get("created_at")),
         "usage": usage,

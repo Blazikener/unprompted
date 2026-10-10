@@ -1137,7 +1137,7 @@
     return error;
   }
   function canUseBrandFeatures() {
-    if (!brandUser || brandUser.role === 'brand') return true;
+    if (!brandUser || U.hasRole(brandUser, 'brand')) return true;
     showBrandRoleNotice(brandUser.role);
     return false;
   }
@@ -1223,7 +1223,7 @@
         target.append(h('button', { type: 'button', class: 'u-btn u-btn-sm', onclick: () => openBrandAuth('login') }, 'Sign in'));
         continue;
       }
-      if (brandUser.role !== 'brand') {
+      if (!U.hasRole(brandUser, 'brand')) {
         target.append(h('span', { class: 'brand-account-chip' },
           h('span', { class: 'brand-account-email', title: brandUser.email }, brandUser.email),
           h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Dashboard'),
@@ -2034,7 +2034,7 @@
   const WATCH_TAG = { active: 'Watching · weekly', paused: 'Watch paused', pending: 'Watch: confirm email' };
   async function loadSaved() {
     if (!brandUser) await refreshBrandAccount();
-    if (brandUser && brandUser.role !== 'brand') {
+    if (brandUser && !U.hasRole(brandUser, 'brand')) {
       savedSearches = [];
       $('#saved').replaceChildren(h('li', { class: 'muted small' }, 'Saved searches are for brand accounts.'));
       $('#recent').hidden = true;

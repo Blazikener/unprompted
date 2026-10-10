@@ -676,7 +676,7 @@ def flag_mention(body, user):
 
 def list_searches(user=None):
     """The user's 20 latest searches; `watch` is set when they watch that brand and filters (any period)."""
-    if not user or user["role"] != "brand":
+    if not user or not creator.has_role(user, "brand"):
         return []
     with connect() as db:
         rows = db.execute(

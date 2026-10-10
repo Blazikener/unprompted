@@ -20,7 +20,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from http.cookies import SimpleCookie
 from urllib import error, request
-from urllib.parse import unquote, urlencode, urlparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 
 from psycopg.types.json import Jsonb
 
@@ -491,7 +491,7 @@ def plan_of(user):
 def public_user(u):
     import packaging
     return {
-        "id": u["id"], "email": u["email"], "role": u["role"], "plan": u["plan"],
+        "id": u["id"], "email": u["email"], "role": u["role"], "roles": roles_of(u), "plan": u["plan"],
         "limits": PLANS[plan_of(u)], "billing": bool(u.get("stripe_customer")),
         "arm": packaging.user_arm(u),
     }
@@ -525,11 +525,24 @@ def require_user(headers):
     return u
 
 
+def roles_of(user):
+    """The account's role, plus creator and brand for emails or @domains listed in MULTI_ROLE_ACCOUNTS."""
+    listed = {e.strip().lower() for e in os.environ.get("MULTI_ROLE_ACCOUNTS", "").split(",") if e.strip()}
+    email = user["email"].lower()
+    if email in listed or "@" + email.rpartition("@")[2] in listed:
+        return [user["role"]] + [r for r in ("creator", "brand") if r != user["role"]]
+    return [user["role"]]
+
+
+def has_role(user, role):
+    return role in roles_of(user)
+
+
 def require_role(headers, role, signed_out_message="Sign in to continue."):
     user = current_user(headers)
     if not user:
         raise ApiError(401, signed_out_message)
-    if user["role"] != role:
+    if not has_role(user, role):
         messages = {
             "creator": "Scans and license offers are for creator accounts.",
             "brand": "Brand search is for brand accounts.",
@@ -879,7 +892,7 @@ def dispatch(handler):
                     "brandUsage": brand_usage(u) if u else None}
         if path == "/dashboard":
             import dashboard
-            return dashboard.view(require_user(headers))
+            return dashboard.view(require_user(headers), (parse_qs(url.query).get("as") or [None])[0])
         if path == "/billing/config":
             return billing_config()
         if path == "/brands":
