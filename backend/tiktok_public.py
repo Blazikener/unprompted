@@ -6,6 +6,7 @@ to the Oriane content schema so the classifier, receipts and pitch code don't kn
 Oriane credits. Cover and caption URLs are signed and expire after a few days.
 """
 import json
+import os
 import re
 import sys
 import time
@@ -22,12 +23,64 @@ CUE_RE = re.compile(r"(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d+)\s+-->\s+(?:(\d+):)
 MAX_VIDEOS = 12
 WORKERS = 5
 TIMEOUT = 20
+RELAY_TIKTOK_URL = re.compile(
+    r"^https://www\.tiktok\.com/(embed/@[\w.]{1,40}|@[\w.]{1,40}/video/\d{1,25})$",
+    re.ASCII,
+)
+DIRECT_FAILURE_TTL = 600
+_direct_failure_until = 0.0
+
+
+def _retryable_direct_error(exc):
+    if isinstance(exc, error.HTTPError):
+        return exc.code in (403, 429, 503)
+    return isinstance(exc, (error.URLError, TimeoutError, OSError))
+
+
+def _fetch_via_relay(url, relay_url, secret):
+    req = request.Request(relay_url, method="POST", data=json.dumps({"secret": secret, "fetch": url}).encode(),
+                          headers={"Content-Type": "application/json"})
+    try:
+        with request.urlopen(req, timeout=TIMEOUT) as response:
+            result = json.load(response)
+    except (error.URLError, OSError, ValueError, TypeError):
+        return None
+    if not isinstance(result, dict) or result.get("ok") is not True or result.get("status") != 200:
+        return None
+    body = result.get("body")
+    return body if isinstance(body, str) and body.strip() else None
+
+
+def _log_relay(url):
+    path = RELAY_TIKTOK_URL.fullmatch(url).group(1)
+    handle = path.removeprefix("embed/@") if path.startswith("embed/@") else path[1:].split("/video/", 1)[0]
+    log(handle, "via relay")
 
 
 def get(url):
+    global _direct_failure_until
+    match = RELAY_TIKTOK_URL.fullmatch(url)
+    relay_url = os.environ.get("MAIL_RELAY_URL")
+    relay_secret = os.environ.get("MAIL_RELAY_SECRET")
+    can_relay = bool(match and relay_url and relay_secret)
+    if can_relay and time.monotonic() < _direct_failure_until:
+        body = _fetch_via_relay(url, relay_url, relay_secret)
+        if body is not None:
+            _log_relay(url)
+            return body
     req = request.Request(url, headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
-    with request.urlopen(req, timeout=TIMEOUT) as r:
-        return r.read().decode("utf-8", "replace")
+    try:
+        with request.urlopen(req, timeout=TIMEOUT) as r:
+            return r.read().decode("utf-8", "replace")
+    except (error.URLError, OSError) as exc:
+        if _retryable_direct_error(exc):
+            _direct_failure_until = time.monotonic() + DIRECT_FAILURE_TTL
+            if can_relay:
+                body = _fetch_via_relay(url, relay_url, relay_secret)
+                if body is not None:
+                    _log_relay(url)
+                    return body
+        raise
 
 
 def embedded_state(html):

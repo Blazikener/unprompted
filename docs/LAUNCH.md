@@ -108,6 +108,7 @@ It lives on the brand dashboard at `/brands/` (card under the mention mix) and d
 - Relay setup: open `script.google.com`, paste `docs/mail-relay.gs`, replace `CHANGE_ME` with a private secret, then
   Deploy > New deployment > Web app with **Execute as Me** and **Anyone** access. Set the deployment URL as
   `MAIL_RELAY_URL` and the same secret as `MAIL_RELAY_SECRET`; this takes priority over Resend.
+- The relay also proxies allow-listed public TikTok pages; redeploy as a new version after script changes.
 - `/digest/sample` is a read-only sample email. Its public preview removes subscriber details and links back to
   `/brands/`.
 - Review checklist before sending Oriane the link: a real brand search → subscribe → `POST /api/digests/run {"id": n}`
