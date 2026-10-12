@@ -48,16 +48,41 @@
   }
 
   // ---------------------------------------------------------------- creators: pitch partner brands, watch the rest
-  async function pitchDialog(brand) {
+  async function pitchDialog(brand, foundReceipt = null) {
     const scans = await C.call('/api/creators/scans').catch(() => []);
+    let latest = scans[0] || null;
+    let preview = null;
+    if (foundReceipt?.platform && foundReceipt.handle) {
+      latest = null;
+      const key = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      const candidates = scans.filter((scan) => scan.platform === foundReceipt.platform &&
+        scan.handle.toLowerCase() === foundReceipt.handle.toLowerCase()).sort((a, b) => b.id - a.id);
+      for (const scan of candidates) {
+        const detail = await C.call(`/api/creators/scans/${scan.id}`).catch(() => null);
+        const receipt = detail?.brands?.find((item) => !item.locked && key(item.brand) === key(brand));
+        if (receipt?.receipts?.length) {
+          latest = scan;
+          preview = U.receipt({ ...receipt.receipts[0], platform: scan.platform, handle: scan.handle }, { size: 'md' });
+          break;
+        }
+      }
+    }
+    const foundVideo = foundReceipt?.video ? foundReceipt : null;
+    if (!latest && foundVideo) {
+      const query = new URLSearchParams({ v: foundVideo.video, platform: foundVideo.platform, handle: foundVideo.handle });
+      const proof = await C.call(`/api/collabs/proof?${query}`).catch(() => null);
+      if (proof?.proof) preview = U.receipt({ ...proof.proof, platform: foundVideo.platform, handle: foundVideo.handle }, { size: 'md' });
+    }
     const t = C.termsForm();
-    const latest = scans[0];
     C.dialog({ title: `Pitch ${brand} a collab`, confirm: 'Send pitch',
       lead: latest ? `Your best ${brand} receipt from your @${latest.handle} scan goes with it, as proof you already talk about them.`
-        : 'Scan your videos first so your receipts go with the pitch.',
-      body: [t.el],
+        : foundVideo ? `The video on your verified @${foundVideo.handle} handle goes with the pitch as proof.`
+          : 'Scan your videos first so your receipts go with the pitch.',
+      body: [preview, t.el].filter(Boolean),
       run: async () => {
-        const c = await C.call('/api/collabs/pitch', { ...t.read(), brand, ...(latest ? { scanId: latest.id } : {}) });
+        const proof = latest ? { scanId: latest.id } : foundReceipt?.platform && foundReceipt.handle
+          ? { platform: foundReceipt.platform, handle: foundReceipt.handle, ...(foundVideo ? { videoId: foundVideo.video } : {}) } : {};
+        const c = await C.call('/api/collabs/pitch', { ...t.read(), brand, ...proof });
         U.toast(`Pitch sent to ${c.brand}`, { kind: 'ok' });
         await load();
       } });
@@ -145,7 +170,12 @@
       data = await C.call(`/api/collabs/mine${requested ? `?as=${encodeURIComponent(requested)}` : ''}`);
       accountHeader(me, data.role);
       render();
-      if (pitch && data.role === 'creator') { history.replaceState(null, '', location.pathname + location.search); pitchDialog(pitch); }
+      if (pitch && data.role === 'creator') {
+        history.replaceState(null, '', location.pathname + location.search);
+        const receipt = params.has('platform') && params.has('handle')
+          ? { platform: params.get('platform'), handle: params.get('handle'), video: params.get('video') } : null;
+        pitchDialog(pitch, receipt);
+      }
     } catch (e) {
       if (e.status === 403 && e.data?.role) {
         const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });

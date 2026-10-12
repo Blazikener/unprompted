@@ -13,12 +13,13 @@ which watched brands are open to pitches. No Oriane credits are spent anywhere i
 import logging
 import re
 from datetime import timedelta
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from psycopg.types.json import Jsonb
 
 import creator
 import digest
+import found
 import licenses
 from server import ApiError, connect, post_url
 
@@ -143,7 +144,8 @@ def partners():
 
 
 def partner(name):
-    return next((p for p in partners() if p["brand"].lower() == brand_key(name).lower()), None)
+    key = brand_key(name).casefold()
+    return next((p for p in partners() if brand_key(p["brand"]).casefold() == key), None)
 
 
 # ---------------------------------------------------------------- proof: the receipt that makes the ask credible
@@ -234,7 +236,7 @@ def propose(user, body, d=None):
 
 
 def pitch(user, body):
-    """A creator pitches a brand that's open to pitches, with a receipt from their own scan."""
+    """A creator pitches a brand that's open to pitches, with proof from a scan or verified handle."""
     p = partner(body.get("brand"))
     if not p:
         raise ApiError(404, "That brand isn't taking pitches on Unprompted yet. Add it to your watchlist and we'll tell you when it is.")
@@ -244,7 +246,17 @@ def pitch(user, body):
         platform, handle, proof = scan_proof(user, scan_id, p["brand"])
     else:
         platform, handle = licenses.norm(body.get("platform"), body.get("handle"))
-        proof = None
+        video_id = str(body.get("videoId") or body.get("video_id") or "")[:64]
+        if body.get("platform") or body.get("handle") or video_id:
+            with connect() as db:
+                owned = db.execute(
+                    "SELECT 1 FROM creator_handles WHERE user_id = %s AND platform = %s"
+                    " AND lower(handle) = %s AND verified_at IS NOT NULL",
+                    (user["id"], platform, handle),
+                ).fetchone()
+            if not owned:
+                raise ApiError(403, "Verify this handle before pitching with its receipt.")
+        proof = video_proof(video_id, platform, handle) if video_id else None
     with connect() as db:
         sent = db.execute("SELECT count(*) AS n FROM collabs WHERE origin = 'creator' AND creator_user_id = %s"
                           " AND created_at > now() - interval '7 days'", (user["id"],)).fetchone()["n"]
@@ -435,21 +447,50 @@ def weekly(user, force=False):
     """(subject, html, open brands named) of a creator's Monday email, or None when nothing needs them."""
     inbox = mine(user, "creator")
     turn = [i for i in inbox["collabs"] if i["yourTurn"]]
+    found_you = found.week(user)
     with connect() as db:
         last = db.execute("SELECT open_seen FROM collab_weekly WHERE user_id = %s", (user["id"],)).fetchone()
     seen = set(last["open_seen"]) if last else set()
     opened = [w["brand"] for w in inbox["watch"] if w["open"] and w["brand"].lower() not in seen]
-    if not (turn or opened):
+    brands, locked = found_you["brands"], found_you["locked"]
+    if not (turn or opened or brands or locked):
         return None
-    bits = (["%d collab%s waiting for you" % (len(turn), "" if len(turn) == 1 else "s")] if turn else []) + \
-           (["%s now taking pitches" % ", ".join(opened[:3])] if opened else [])
+    bits = []
+    if brands:
+        bits.append("%d brand%s found your videos" % (len(brands), "" if len(brands) == 1 else "s"))
+    elif locked:
+        total = sum(row["searches"] for row in locked)
+        bits.append("your videos showed up in %d brand search%s" % (total, "" if total == 1 else "es"))
+    if turn:
+        bits.append("%d collab%s waiting for you" % (len(turn), "" if len(turn) == 1 else "s"))
+    if opened:
+        bits.append("%s now taking pitches" % ", ".join(opened[:3]))
     e, font = digest.esc, digest.FONT
 
     def row(title, note, link, cta):
         return ('<tr><td style="padding:10px 0;border-top:1px solid #e6ebe8;font:14px %s;color:#1b2a23;"><b>%s</b> &middot; %s'
                 ' <a href="%s" style="margin-left:8px;color:#2f6b4f;font-weight:600;">%s &rarr;</a></td></tr>'
-                % (font, e(title), e(note), e(link), cta))
+                % (font, e(title), e(note), e(link), e(cta)))
     sections = []
+    if brands:
+        sections.append(("Brands that found you this week", "".join(
+            row(item["brand"], "found %d of your videos" % item["videos"] if item["videos"] else "checked your profile",
+                inbox_url() + "?as=creator&pitch=" + quote(item["brand"], safe="")
+                + "&platform=" + quote(item["platform"], safe="")
+                + "&handle=" + quote(item["handle"], safe="")
+                + "&video=" + quote(str(item["videoId"] or ""), safe="") if item["open"]
+                else digest.app_url() + "/dashboard?as=creator", "Pitch" if item["open"] else "See it")
+            for item in brands[:5]
+        )))
+    if locked:
+        sections.append(("Verify to see who found your handle", "".join(
+            row("@%s" % item["handle"], "showed up in %d brand search%s this week" % (
+                item["searches"], "" if item["searches"] == 1 else "es"),
+                "%s/verify?claim=%s:%s" % (
+                    digest.app_url(), item["platform"], quote(item["handle"], safe="")),
+                "Verify to see who")
+            for item in locked
+        )))
     if turn:
         sections.append(("Your turn", "".join(row(i["brand"], "$%s &middot; %s" % (format(i["budgetUsd"], ","), i["deliverables"]),
                                                   i["url"], "Answer") for i in turn)))
@@ -477,7 +518,9 @@ def run_weekly(force=False):
             " WHERE (u.id IN (SELECT user_id FROM creator_watch)"
             " OR u.id IN (SELECT creator_user_id FROM collabs WHERE status IN ('sent', 'countered'))"
             " OR u.id IN (SELECT h.user_id FROM creator_handles h JOIN collabs c ON c.platform = h.platform AND c.handle = h.handle"
-            " WHERE h.verified_at IS NOT NULL AND c.status IN ('sent', 'countered')))"
+            " WHERE h.verified_at IS NOT NULL AND c.status IN ('sent', 'countered'))"
+            " OR u.id IN (SELECT user_id FROM creator_handles WHERE verified_at IS NOT NULL)"
+            " OR u.id IN (SELECT user_id FROM scans))"
             " AND (%s OR s.sent_at IS NULL OR s.sent_at < now() - %s)", (force, WEEKLY_EVERY)).fetchall()
     sent = 0
     for u in users:
@@ -524,9 +567,28 @@ def dispatch(handler):
             vid = (parse_qs(urlparse(handler.path).query).get("v") or [""])[0][:64]
             return {"brand": d["brand"], "video": digest.license_video(d, vid)}
         if path == "/proof":
-            creator.require_role(handler.headers, "brand")
             q = parse_qs(urlparse(handler.path).query)
             platform, handle = licenses.norm((q.get("platform") or [""])[0], (q.get("handle") or [""])[0])
+            user = creator.require_user(handler.headers)
+            creator_view = (q.get("as") or [None])[0] == "creator"
+            if creator_view:
+                if not creator.has_role(user, "creator"):
+                    raise ApiError(403, "Not allowed.")
+            elif creator.has_role(user, "brand"):
+                creator_view = False
+            elif creator.has_role(user, "creator"):
+                creator_view = True
+            else:
+                raise ApiError(403, "Not allowed.")
+            if creator_view:
+                with connect() as db:
+                    owned = db.execute(
+                        "SELECT 1 FROM creator_handles WHERE user_id = %s AND platform = %s"
+                        " AND lower(handle) = %s AND verified_at IS NOT NULL",
+                        (user["id"], platform, handle),
+                    ).fetchone()
+                if not owned:
+                    raise ApiError(403, "Verify this handle before viewing its receipt.")
             return {"proof": video_proof((q.get("v") or [""])[0][:64], platform, handle)}
         if path == "/partners":
             return {"partners": [{"brand": p["brand"], "about": p["about"]} for p in partners()]}

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import collabs
 import creator
+import found
 import licenses
 import rosters
 from server import connect
@@ -96,6 +97,7 @@ def view(user, as_role=None):
             "topBrands": top_brands,
             "timeline": [{"month": month, "mentions": timeline[month]} for month in timeline],
             "recent": recent,
+            "found": found.week(user),
         }
         licenses_section = {
             "verifiedHandles": sum(bool(handle["verified"]) for handle in license_inbox["handles"]),

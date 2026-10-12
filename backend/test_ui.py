@@ -87,3 +87,11 @@ def test_verify_page_routes(base):
         status, body = call(base, "GET", path)
         assert status == 200 and b"Verify your channel." in body
         assert b"Brands can only invite verified creators they find to collabs." in body
+
+
+def test_dashboard_found_links_use_verify(base):
+    status, body = call(base, "GET", "/dashboard")
+    assert status == 200
+    assert b"`/verify?claim=${item.platform}:${encodeURIComponent(item.handle)}`" in body
+    assert b"Learn how creators are discovered" in body
+    assert b"Claim your handle" not in body
