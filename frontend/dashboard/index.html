@@ -110,6 +110,10 @@
   .list-copy strong { font-size: var(--fs-sm); }
   .list-copy small { margin-top: 2px; color: var(--text-3); font-size: var(--fs-xs); }
   .list-value { flex: none; color: var(--text-2); font: 500 var(--fs-xs) var(--mono); text-align: end; }
+  .found-row .list-main { flex: 1; }
+  .found-action { flex: none; }
+  .found-tracking { border: 0; appearance: none; }
+  .found-empty { color: var(--text-2); font-size: var(--fs-sm); }
   .dash-main .avatar { flex: none; width: 38px; height: 38px; border: 1px solid var(--border-strong); border-radius: 50%; object-fit: cover; background: var(--surface-3); color: var(--text-2); display: grid; place-items: center; }
   .brand-meter { width: clamp(40px, 12vw, 120px); height: 4px; margin-top: 5px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
   .brand-meter i { display: block; height: 100%; border-radius: inherit; background: var(--highlight); }
@@ -593,6 +597,62 @@ function brandList(rows, limit = 6) {
     return h('li', {}, item);
   }));
 }
+async function trackFoundBrand(brand, button) {
+  button.setAttribute('aria-busy', 'true');
+  try {
+    const res = await fetch('/api/collabs/watch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result.error || 'Something went wrong.');
+    button.className = 'u-pill u-pill-ok found-tracking found-action';
+    button.textContent = 'Tracking';
+    button.disabled = true;
+    button.removeAttribute('aria-busy');
+  } catch (error) {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    showToast(error.message, 'error');
+  }
+}
+function foundCard(found = {}) {
+  const brands = found.brands || [], locked = found.locked || [];
+  const rows = [
+    ...brands.map((item) => {
+      const detail = item.videos
+        ? `found ${format(item.videos)} of your videos · ${format(item.searches)} searches`
+        : 'checked your profile';
+      const action = item.open
+        ? h('a', { class: 'u-btn u-btn-sm found-action', href: `/collabs?as=creator&pitch=${encodeURIComponent(item.brand)}` }, 'Pitch')
+        : item.tracked
+          ? h('span', { class: 'u-pill u-pill-ok found-action' }, 'Tracking')
+          : h('button', {
+            class: 'u-btn u-btn-ghost u-btn-sm found-action', type: 'button',
+            onclick: (event) => trackFoundBrand(item.brand, event.currentTarget),
+          }, 'Track brand');
+      return h('li', {}, h('div', { class: 'list-row found-row' },
+        h('span', { class: 'list-main' }, h('span', { class: 'list-copy' },
+          h('strong', {}, item.brand), h('small', {}, detail))),
+        action));
+    }),
+    ...locked.map((item) => h('li', {}, h('div', { class: 'list-row found-row' },
+      h('span', { class: 'list-main' }, h('span', { class: 'list-copy' },
+        h('strong', {}, `@${item.handle}`),
+        h('small', {}, `showed up in ${format(item.searches)} brand searches`))),
+      h('a', {
+        class: 'u-btn u-btn-ghost u-btn-sm found-action',
+        href: `/creators/licenses?claim=${item.platform}:${encodeURIComponent(item.handle)}`,
+      }, 'Verify to see who')))),
+  ];
+  let content;
+  if (rows.length) content = h('ul', { class: 'list found-list' }, ...rows);
+  else if (!found.verifiedHandles) content = h('div', { class: 'found-empty' },
+    h('p', {}, 'Claim your handle to see which brands find you'),
+    h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/licenses' }, 'Claim your handle'));
+  else content = h('p', { class: 'found-empty' },
+    "No brands searched their way to you this week. We'll email you Monday when one does.");
+  return card('Brands that found you this week', content);
+}
 function scanList(rows) {
   return h('ul', { class: 'list' }, ...rows.map((row) => h('li', {}, listRow(
     `@${row.handle}`, `${row.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · ${format(row.brands)} brands · ${date(row.createdAt)}`,
@@ -730,6 +790,7 @@ function renderOverview() {
     usageSection(),
     setupChecklist(),
     h('div', { class: 'metric-grid' }, ...metrics),
+    data.role === 'creator' ? foundCard(c.found) : null,
     chart,
     h('div', { class: 'content-grid' }, recent, signal),
     launchForms(),
@@ -751,6 +812,7 @@ function renderCreator() {
       h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs')));
   panel.replaceChildren(...[
     panelHead('Creator', 'Your receipts', summary),
+    foundCard(c.found),
     c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and collabs will gather here after the first scan.', 'scan', 'Run your first scan'),
     c.scans ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('scan-launch') }, 'New scan')) : null,
     h('div', { class: 'content-grid section-gap' },

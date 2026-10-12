@@ -193,7 +193,7 @@ def test_weekly_uses_creator_side_for_brand_primary_user(mail):
     collabs.watch(user, {"brand": "CollabTest Glow"})
     collabs.set_profile(user, {"brand": "CollabTest Glow"})
 
-    assert collabs.run_weekly(force=True) == 1
+    collabs.run_weekly(force=True)
     sent = [message for message in mail if message[0] == user["email"]]
     assert len(sent) == 1 and "CollabTest Glow now taking pitches" in sent[0][1]
 
@@ -209,5 +209,6 @@ def test_weekly_continues_after_one_users_failure(mail, monkeypatch):
         return "Weekly", "<p>Ready</p>", []
 
     monkeypatch.setattr(collabs, "weekly", build)
-    assert collabs.run_weekly(force=True) == 1
-    assert [message[0] for message in mail] == [healthy["email"]]
+    collabs.run_weekly(force=True)
+    assert any(message[0] == healthy["email"] for message in mail)
+    assert not any(message[0] == broken["email"] for message in mail)

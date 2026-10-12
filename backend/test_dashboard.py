@@ -124,6 +124,7 @@ def test_empty_dashboard_has_zeroed_series_and_authenticated_route(user, monkeyp
     assert out["creator"] == {
         "scans": 0, "handles": [], "brands": 0, "receipts": 0, "organicViews": 0, "unpaid": 0,
         "topBrands": [], "timeline": [{"month": month, "mentions": 0} for month in dashboard.month_keys()], "recent": [],
+        "found": {"days": 7, "brands": [], "locked": [], "verifiedHandles": 0},
     }
     assert out["licenses"]["verifiedHandles"] == 0
     assert out["licenses"]["waiting"] == out["licenses"]["accepted"] == out["licenses"]["live"] == 0

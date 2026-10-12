@@ -13,12 +13,13 @@ which watched brands are open to pitches. No Oriane credits are spent anywhere i
 import logging
 import re
 from datetime import timedelta
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from psycopg.types.json import Jsonb
 
 import creator
 import digest
+import found
 import licenses
 from server import ApiError, connect, post_url
 
@@ -435,21 +436,46 @@ def weekly(user, force=False):
     """(subject, html, open brands named) of a creator's Monday email, or None when nothing needs them."""
     inbox = mine(user, "creator")
     turn = [i for i in inbox["collabs"] if i["yourTurn"]]
+    found_you = found.week(user)
     with connect() as db:
         last = db.execute("SELECT open_seen FROM collab_weekly WHERE user_id = %s", (user["id"],)).fetchone()
     seen = set(last["open_seen"]) if last else set()
     opened = [w["brand"] for w in inbox["watch"] if w["open"] and w["brand"].lower() not in seen]
-    if not (turn or opened):
+    brands, locked = found_you["brands"], found_you["locked"]
+    if not (turn or opened or brands or locked):
         return None
-    bits = (["%d collab%s waiting for you" % (len(turn), "" if len(turn) == 1 else "s")] if turn else []) + \
-           (["%s now taking pitches" % ", ".join(opened[:3])] if opened else [])
+    bits = []
+    if brands:
+        bits.append("%d brand%s found your videos" % (len(brands), "" if len(brands) == 1 else "s"))
+    elif locked:
+        bits.append("your videos showed up in %d brand searches" % sum(row["searches"] for row in locked))
+    if turn:
+        bits.append("%d collab%s waiting for you" % (len(turn), "" if len(turn) == 1 else "s"))
+    if opened:
+        bits.append("%s now taking pitches" % ", ".join(opened[:3]))
     e, font = digest.esc, digest.FONT
 
     def row(title, note, link, cta):
         return ('<tr><td style="padding:10px 0;border-top:1px solid #e6ebe8;font:14px %s;color:#1b2a23;"><b>%s</b> &middot; %s'
                 ' <a href="%s" style="margin-left:8px;color:#2f6b4f;font-weight:600;">%s &rarr;</a></td></tr>'
-                % (font, e(title), e(note), e(link), cta))
+                % (font, e(title), e(note), e(link), e(cta)))
     sections = []
+    if brands:
+        sections.append(("Brands that found you this week", "".join(
+            row(item["brand"], "found %d of your videos" % item["videos"] if item["videos"] else "checked your profile",
+                inbox_url() + "?pitch=" + quote(item["brand"], safe="") if item["open"]
+                else digest.app_url() + "/dashboard?as=creator", "Pitch" if item["open"] else "See it")
+            for item in brands[:5]
+        )))
+    if locked:
+        sections.append(("Verify to see who found your handle", "".join(
+            row("@%s" % item["handle"], "showed up in %d brand search%s this week" % (
+                item["searches"], "" if item["searches"] == 1 else "es"),
+                "%s/creators/licenses?claim=%s:%s" % (
+                    digest.app_url(), item["platform"], quote(item["handle"], safe="")),
+                "Verify to see who")
+            for item in locked
+        )))
     if turn:
         sections.append(("Your turn", "".join(row(i["brand"], "$%s &middot; %s" % (format(i["budgetUsd"], ","), i["deliverables"]),
                                                   i["url"], "Answer") for i in turn)))
@@ -477,7 +503,9 @@ def run_weekly(force=False):
             " WHERE (u.id IN (SELECT user_id FROM creator_watch)"
             " OR u.id IN (SELECT creator_user_id FROM collabs WHERE status IN ('sent', 'countered'))"
             " OR u.id IN (SELECT h.user_id FROM creator_handles h JOIN collabs c ON c.platform = h.platform AND c.handle = h.handle"
-            " WHERE h.verified_at IS NOT NULL AND c.status IN ('sent', 'countered')))"
+            " WHERE h.verified_at IS NOT NULL AND c.status IN ('sent', 'countered'))"
+            " OR u.id IN (SELECT user_id FROM creator_handles WHERE verified_at IS NOT NULL)"
+            " OR u.id IN (SELECT user_id FROM scans WHERE created_at > now() - interval '90 days'))"
             " AND (%s OR s.sent_at IS NULL OR s.sent_at < now() - %s)", (force, WEEKLY_EVERY)).fetchall()
     sent = 0
     for u in users:
