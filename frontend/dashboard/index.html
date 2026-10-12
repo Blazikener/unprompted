@@ -11,7 +11,7 @@
 <style>
 @layer page {
   :root { --dash-ink: #d0f854; }
-  .tour-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-3);
+  .tour-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-4);
                  padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface-2); }
   .tour-banner p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
   .tour-banner-actions { display: flex; align-items: center; gap: var(--s-2); }
@@ -857,7 +857,7 @@ function tourBanner() {
       h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', 'aria-label': 'Dismiss tour suggestion',
         onclick: (event) => {
           try { localStorage.setItem('u-tour-done', '1'); } catch {}
-          event.currentTarget.closest('.tour-banner')?.remove();
+          document.querySelectorAll('.tour-banner').forEach((banner) => banner.remove());
         } }, '×')));
 }
 function renderCreator() {
@@ -874,6 +874,7 @@ function renderCreator() {
       h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs')));
   panel.replaceChildren(...[
     panelHead('Creator', 'Your receipts', summary),
+    tourBanner(),
     verifyChannelPrompt(),
     foundCard(c.found),
     c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and collabs will gather here after the first scan.', 'scan', 'Run your first scan'),
@@ -898,6 +899,7 @@ function renderBrand() {
     h('div', { class: 'stat-box' }, h('strong', {}, format(b.digests.pending)), h('small', {}, 'Pending confirmation')));
   panel.replaceChildren(...[
     panelHead('Brand', 'Your listening posts', 'Saved searches turn into a weekly stream of new creator mentions.'),
+    tourBanner(),
     b.searches ? null : emptyState('Start with a brand worth listening for', 'Search once, then receive new on-camera mentions in a weekly digest.', 'brand', 'Search for a brand'),
     b.searches ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('brand-launch') }, 'New brand search')) : null,
     h('div', { class: 'content-grid' },
