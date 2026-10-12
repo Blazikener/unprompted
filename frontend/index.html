@@ -2631,8 +2631,14 @@
   if (hash) { state.want = hash; openSearch(hash.id); }
   booted = true;
   refreshBrandAccount().then(() => {
-    if (!brandUser) return;
     const q = new URLSearchParams(location.search);
+    if (q.get('signin') === '1') {
+      history.replaceState({}, '', '/brands/');
+      if (brandUser) location.replace('/dashboard');
+      else openBrandAuth('login');
+      return;
+    }
+    if (!brandUser) return;
     const pendingBrand = q.get('brand');
     if (pendingBrand) {
       if (!canUseBrandFeatures()) return;

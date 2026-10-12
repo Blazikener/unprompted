@@ -89,6 +89,19 @@ def test_tour_routes_serve_html(base):
         assert b"Creators mention brands every day." in body
 
 
+def test_collabs_signed_out_entry_has_direct_signin_and_tour(base):
+    status, body = call(base, "GET", "/collabs")
+    assert status == 200
+    for text in (
+        b"Collabs: paid work, agreed in one place.",
+        b"Brands invite you to make new content, or you pitch them with your receipts. Accept, counter or decline here.",
+        b"Sign in as a creator", b"Sign in as a brand",
+        b"New here? ", b"Take the 60-second tour",
+        b"/creators/?signin=1", b"/brands/?signin=1", b"/tour",
+    ):
+        assert text in body
+
+
 def test_verify_page_routes(base):
     for path in ("/verify", "/verify/"):
         status, body = call(base, "GET", path)

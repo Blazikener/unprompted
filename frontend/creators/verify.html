@@ -238,8 +238,12 @@
       }, 'Check my bio') : h('span', { class: 'u-pill u-pill-warn' }, 'Manual review');
       const how = item.platform === 'tiktok'
         ? h('p', {}, 'Add ', h('code', {}, item.code), ' anywhere in your TikTok bio, save, then check your bio.')
-        : h('p', {}, 'Instagram is checked by hand: DM ', h('code', {}, item.code), ' from ', h('bdi', {}, `@${item.handle}`),
-          ' to the account that contacted you, or email it from the address in your bio. We’ll confirm within a day.');
+        : d.verificationEmail
+          ? h('p', {}, 'Email ', h('code', {}, item.code), ' to ',
+            h('a', { href: `mailto:${encodeURIComponent(d.verificationEmail)}?${new URLSearchParams({
+              subject: `Verify @${item.handle}`, body: item.code,
+            })}` }, d.verificationEmail), ' from the email address in your Instagram bio. We’ll confirm within a day.')
+          : h('p', {}, 'Email ', h('code', {}, item.code), ' from the email address in your Instagram bio. We’ll confirm within a day.');
       return h('li', {}, h('div', { class: 'legacy-copy' }, h('bdi', {}, `@${item.handle}`), how, error), verify);
     });
     const submit = h('button', { class: 'u-btn u-btn-primary' }, 'Claim channel');

@@ -73,15 +73,41 @@
       const proof = await C.call(`/api/collabs/proof?${query}`).catch(() => null);
       if (proof?.proof) preview = U.receipt({ ...proof.proof, platform: foundVideo.platform, handle: foundVideo.handle }, { size: 'md' });
     }
+    const verifiedHandles = !latest && !foundReceipt
+      ? (await C.call('/api/licenses/mine').catch(() => ({ handles: [] }))).handles.filter((item) => item.verified)
+      : [];
+    if (!latest && !foundReceipt && !verifiedHandles.length) {
+      C.dialog({
+        title: `Pitch ${brand} a collab`,
+        lead: h('p', { class: 'u-muted' }, 'Verify your channel first, so the brand knows the pitch is really from you.'),
+        body: [h('a', { class: 'u-btn u-btn-primary', href: '/verify' }, 'Verify your channel')],
+      });
+      return;
+    }
+    const pitchAs = verifiedHandles.length ? h('select', { class: 'u-select' },
+      ...verifiedHandles.map((item, index) => h('option', { value: index }, `@${item.handle} · ${item.platform === 'tiktok' ? 'TikTok' : 'Instagram'}`))) : null;
+    const pitchLead = verifiedHandles.length ? h('p', { class: 'u-muted' }) : null;
+    const updatePitchLead = () => {
+      const selected = verifiedHandles[Number(pitchAs.value)] || verifiedHandles[0];
+      pitchLead.replaceChildren(`Your verified @${selected.handle} goes with the pitch. `,
+        h('a', { href: '/' }, 'Scan your videos'), ' to attach a receipt as proof.');
+    };
+    if (pitchAs) {
+      updatePitchLead();
+      pitchAs.addEventListener('change', updatePitchLead);
+    }
     const t = C.termsForm();
+    const pitchAsField = pitchAs ? C.field('Pitch as', pitchAs) : null;
     C.dialog({ title: `Pitch ${brand} a collab`, confirm: 'Send pitch',
       lead: latest ? `Your best ${brand} receipt from your @${latest.handle} scan goes with it, as proof you already talk about them.`
         : foundVideo ? `The video on your verified @${foundVideo.handle} handle goes with the pitch as proof.`
-          : 'Scan your videos first so your receipts go with the pitch.',
-      body: [preview, t.el].filter(Boolean),
+          : pitchLead,
+      body: [preview, pitchAsField, t.el].filter(Boolean),
       run: async () => {
+        const selectedHandle = verifiedHandles[Number(pitchAs?.value)] || verifiedHandles[0];
         const proof = latest ? { scanId: latest.id } : foundReceipt?.platform && foundReceipt.handle
-          ? { platform: foundReceipt.platform, handle: foundReceipt.handle, ...(foundVideo ? { videoId: foundVideo.video } : {}) } : {};
+          ? { platform: foundReceipt.platform, handle: foundReceipt.handle, ...(foundVideo ? { videoId: foundVideo.video } : {}) }
+          : selectedHandle ? { platform: selectedHandle.platform, handle: selectedHandle.handle } : {};
         const c = await C.call('/api/collabs/pitch', { ...t.read(), brand, ...proof });
         U.toast(`Pitch sent to ${c.brand}`, { kind: 'ok' });
         await load();
@@ -155,8 +181,12 @@
     try {
       me = me || (await C.call('/api/creators/me')).user;
       if (!me) {
-        return show(h('div', { class: 'c-card' }, h('h1', { class: 'u-h3' }, 'Sign in to see your collabs.'),
-          h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/' }, 'Creator sign-in'), h('a', { class: 'u-btn', href: '/brands/' }, 'Brand sign-in'))));
+        return show(h('div', { class: 'c-card' }, h('h1', { class: 'u-h3' }, 'Collabs: paid work, agreed in one place.'),
+          h('p', { class: 'u-muted' }, 'Brands invite you to make new content, or you pitch them with your receipts. Accept, counter or decline here.'),
+          h('div', { class: 'c-actions' },
+            h('a', { class: 'u-btn u-btn-primary', href: '/creators/?signin=1' }, 'Sign in as a creator'),
+            h('a', { class: 'u-btn', href: '/brands/?signin=1' }, 'Sign in as a brand')),
+          h('small', {}, 'New here? ', h('a', { href: '/tour' }, 'Take the 60-second tour'))));
       }
       accountHeader(me);
       if (!U.hasRole(me, 'creator') && !U.hasRole(me, 'brand')) {

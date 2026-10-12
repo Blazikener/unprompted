@@ -77,14 +77,16 @@
   // A small modal that waits for the server before closing; errors stay inside it.
   function dialog({ title, lead, body = [], confirm, danger, run }) {
     const err = h('p', { class: 'u-error', role: 'alert' });
-    const ok = h('button', { class: `u-btn ${danger ? 'u-btn-danger' : 'u-btn-primary'}`, type: 'submit' }, confirm);
+    const ok = confirm ? h('button', { class: `u-btn ${danger ? 'u-btn-danger' : 'u-btn-primary'}`, type: 'submit' }, confirm) : null;
     const cancel = h('button', { class: 'u-btn', type: 'button' }, 'Cancel');
     const id = `dlg-${Math.random().toString(36).slice(2, 8)}`;
     const form = h('form', { onsubmit: async (e) => {
       e.preventDefault();
+      if (!run) return;
       err.textContent = '';
       try { await pending(ok, run); dlg.close(); } catch (ex) { err.textContent = ex.message; }
-    } }, h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title), lead ? h('p', { class: 'u-muted' }, lead) : null, ...body, err),
+    } }, h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title),
+      lead ? (typeof lead === 'string' ? h('p', { class: 'u-muted' }, lead) : lead) : null, ...body, err),
       h('div', { class: 'u-dialog-foot' }, cancel, ok));
     const dlg = h('dialog', { class: 'u-dialog', 'aria-labelledby': id }, form);
     cancel.addEventListener('click', () => dlg.close());

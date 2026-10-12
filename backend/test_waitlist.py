@@ -254,13 +254,21 @@ def test_welcome_email_daily_cap_zero_skips_sending(base, monkeypatch):
     assert not sent
 
 
-def test_waitlist_and_join_static_aliases(base):
+def test_waitlist_and_join_static_aliases(base, monkeypatch):
     page = Path(server.ROOT / "frontend/waitlist/index.html")
     if not page.is_file():
         pytest.skip("frontend/waitlist/index.html is still being built")
-    for path in ("/waitlist", "/waitlist?ref=abc", "/join"):
+    for path in ("/waitlist", "/waitlist?ref=abc", "/waitlist/"):
+        status, headers, body = direct_request(base, "GET", path)
+        assert status == 302 and headers["Location"] == "/" and body == b""
+        assert headers["Cache-Control"] == "no-store"
+    for path in ("/join", "/waitlist/admin"):
         with urllib.request.urlopen(base + path) as response:
             assert response.status == 200
+    monkeypatch.setenv("WAITLIST_ONLY", "1")
+    for path in ("/waitlist", "/waitlist?ref=abc", "/waitlist/"):
+        status, _, body = direct_request(base, "GET", path)
+        assert status == 200 and body.startswith(b"<!doctype html>")
 
 
 def test_waitlist_only_redirects_blocked_pages_and_preserves_query(base, monkeypatch):

@@ -226,6 +226,16 @@ def handle_view(h):
             "verifiedBy": h["verified_by"]}
 
 
+def verification_contact_email():
+    return os.environ.get("CONTACT_EMAIL", "").strip() or os.environ.get("LICENSE_NOTIFY_EMAIL", "").strip()
+
+
+def instagram_verification_message(code):
+    contact = verification_contact_email()
+    destination = " to %s" % contact if contact else ""
+    return "Email %s%s from the email address in your Instagram bio. We'll confirm within a day." % (code, destination)
+
+
 def claim(user, body):
     platform, handle = norm(body.get("platform"), body.get("handle"))
     with connect() as db:
@@ -233,8 +243,10 @@ def claim(user, body):
                        " ON CONFLICT (user_id, platform, handle) DO UPDATE SET code = creator_handles.code RETURNING *",
                        (user["id"], platform, handle, "UNP-" + secrets.token_hex(3).upper())).fetchone()
     if platform == "instagram" and not h["verified_at"]:
+        contact = verification_contact_email()
+        destination = " to %s" % contact if contact else ""
         notify("Instagram handle claim: @%s (code %s)" % (handle, h["code"]),
-               "Verify in /admin/ once @%s sends you this code by DM, or from the email in its bio." % handle,
+               "Verify in /admin/ once @%s emails this code%s from the email address in their Instagram bio." % (handle, destination),
                [("Account", user["email"]), ("Handle", "@" + handle), ("Code", h["code"])])
     return handle_view(h)
 
@@ -250,8 +262,7 @@ def verify(user, body):
     if h["verified_at"]:
         return handle_view(h)
     if platform == "instagram":
-        raise ApiError(409, "Instagram handles are checked by hand: DM %s from @%s to the account that contacted you, "
-                            "or email it from the address in your bio." % (h["code"], handle))
+        raise ApiError(409, instagram_verification_message(h["code"]))
     info, _ = tiktok_public.creator_page(handle)
     if info is None:
         raise ApiError(503, "TikTok didn't show @%s's profile just now. Try again in a minute." % handle)
@@ -310,6 +321,7 @@ def mine(user):
     paid = sum(creator_share(r) for r in rows if r["creator_paid_at"])
     owed = sum(creator_share(r) for r in rows if r["brand_paid_at"] and not r["creator_paid_at"])
     return {"handles": [handle_view(h) for h in handles], "offers": offers,
+            "verificationEmail": verification_contact_email(),
             "prefs": {"minPriceUsd": prefs["min_price_usd"] if prefs else None,
                       "approveBrands": prefs["approve_brands"] if prefs else [], "blockBrands": prefs["block_brands"] if prefs else [],
                       "weeklySummary": prefs["weekly_summary"] if prefs else True, "rate30dUsd": prefs["rate_30d_usd"] if prefs else None},
