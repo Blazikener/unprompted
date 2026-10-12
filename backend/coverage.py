@@ -10,9 +10,12 @@ DEFAULT_DAYS = 30
 
 def _bounded_days(value):
     try:
-        return max(1, min(365, int(value)))
+        days = int(value)
     except (TypeError, ValueError):
         raise ApiError(400, "Days must be an integer between 1 and 365.") from None
+    if not 1 <= days <= 365:
+        raise ApiError(400, "Days must be an integer between 1 and 365.")
+    return days
 
 
 def gaps(days=DEFAULT_DAYS):
@@ -27,6 +30,8 @@ def gaps(days=DEFAULT_DAYS):
                    max(created_at) AS "lastAt"
             FROM searches
             WHERE created_at >= now() - (%s * interval '1 day')
+              AND NOT (params ? 'digest')
+              AND NOT (params ? 'seeding')
             GROUP BY lower(brand)
             HAVING max(total_count) < %s
             ORDER BY people DESC, searches DESC, "lastAt" DESC
@@ -36,20 +41,28 @@ def gaps(days=DEFAULT_DAYS):
         ).fetchall()
         creators = db.execute(
             """
-            SELECT data->>'platform' AS platform,
-                   lower(data->>'handle') AS handle,
-                   (array_agg(coalesce(data->>'reason', 'unknown')
-                              ORDER BY created_at DESC, id DESC))[1] AS reason,
+            SELECT e.data->>'platform' AS platform,
+                   lower(e.data->>'handle') AS handle,
+                   (array_agg(coalesce(e.data->>'reason', 'unknown')
+                              ORDER BY e.created_at DESC, e.id DESC))[1] AS reason,
                    count(*)::int AS attempts,
-                   count(DISTINCT user_id)::int AS people,
-                   max(created_at) AS "lastAt"
-            FROM events
-            WHERE name = 'scan_miss'
-              AND created_at >= now() - (%s * interval '1 day')
-              AND coalesce(data->>'reason', 'unknown') <> 'demo'
-              AND data->>'platform' IS NOT NULL
-              AND data->>'handle' IS NOT NULL
-            GROUP BY data->>'platform', lower(data->>'handle')
+                   count(DISTINCT e.user_id)::int AS people,
+                   max(e.created_at) AS "lastAt"
+            FROM events e
+            WHERE e.name = 'scan_miss'
+              AND e.created_at >= now() - (%s * interval '1 day')
+              AND coalesce(e.data->>'reason', 'unknown') <> 'demo'
+              AND e.data->>'platform' IS NOT NULL
+              AND e.data->>'handle' IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM events s
+                  WHERE s.name = 'scan'
+                    AND s.data->>'platform' = e.data->>'platform'
+                    AND lower(s.data->>'handle') = lower(e.data->>'handle')
+                    AND s.created_at > e.created_at
+              )
+            GROUP BY e.data->>'platform', lower(e.data->>'handle')
             ORDER BY people DESC, attempts DESC, "lastAt" DESC
             LIMIT 200
             """,
