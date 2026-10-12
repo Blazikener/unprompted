@@ -123,6 +123,8 @@
   .quick-card { display: grid; align-content: start; gap: var(--s-3); }
   .quick-card h3 { font-size: var(--fs-lg); }
   .quick-card p { color: var(--text-2); font-size: var(--fs-sm); }
+  .verify-prompt { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-3); }
+  .verify-prompt p { flex: 1 1 280px; color: var(--text-2); font-size: var(--fs-sm); }
   .quick-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2); align-items: end; }
   .quick-form .wide-field { min-width: 0; }
   .quick-form .u-input, .quick-form .u-select { min-width: 0; }
@@ -613,6 +615,12 @@ function card(title, content, href, linkText = 'View all') {
     content);
   return el;
 }
+function verifyChannelPrompt() {
+  if (data.role !== 'creator' || data.licenses?.verifiedHandles !== 0) return null;
+  return card('Verify your channel.', h('div', { class: 'verify-prompt' },
+    h('p', {}, 'Brands can only invite verified creators.'),
+    h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/verify' }, 'Verify')));
+}
 function activityLabel(item) {
   const detail = item.data || {};
   const plan = displayPlan[detail.plan] || 'plan';
@@ -730,6 +738,7 @@ function renderOverview() {
     usageSection(),
     setupChecklist(),
     h('div', { class: 'metric-grid' }, ...metrics),
+    verifyChannelPrompt(),
     chart,
     h('div', { class: 'content-grid' }, recent, signal),
     launchForms(),
@@ -751,6 +760,7 @@ function renderCreator() {
       h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs')));
   panel.replaceChildren(...[
     panelHead('Creator', 'Your receipts', summary),
+    verifyChannelPrompt(),
     c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and collabs will gather here after the first scan.', 'scan', 'Run your first scan'),
     c.scans ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('scan-launch') }, 'New scan')) : null,
     h('div', { class: 'content-grid section-gap' },
@@ -863,6 +873,7 @@ $('#command').addEventListener('click', () => U.palette.open());
 function addPaletteActions() {
   U.palette.add({ id: 'dashboard-home', label: 'Dashboard overview', hint: 'Your role-specific workspace', group: 'Go to', keywords: 'overview analytics dashboard', run: () => { location.href = '/dashboard'; } });
   if (data.role === 'creator') {
+    U.palette.add({ id: 'dashboard-verify', label: 'Verify channel', group: 'Go to', keywords: 'verify channel ownership', run: () => { location.href = '/verify'; } });
     U.palette.add({ id: 'dashboard-receipts', label: 'Creator receipts', group: 'Go to', keywords: 'scans mentions', run: () => { location.href = '/creators/'; } });
     U.palette.add({ id: 'dashboard-collabs', label: 'Collabs', group: 'Go to', keywords: 'collab invites pitches offers', run: () => { location.href = '/collabs'; } });
   } else if (data.role === 'brand') {

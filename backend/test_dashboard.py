@@ -11,6 +11,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql:///unprompted_test")
 
 import creator  # noqa: E402
 import dashboard  # noqa: E402
+import licenses  # noqa: E402
 import server  # noqa: E402
 
 UTC = timezone.utc
@@ -145,6 +146,16 @@ def test_empty_dashboard_has_zeroed_series_and_authenticated_route(user, monkeyp
                    (hashlib.sha256(token.encode()).hexdigest(), user["id"]))
     Handler.headers = {"Cookie": "%s=%s" % (creator.COOKIE, token)}
     assert creator.dispatch(Handler())["user"]["id"] == user["id"]
+
+
+def test_dashboard_reports_verified_handle_count_for_creator_prompt(user):
+    handle = licenses.claim(user, {"platform": "tiktok", "handle": "verifyme"})
+    licenses.mark_verified(handle["id"], "oauth")
+
+    out = dashboard.view(user, "creator")
+
+    assert out["licenses"]["verifiedHandles"] == 1
+    assert "verifiedHandles" not in out["creator"]
 
 
 def test_creator_aggregates_use_latest_scan_per_handle_and_receipt_months(user):

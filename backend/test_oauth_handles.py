@@ -99,7 +99,7 @@ def callback(base, platform, state, cookie, **query):
 
 
 def connect_query(location):
-    assert location.startswith("/creators/licenses?")
+    assert location.startswith("/verify?")
     return urllib.parse.parse_qs(urllib.parse.urlparse(location).query)
 
 
@@ -118,13 +118,15 @@ def test_disabled_and_signed_out_start(base, monkeypatch, sandbox):
     assert status == 404
     set_provider(monkeypatch, "tiktok")
     status, location, _ = get(base, "/auth/tiktok/start")
-    assert status == 302 and location == "/creators/licenses?connect=signin"
+    assert status == 302 and location == "/verify?connect=signin"
 
 
 @pytest.mark.parametrize("platform", ["tiktok", "instagram"])
 def test_start_redirect_has_static_callback_and_persists_state(base, monkeypatch, sandbox, platform):
     set_provider(monkeypatch, platform)
     user, cookie = add_user(sandbox, platform)
+    stale = sandbox + "stale-" + platform
+    add_state(stale, user["id"], platform=platform, age_minutes=60 * 25)
     status, location, _ = get(base, f"/auth/{platform}/start", cookie)
     assert status == 302
     parsed = urllib.parse.urlparse(location)
@@ -135,7 +137,9 @@ def test_start_redirect_has_static_callback_and_persists_state(base, monkeypatch
     state = params["state"][0]
     with server.connect() as db:
         row = db.execute("SELECT user_id, platform FROM oauth_states WHERE state = %s", (state,)).fetchone()
+        old_count = db.execute("SELECT count(*) AS n FROM oauth_states WHERE state = %s", (stale,)).fetchone()["n"]
     assert row == {"user_id": user["id"], "platform": platform}
+    assert old_count == 0
     if platform == "tiktok":
         assert parsed.scheme == "https" and parsed.netloc == "www.tiktok.com"
         assert parsed.path == "/v2/auth/authorize/"

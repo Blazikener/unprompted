@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify your channel · Receipts</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/ui/ui.css?v=4">
+<script src="/ui/ui.js?v=3"></script>
+<style>
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  #who { display: flex; align-items: center; gap: var(--s-3); min-width: 0; font-size: var(--fs-sm); color: var(--text-2); }
+  #who .email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
+  #who a { font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; min-height: 32px; }
+  @media (max-width: 600px) { .u-bar { flex-wrap: wrap; padding-inline: var(--s-4); } #who { flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; } .u-logo small, #who .email { display: none; } }
+  .page { width: min(760px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  .intro { display: grid; gap: var(--s-2); }
+  .intro h1 { font-size: var(--fs-3xl); letter-spacing: -0.025em; line-height: 1.08; }
+  #app { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); min-width: 0; }
+  #app > section { min-width: 0; }
+  .sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); padding: var(--s-5); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface); }
+  .sec > * { min-width: 0; }
+  @media (max-width: 560px) { .sec { padding: var(--s-4); } }
+  .sec-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
+  .sec-head h2 { font-size: var(--fs-lg); }
+  .sec-p { color: var(--text-2); font-size: var(--fs-sm); max-width: 62ch; }
+  .u-error:empty, .u-hint:empty { display: none; }
+  .oauth-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--s-3); }
+  .oauth-choice { display: grid; align-content: start; gap: var(--s-2); min-width: 0; }
+  .oauth-choice .u-btn { width: 100%; justify-content: center; }
+  .oauth-note { color: var(--text-2); font-size: var(--fs-sm); }
+  .handles, .legacy-pending { list-style: none; margin: 0; padding: 0; display: grid; }
+  .handles > li, .legacy-pending > li { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s-2) var(--s-4); padding: var(--s-3) 0; border-top: 1px solid var(--border); }
+  .handles > li:first-child, .legacy-pending > li:first-child { border-top: 0; padding-top: 0; }
+  .handle-main { display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--s-2); min-width: 0; }
+  .legacy-copy { display: grid; gap: 4px; min-width: 0; flex: 1 1 260px; }
+  .legacy-copy p { color: var(--text-2); font-size: var(--fs-sm); }
+  .legacy-actions { display: flex; align-items: center; gap: var(--s-2); }
+  .other-verify { border-top: 1px solid var(--border); padding-top: var(--s-3); }
+  .other-verify > summary { cursor: pointer; color: var(--text-2); font-size: var(--fs-sm); font-weight: 500; }
+  .other-verify-body { display: grid; gap: var(--s-4); padding-top: var(--s-4); }
+  .inline-form { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: flex-end; }
+  .inline-form .u-field { flex: 1 1 180px; }
+  .inline-form .u-field.narrow { flex: 0 1 160px; }
+  .inline-form .u-btn, .inline-form .u-input, .inline-form .u-select { min-height: 44px; }
+  .signin .row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .no-handles { color: var(--text-2); font-size: var(--fs-sm); }
+  .other-ways { display: grid; gap: var(--s-4); }
+  code { font: 500 var(--fs-sm) var(--mono); padding: 1px 6px; border-radius: var(--r-1); background: var(--surface-3); color: var(--text); }
+}
+</style>
+</head>
+<body>
+<header class="u-bar">
+  <a class="u-logo" href="/" aria-label="Receipts home"><span>Receipts</span><small>by Unprompted</small></a>
+  <nav class="u-aud" aria-label="Who it's for">
+    <a href="/creators/" aria-current="page">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
+  </nav>
+  <span class="grow"></span>
+  <div id="who" class="no-present"></div>
+</header>
+<main class="page">
+  <div class="intro">
+    <span class="u-eyebrow">Your channel</span>
+    <h1>Verify your channel.</h1>
+    <p class="u-lead">Brands can only invite verified creators they find to collabs.</p>
+  </div>
+  <div id="app" aria-busy="true"><p class="u-muted">Loading…</p></div>
+</main>
+<script>
+(() => {
+  const { h } = U;
+  const $ = (selector) => document.querySelector(selector);
+  let connectResult = (() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get('connect');
+    const isOAuth = ['error', 'taken', 'signin'].includes(status)
+      || (status === 'done' && params.has('platform') && params.has('handle'));
+    if (!isOAuth) return null;
+    const result = { status, handle: params.get('handle') || '' };
+    params.delete('connect');
+    params.delete('platform');
+    params.delete('handle');
+    const query = params.toString();
+    history.replaceState(null, '', location.pathname + (query ? `?${query}` : '') + location.hash);
+    return result;
+  })();
+  const providersOff = { tiktok: false, instagram: false };
+
+  function connectMessage() {
+    if (connectResult.status === 'done') return connectResult.handle ? `@${connectResult.handle} is verified` : 'Your channel is verified.';
+    if (connectResult.status === 'taken') return 'That channel is verified by another account.';
+    if (connectResult.status === 'signin') return 'Sign in to connect a channel.';
+    return 'Could not verify that account. Try again or use another way.';
+  }
+  async function call(path, body) {
+    const response = await fetch(path, body ? {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    } : {});
+    const data = await response.json();
+    if (!response.ok) {
+      if (response.status === 403 && data.role) showRoleNotice(data.role, data.missing || 'creator');
+      const error = new Error(data.error || 'Something went wrong.');
+      error.status = response.status;
+      error.data = data;
+      throw error;
+    }
+    return data;
+  }
+  function showRoleNotice(role, missing = 'creator') {
+    $('#app').removeAttribute('aria-busy');
+    const notice = h('section', { class: 'role-notice u-card u-card-pad', role: 'status' });
+    U.roleNotice(notice, typeof role === 'string' ? { role } : role, missing,
+      'Channel verification is for creator accounts.');
+    $('#app').replaceChildren(notice);
+  }
+  async function pending(button, work) {
+    if (button.getAttribute('aria-busy') === 'true') return;
+    button.setAttribute('aria-busy', 'true');
+    try { return await work(); } finally { if (button.isConnected) button.removeAttribute('aria-busy'); }
+  }
+  function decide({ title, lead, run }) {
+    const id = `verify-${Math.random().toString(36).slice(2, 8)}`;
+    const error = h('p', { class: 'u-error', role: 'alert' });
+    const confirm = h('button', { class: 'u-btn u-btn-danger', type: 'button' }, 'Remove');
+    const cancel = h('button', { class: 'u-btn', type: 'button' }, 'Keep channel');
+    const dialog = h('dialog', { class: 'u-dialog', 'aria-labelledby': id },
+      h('div', { class: 'u-dialog-body' }, h('h2', { class: 'u-h3', id }, title), h('p', { class: 'u-muted' }, lead), error),
+      h('div', { class: 'u-dialog-foot' }, cancel, confirm));
+    let busy = false;
+    const close = () => { if (!busy) dialog.close(); };
+    cancel.addEventListener('click', close);
+    dialog.addEventListener('cancel', (event) => { if (busy) event.preventDefault(); });
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) close(); });
+    dialog.addEventListener('close', () => dialog.remove());
+    confirm.addEventListener('click', async () => {
+      if (busy) return;
+      busy = true;
+      confirm.setAttribute('aria-busy', 'true');
+      cancel.disabled = true;
+      error.textContent = '';
+      try { await run(); busy = false; dialog.close(); }
+      catch (ex) { busy = false; error.textContent = ex.message; confirm.removeAttribute('aria-busy'); cancel.disabled = false; }
+    });
+    document.body.append(dialog);
+    dialog.showModal();
+  }
+  function signIn() {
+    let signup = true;
+    const email = h('input', { type: 'email', required: true, autocomplete: 'email', class: 'u-input', id: 'email' });
+    const password = h('input', { type: 'password', required: true, minlength: 8, autocomplete: 'new-password', class: 'u-input', id: 'pw' });
+    const error = h('p', { class: 'u-error', role: 'alert' });
+    const submit = h('button', { class: 'u-btn u-btn-primary' }, 'Create account');
+    const title = h('h2', {}, 'Create your creator account');
+    const connectNote = connectResult ? h('p', { class: 'u-hint', role: 'status' }, connectMessage()) : null;
+    const roleLinks = h('p', { class: 'u-hint' }, 'Brand or manager? Sign up on the ',
+      h('a', { href: '/brands/' }, 'Brands'), ' / ', h('a', { href: '/creators/roster' }, 'Managers'), ' page.');
+    const sides = U.signupSides('creator');
+    const sidesWrap = h('div', {}, sides.el);
+    const toggle = h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => {
+      signup = !signup;
+      title.textContent = signup ? 'Create your creator account' : 'Sign in to verify your channel';
+      roleLinks.hidden = !signup;
+      sidesWrap.hidden = !signup;
+      submit.textContent = signup ? 'Create account' : 'Sign in';
+      toggle.textContent = signup ? 'I already have an account' : 'Create an account';
+      password.autocomplete = signup ? 'new-password' : 'current-password';
+    } }, 'I already have an account');
+    const form = h('form', { onsubmit: async (event) => {
+      event.preventDefault();
+      error.textContent = '';
+      await pending(submit, async () => {
+        try {
+          await call(`/api/creators/${signup ? 'signup' : 'login'}`, {
+            email: email.value,
+            password: password.value,
+            ...(signup ? { role: 'creator', also: sides.values() } : {}),
+          });
+          await load();
+        } catch (ex) { error.textContent = ex.message; }
+      });
+    } },
+    h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'email' }, 'Email'), email),
+    h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'pw' }, 'Password'), password,
+      h('span', { class: 'u-hint' }, 'At least 8 characters.')),
+    h('div', { class: 'row' }, submit, toggle), error);
+    $('#app').removeAttribute('aria-busy');
+    $('#app').replaceChildren(h('section', { class: 'sec signin' },
+      h('div', { class: 'sec-head' }, title), connectNote, roleLinks, sidesWrap,
+      h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
+  }
+  function removeButton(handle) {
+    const body = { platform: handle.platform, handle: handle.handle };
+    return h('button', { class: 'u-btn u-btn-sm u-btn-ghost', type: 'button', onclick: () => decide({
+      title: `Remove @${handle.handle}?`,
+      lead: 'You can connect this channel again later.',
+      run: async () => {
+        await call('/api/licenses/remove', body);
+        U.toast(`Removed @${handle.handle}`, { kind: 'ok' });
+        await load();
+      },
+    }) }, 'Remove');
+  }
+  function channelList(d) {
+    const items = d.handles.map((handle) => h('li', {},
+      h('div', { class: 'handle-main' }, h('bdi', {}, `@${handle.handle}`),
+        h('span', { class: 'u-muted' }, handle.platform === 'tiktok' ? 'TikTok' : 'Instagram')),
+      h('div', { class: 'legacy-actions' },
+        h('span', { class: `u-pill ${handle.verified ? 'u-pill-ok' : 'u-pill-warn'}` }, handle.verified ? 'Verified' : 'Pending'),
+        removeButton(handle))));
+    return h('section', { class: 'sec', 'aria-labelledby': 'h-channels' },
+      h('div', { class: 'sec-head' }, h('h2', { id: 'h-channels' }, 'Your channels')),
+      items.length ? h('ul', { class: 'handles' }, ...items) : h('p', { class: 'no-handles' }, 'No channels connected yet.'));
+  }
+  function legacyFlow(d) {
+    const params = new URLSearchParams(location.search);
+    const claim = params.get('claim') || '';
+    const split = claim.indexOf(':');
+    const requestedPlatform = split >= 0 ? claim.slice(0, split) : 'tiktok';
+    const prePlatform = ['tiktok', 'instagram'].includes(requestedPlatform) ? requestedPlatform : 'tiktok';
+    const preHandle = split >= 0 ? claim.slice(split + 1) : '';
+    const platform = h('select', { id: 'platform', class: 'u-select' },
+      h('option', { value: 'tiktok', selected: prePlatform === 'tiktok' }, 'TikTok'),
+      h('option', { value: 'instagram', selected: prePlatform === 'instagram' }, 'Instagram'));
+    const handle = h('input', { id: 'handle', class: 'u-input', placeholder: 'yourhandle', value: preHandle, autocomplete: 'off', spellcheck: 'false' });
+    const claimError = h('p', { class: 'u-error', role: 'alert' });
+    const pendingHandles = d.handles.filter((item) => !item.verified).map((item) => {
+      const error = h('p', { class: 'u-error', role: 'alert' });
+      const body = { platform: item.platform, handle: item.handle };
+      const verify = item.platform === 'tiktok' ? h('button', {
+        class: 'u-btn u-btn-sm u-btn-primary', type: 'button',
+        onclick: () => pending(verify, async () => {
+          error.textContent = '';
+          try { await call('/api/licenses/verify', body); U.toast(`Verified @${item.handle}`, { kind: 'ok' }); await load(); }
+          catch (ex) { error.textContent = ex.message; }
+        }),
+      }, 'Check my bio') : h('span', { class: 'u-pill u-pill-warn' }, 'Manual review');
+      const how = item.platform === 'tiktok'
+        ? h('p', {}, 'Add ', h('code', {}, item.code), ' anywhere in your TikTok bio, save, then check your bio.')
+        : h('p', {}, 'Instagram is checked by hand: DM ', h('code', {}, item.code), ' from ', h('bdi', {}, `@${item.handle}`),
+          ' to the account that contacted you, or email it from the address in your bio. We’ll confirm within a day.');
+      return h('li', {}, h('div', { class: 'legacy-copy' }, h('bdi', {}, `@${item.handle}`), how, error), verify);
+    });
+    const submit = h('button', { class: 'u-btn u-btn-primary' }, 'Claim channel');
+    const form = h('form', { class: 'inline-form', onsubmit: async (event) => {
+      event.preventDefault();
+      claimError.textContent = '';
+      await pending(submit, async () => {
+        try {
+          await call('/api/licenses/handles', { platform: platform.value, handle: handle.value });
+          const next = new URLSearchParams(location.search);
+          next.delete('claim');
+          const query = next.toString();
+          history.replaceState(null, '', location.pathname + (query ? `?${query}` : '') + location.hash);
+          U.toast(`Claimed @${handle.value.replace(/^@/, '')}. Now verify it.`, { kind: 'ok' });
+          await load();
+        } catch (ex) { claimError.textContent = ex.message; }
+      });
+    } },
+    h('div', { class: 'u-field narrow' }, h('label', { class: 'u-label', for: 'platform' }, 'Platform'), platform),
+    h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'handle' }, 'Handle'), handle), submit);
+    return h('div', { class: 'other-ways' },
+      pendingHandles.length ? h('ul', { class: 'legacy-pending' }, ...pendingHandles) : null,
+      form, claimError);
+  }
+  function render(d, oauth) {
+    const enabled = oauth.tiktok || oauth.instagram;
+    const providers = [];
+    if (oauth.tiktok) providers.push(h('div', { class: 'oauth-choice' },
+      h('a', { class: 'u-btn u-btn-primary', href: '/auth/tiktok/start' }, 'Continue with TikTok')));
+    if (oauth.instagram) providers.push(h('div', { class: 'oauth-choice' },
+      h('a', { class: 'u-btn u-btn-primary', href: '/auth/instagram/start' }, 'Continue with Instagram'),
+      h('small', { class: 'oauth-note' }, 'Works with Instagram creator or business accounts.')));
+    const legacy = legacyFlow(d);
+    const alternate = enabled
+      ? h('details', { class: 'other-verify', open: d.handles.some((item) => !item.verified) || new URLSearchParams(location.search).has('claim') },
+        h('summary', {}, 'Other ways to verify'), h('div', { class: 'other-verify-body' }, legacy))
+      : h('section', { class: 'sec', 'aria-labelledby': 'h-other' },
+        h('div', { class: 'sec-head' }, h('h2', { id: 'h-other' }, 'Add a channel')), legacy);
+    const primary = enabled ? h('section', { class: 'sec', 'aria-labelledby': 'h-primary' },
+      h('div', { class: 'sec-head' }, h('h2', { id: 'h-primary' }, 'Verify with a platform')),
+      h('div', { class: 'oauth-options' }, ...providers), alternate) : alternate;
+    $('#app').removeAttribute('aria-busy');
+    $('#app').replaceChildren(...[primary, channelList(d)]);
+    if (connectResult) {
+      U.toast(connectMessage(), { kind: connectResult.status === 'done' ? 'ok' : 'info' });
+      connectResult = null;
+    }
+  }
+  async function load() {
+    try {
+      const me = await call('/api/creators/me');
+      if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
+      $('#who').replaceChildren(U.sideSwitcher(me.user, U.hasRole(me.user, 'creator') ? 'creator' : me.user.role),
+        h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
+        h('a', { href: '#', onclick: async (event) => { event.preventDefault(); await call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
+      if (!U.hasRole(me.user, 'creator')) { showRoleNotice(me.user); return; }
+      const [handles, oauth] = await Promise.all([
+        call('/api/licenses/mine'),
+        call('/api/handles/oauth').catch(() => providersOff),
+      ]);
+      render(handles, oauth);
+    } catch (error) {
+      if (error.status === 403 && error.data?.role) { showRoleNotice(error.data.role, error.data.missing || 'creator'); return; }
+      $('#app').removeAttribute('aria-busy');
+      $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, error.message));
+    }
+  }
+  load();
+})();
+</script>
+</body>
+</html>

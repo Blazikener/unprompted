@@ -63,12 +63,13 @@ def start(handler, platform):
         raise ApiError(404, "Not found.")
     user = creator.current_user(handler.headers)
     if not user:
-        return _redirect("/creators/licenses?connect=signin")
+        return _redirect("/verify?connect=signin")
     if not creator.has_role(user, "creator"):
         creator.require_role(handler.headers, "creator")
 
     state = secrets.token_urlsafe(32)
     with connect() as db:
+        db.execute("DELETE FROM oauth_states WHERE created_at < now() - interval '1 day'")
         db.execute("INSERT INTO oauth_states (state, user_id, platform) VALUES (%s, %s, %s)",
                    (state, user["id"], platform))
 
@@ -145,11 +146,11 @@ def callback(handler, platform):
         if (query.get("error") or not enabled(platform) or not row or row["platform"] != platform or not user
                 or row["user_id"] != user["id"]
                 or row["created_at"] < datetime.now(timezone.utc) - timedelta(minutes=10)):
-            return _redirect("/creators/licenses?connect=error")
+            return _redirect("/verify?connect=error")
 
         code = (query.get("code") or [None])[0]
         if not code:
-            return _redirect("/creators/licenses?connect=error")
+            return _redirect("/verify?connect=error")
         _, handle = licenses.norm(platform, _username(platform, code))
         with connect() as db:
             claimed = db.execute(
@@ -158,14 +159,14 @@ def callback(handler, platform):
                 (user["id"], platform, handle, "UNP-" + secrets.token_hex(3).upper()),
             ).fetchone()
         licenses.mark_verified(claimed["id"], "oauth")
-        return _redirect("/creators/licenses?" + urlencode({"connect": "done", "platform": platform, "handle": handle}))
+        return _redirect("/verify?" + urlencode({"connect": "done", "platform": platform, "handle": handle}))
     except ApiError as error:
         if error.status == 409 and handle:
-            return _redirect("/creators/licenses?" + urlencode({"connect": "taken", "platform": platform, "handle": handle}))
-        return _redirect("/creators/licenses?connect=error")
+            return _redirect("/verify?" + urlencode({"connect": "taken", "platform": platform, "handle": handle}))
+        return _redirect("/verify?connect=error")
     except psycopg.errors.UniqueViolation:
         if handle:
-            return _redirect("/creators/licenses?" + urlencode({"connect": "taken", "platform": platform, "handle": handle}))
-        return _redirect("/creators/licenses?connect=error")
+            return _redirect("/verify?" + urlencode({"connect": "taken", "platform": platform, "handle": handle}))
+        return _redirect("/verify?connect=error")
     except Exception:
-        return _redirect("/creators/licenses?connect=error")
+        return _redirect("/verify?connect=error")
