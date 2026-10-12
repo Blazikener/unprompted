@@ -741,7 +741,15 @@ class Handler(SimpleHTTPRequestHandler):
         path = url.path
         m = re.fullmatch(r"/api/searches/(\d+)", path)
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
-        if path == "/api/me/roles":
+        oauth_start = re.fullmatch(r"/auth/(tiktok|instagram)/start", path)
+        oauth_callback = re.fullmatch(r"/auth/(tiktok|instagram)/callback/", path)
+        if path == "/api/handles/oauth":
+            self.api(oauth_handles.status)
+        elif oauth_start:
+            self.api(lambda: oauth_handles.start(self, oauth_start.group(1)))
+        elif oauth_callback:
+            self.api(lambda: oauth_handles.callback(self, oauth_callback.group(1)))
+        elif path == "/api/me/roles":
             self.api(lambda: creator.roles_route(self))
         elif path.startswith("/api/creators/"):
             self.api(lambda: creator.dispatch(self))
@@ -804,6 +812,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/collabs/index.html"
             elif path in ("/creators/licenses", "/creators/licenses/"):
                 self.path = "/creators/licenses.html"
+            elif path in ("/verify", "/verify/"):
+                self.path = "/creators/verify.html"
             elif path in ("/creators/roster", "/creators/roster/"):
                 self.path = "/creators/roster.html"
             elif path in ("/demo/credits", "/demo/credits/"):
@@ -907,6 +917,7 @@ sys.modules.setdefault("server", sys.modules[__name__])  # creator imports us ba
 import creator  # noqa: E402
 import digest  # noqa: E402
 import licenses  # noqa: E402
+import oauth_handles  # noqa: E402
 import collabs  # noqa: E402
 import payments  # noqa: E402
 import rosters  # noqa: E402
@@ -929,6 +940,7 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS checks_user ON checks (user_id, created_at DESC)")
         db.execute(digest.SCHEMA)
         db.execute(licenses.SCHEMA)
+        db.execute(oauth_handles.SCHEMA)
         db.execute(collabs.SCHEMA)
         db.execute(payments.SCHEMA)
         db.execute(rosters.SCHEMA)

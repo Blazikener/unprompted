@@ -87,3 +87,10 @@ def test_tour_routes_serve_html(base):
         status, body = call(base, "GET", path)
         assert status == 200 and body.startswith(b"<!doctype html>")
         assert b"Creators mention brands every day." in body
+
+
+def test_verify_page_routes(base):
+    for path in ("/verify", "/verify/"):
+        status, body = call(base, "GET", path)
+        assert status == 200 and b"Verify your channel." in body
+        assert b"Brands can only invite verified creators they find to collabs." in body
