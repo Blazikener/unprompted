@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const result = ['error', 'taken', 'signin'].includes(params.get('connect'))
+    || (params.get('connect') === 'done' && (params.has('platform') || params.has('handle')));
+  if (params.has('claim') || result) location.replace('/verify' + location.search);
+})();
+</script>
 <title>License offers · Receipts</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="/ui/ui.css?v=4">
@@ -52,19 +60,10 @@
   .offers .u-btn { min-height: 44px; }
   .offers .vid { font-size: var(--fs-sm); font-weight: 500; }
 
-  /* handles */
-  .handles { list-style: none; margin: 0; padding: 0; display: grid; }
-  .handles > li { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s-2) var(--s-4); padding: var(--s-3) 0; border-top: 1px solid var(--border); }
-  .handles > li:first-child { border-top: 0; padding-top: 0; }
-  .handles .h-main { display: grid; gap: 4px; min-width: 0; flex: 1 1 260px; }
-  .handles .h-side { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-  .how { font-size: var(--fs-sm); color: var(--text-2); max-width: 60ch; }
-  code { font: 500 var(--fs-sm) var(--mono); padding: 1px 6px; border-radius: var(--r-1); background: var(--surface-3); color: var(--text); }
-  .inline-form { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: flex-end; }
-  .inline-form .u-field { flex: 1 1 180px; }
-  .inline-form .u-field.narrow { flex: 0 1 160px; }
-  .inline-form .u-btn { min-height: 44px; }
-  .inline-form .u-input, .inline-form .u-select { min-height: 44px; }
+  .handle-summary { list-style: none; margin: 0; padding: 0; display: grid; }
+  .handle-summary > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); padding: var(--s-2) 0; border-top: 1px solid var(--border); }
+  .handle-summary > li:first-child { border-top: 0; padding-top: 0; }
+  .handle-summary > li:last-child { padding-bottom: 0; }
 
   /* rules: switches, a segmented control and brand chips, each saving on its own */
   .rule { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); padding-top: var(--s-4); border-top: 1px solid var(--border); }
@@ -209,47 +208,15 @@
       roleLinks, alsoWrap, h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
   }
 
-  function handles(d) {
-    const pre = new URLSearchParams(location.search).get('claim') || '';
-    const [prePlatform, preHandle] = pre.includes(':') ? pre.split(':') : ['tiktok', ''];
-    const platform = h('select', { id: 'platform', class: 'u-select' }, h('option', { value: 'tiktok', selected: prePlatform === 'tiktok' }, 'TikTok'),
-      h('option', { value: 'instagram', selected: prePlatform === 'instagram' }, 'Instagram'));
-    const handle = h('input', { id: 'handle', class: 'u-input', placeholder: 'yourhandle', value: decodeURIComponent(preHandle || ''), autocomplete: 'off', spellcheck: 'false' });
-    const err = h('p', { class: 'u-error', role: 'alert' });
-    const items = d.handles.map((x) => {
-      const msg = h('p', { class: 'u-error', role: 'alert' });
-      const body = { platform: x.platform, handle: x.handle };
-      const verify = h('button', { class: 'u-btn u-btn-sm u-btn-primary', type: 'button', onclick: () => pending(verify, async () => {
-        msg.textContent = '';
-        try { await call('/api/licenses/verify', body); U.toast(`Verified @${x.handle}`, { kind: 'ok' }); load(); } catch (ex) { msg.textContent = ex.message; }
-      }) }, 'Check my bio');
-      const remove = h('button', { class: 'u-btn u-btn-sm u-btn-ghost', type: 'button', onclick: () => decide({
-        title: `Remove @${x.handle}?`, danger: true, confirm: 'Remove',
-        lead: x.verified ? 'Offers for its videos stop coming here until you claim and verify it again.' : 'You can claim it again any time.',
-        run: async () => { render(await call('/api/licenses/remove', body)); U.toast(`Removed @${x.handle}`, { kind: 'ok' }); },
-      }) }, 'Remove');
-      const how = x.verified ? null : x.platform === 'tiktok'
-        ? h('p', { class: 'how' }, 'Add ', h('code', {}, x.code), ' anywhere in your TikTok bio, save, then press Check my bio. You can remove it once verified.')
-        : h('p', { class: 'how' }, 'Instagram is checked by hand: DM ', h('code', {}, x.code), ' from ', h('bdi', {}, `@${x.handle}`), ' to the account that contacted you, or email it from the address in your bio. We’ll confirm within a day.');
-      return h('li', {}, h('div', { class: 'h-main' }, h('span', {}, h('b', {}, h('bdi', {}, `@${x.handle}`)), h('span', { class: 'u-muted' }, ` · ${x.platform === 'tiktok' ? 'TikTok' : 'Instagram'}`)), how, msg),
-        h('div', { class: 'h-side' }, x.verified ? h('span', { class: 'u-pill u-pill-ok' }, 'Verified') : x.platform === 'tiktok' ? verify : h('span', { class: 'u-pill u-pill-warn' }, 'Pending'), remove));
-    });
-    const claim = h('button', { class: 'u-btn u-btn-primary' }, 'Claim');
-    const form = h('form', { class: 'inline-form', onsubmit: async (e) => {
-      e.preventDefault(); err.textContent = '';
-      await pending(claim, async () => {
-        try {
-          await call('/api/licenses/handles', { platform: platform.value, handle: handle.value });
-          history.replaceState(null, '', location.pathname);
-          U.toast(`Claimed @${handle.value.replace(/^@/, '')}. Now verify it.`, { kind: 'ok' });
-          load();
-        } catch (ex) { err.textContent = ex.message; }
-      });
-    } }, h('div', { class: 'u-field narrow' }, h('label', { class: 'u-label', for: 'platform' }, 'Platform'), platform),
-      h('div', { class: 'u-field' }, h('label', { class: 'u-label', for: 'handle' }, 'Handle'), handle), claim);
-    return h('section', { class: 'sec', 'aria-labelledby': 'h-handles' }, h('div', { class: 'sec-head' }, h('h2', { id: 'h-handles' }, 'Your handles')),
-      items.length ? h('ul', { class: 'handles' }, ...items) : h('p', { class: 'sec-p' }, 'Claim your handle so offers for your videos come straight to you.'),
-      form, err);
+  function channels(d) {
+    const items = d.handles.map((handle) => h('li', {},
+      h('span', {}, h('bdi', {}, `@${handle.handle}`), h('span', { class: 'u-muted' },
+        ` · ${handle.platform === 'tiktok' ? 'TikTok' : 'Instagram'}`)),
+      h('span', { class: `u-pill ${handle.verified ? 'u-pill-ok' : 'u-pill-warn'}` }, handle.verified ? 'Verified' : 'Pending')));
+    return h('section', { class: 'sec', 'aria-labelledby': 'h-handles' },
+      h('div', { class: 'sec-head' }, h('h2', { id: 'h-handles' }, 'Your handles'),
+        h('a', { href: '/verify' }, 'Verify a channel →')),
+      items.length ? h('ul', { class: 'handle-summary' }, ...items) : h('p', { class: 'sec-p' }, 'No channels connected yet.'));
   }
 
   // Status with its date, so every offer says where it stands and until when.
@@ -427,7 +394,7 @@
       h('section', { class: 'money', 'aria-label': 'Money' },
         fact(m.paidUsd ? usd(m.paidUsd) : 0, 'Paid to you', 'Nothing paid yet'), fact(m.owedUsd ? usd(m.owedUsd) : 0, 'On its way', 'Nothing owed'),
         fact(m.live ? String(m.live) : 0, m.live === 1 ? 'Ad live now' : 'Ads live now', 'No ads live')),
-      offers(d), payouts(d), handles(d), rules(d));
+      offers(d), payouts(d), channels(d), rules(d));
     announceChanges(d.offers);
   }
 

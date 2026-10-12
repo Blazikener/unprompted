@@ -339,7 +339,7 @@ def test_weekly_masks_unverified_brands_and_links_to_claim(prefix, monkeypatch):
 
     assert subject.startswith("This week: your videos showed up in 1 brand search")
     assert "Verify to see who" in body
-    assert "u.test/creators/licenses?claim=tiktok:wait%2Bcreator" in body
+    assert "u.test/verify?claim=tiktok:wait%2Bcreator" in body
     assert secret_brand not in subject and secret_brand not in body
 
 

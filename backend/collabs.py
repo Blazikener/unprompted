@@ -486,7 +486,7 @@ def weekly(user, force=False):
         sections.append(("Verify to see who found your handle", "".join(
             row("@%s" % item["handle"], "showed up in %d brand search%s this week" % (
                 item["searches"], "" if item["searches"] == 1 else "es"),
-                "%s/creators/licenses?claim=%s:%s" % (
+                "%s/verify?claim=%s:%s" % (
                     digest.app_url(), item["platform"], quote(item["handle"], safe="")),
                 "Verify to see who")
             for item in locked
