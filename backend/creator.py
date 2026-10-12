@@ -44,6 +44,18 @@ CREATE TABLE IF NOT EXISTS users (
   created_at          timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_roles text[] NOT NULL DEFAULT '{}';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'users'::regclass AND conname = 'users_extra_roles_check'
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_extra_roles_check
+      CHECK (extra_roles <@ ARRAY['creator', 'brand', 'manager']::text[]);
+  END IF;
+END
+$$;
 CREATE TABLE IF NOT EXISTS sessions (
   token      text PRIMARY KEY,                  -- sha256 of the cookie value
   user_id    int NOT NULL REFERENCES users ON DELETE CASCADE,
@@ -491,7 +503,8 @@ def plan_of(user):
 def public_user(u):
     import packaging
     return {
-        "id": u["id"], "email": u["email"], "role": u["role"], "roles": roles_of(u), "plan": u["plan"],
+        "id": u["id"], "email": u["email"], "role": u["role"], "roles": roles_of(u),
+        "lockedRoles": locked_roles(u), "plan": u["plan"],
         "limits": PLANS[plan_of(u)], "billing": bool(u.get("stripe_customer")),
         "arm": packaging.user_arm(u),
     }
@@ -526,12 +539,25 @@ def require_user(headers):
 
 
 def roles_of(user):
-    """The account's role, plus creator and brand for emails or @domains listed in MULTI_ROLE_ACCOUNTS."""
+    """Return the primary side followed by enabled sides in the product's canonical order."""
+    primary = user["role"]
+    extras = set(user.get("extra_roles") or [])
     listed = {e.strip().lower() for e in os.environ.get("MULTI_ROLE_ACCOUNTS", "").split(",") if e.strip()}
-    email = user["email"].lower()
+    email = (user.get("email") or "").lower()
     if email in listed or "@" + email.rpartition("@")[2] in listed:
-        return [user["role"]] + [r for r in ("creator", "brand") if r != user["role"]]
-    return [user["role"]]
+        extras.update(("creator", "brand"))
+    return [primary, *(role for role in ("creator", "brand", "manager") if role != primary and role in extras)]
+
+
+def locked_roles(user):
+    """Return the main side and sides included by the account's team plan."""
+    primary = user["role"]
+    locked = {primary}
+    listed = {e.strip().lower() for e in os.environ.get("MULTI_ROLE_ACCOUNTS", "").split(",") if e.strip()}
+    email = (user.get("email") or "").lower()
+    if email in listed or "@" + email.rpartition("@")[2] in listed:
+        locked.update(("creator", "brand"))
+    return [primary, *(role for role in ("creator", "brand", "manager") if role != primary and role in locked)]
 
 
 def has_role(user, role):
@@ -548,8 +574,8 @@ def require_role(headers, role, signed_out_message="Sign in to continue."):
             "brand": "Brand search is for brand accounts.",
             "manager": "Rosters are for manager accounts.",
         }
-        raise ApiError(403, "%s You're signed in with a %s account — sign out and create a %s account with another email."
-                       % (messages[role], user["role"], role), role=user["role"])
+        raise ApiError(403, "%s Add the %s side to your account to use it." % (messages[role], role),
+                       role=user["role"], missing=role)
     return user
 
 
@@ -581,17 +607,70 @@ def signup(body, headers=None):
     role = body.get("role", "creator")
     if role not in ("creator", "brand", "manager"):
         raise ApiError(400, "Choose creator, brand or manager.")
+    also = body.get("also", [])
+    if also is None:
+        also = []
+    if not isinstance(also, list) or any(not isinstance(item, str) or item not in ("creator", "brand", "manager") for item in also):
+        raise ApiError(400, "Choose additional creator, brand or manager sides.")
+    extra_roles = [side for side in ("creator", "brand", "manager") if side != role and side in also]
     arm, forced = packaging.signup_arm(headers or {})       # the offer this browser was shown on /creators/
     with connect() as db:
         if db.execute("SELECT 1 FROM users WHERE email = %s", (email,)).fetchone():
             raise ApiError(409, "That email already has an account. Sign in instead.")
-        u = db.execute("INSERT INTO users (email, password, role, arm, arm_forced) VALUES (%s, %s, %s, %s, %s) RETURNING *",
-                       (email, hash_password(pw), role, arm, forced)).fetchone()
+        u = db.execute(
+            "INSERT INTO users (email, password, role, extra_roles, arm, arm_forced) "
+            "VALUES (%s, %s, %s, %s, %s, %s) RETURNING *",
+            (email, hash_password(pw), role, extra_roles, arm, forced),
+        ).fetchone()
         cookie = start_session(db, u["id"])
     if headers:
         packaging.link_visitor(headers, u["id"])
     track(u["id"], "signup", {"arm": arm} if arm else None)
     return Reply({"user": public_user(u)}, 201, [cookie])
+
+
+def update_roles(headers, body):
+    user = require_user(headers)
+    if not isinstance(body, dict):
+        raise ApiError(400, "Invalid request.")
+    role, enabled = body.get("role"), body.get("on")
+    if role not in ("creator", "brand", "manager"):
+        raise ApiError(400, "Choose creator, brand or manager.")
+    if not isinstance(enabled, bool):
+        raise ApiError(400, "Choose whether to add or remove the side.")
+    event = "role_added" if enabled else "role_removed"
+    with connect() as db:
+        current = db.execute("SELECT * FROM users WHERE id = %s FOR UPDATE", (user["id"],)).fetchone()
+        if not current:
+            raise ApiError(401, "Sign in to continue.")
+        if not enabled and role == current["role"]:
+            raise ApiError(400, "That's your main side.")
+        if not enabled and role in locked_roles(current):
+            raise ApiError(409, "Your team plan includes this side.")
+        previous = set(current.get("extra_roles") or [])
+        extras = set(previous)
+        if enabled:
+            if role != current["role"]:
+                extras.add(role)
+        else:
+            extras.discard(role)
+        extra_roles = [side for side in ("creator", "brand", "manager") if side != current["role"] and side in extras]
+        updated = db.execute(
+            "UPDATE users SET extra_roles = %s WHERE id = %s RETURNING *",
+            (extra_roles, user["id"]),
+        ).fetchone()
+        changed = previous != set(updated.get("extra_roles") or [])
+    if changed:
+        track(user["id"], event, {"role": role})
+    return {"user": public_user(updated)}
+
+
+def roles_route(handler):
+    if handler.command != "POST":
+        raise ApiError(405, "Method not allowed.")
+    if not (handler.headers.get("Content-Type") or "").startswith("application/json"):
+        raise ApiError(415, "Send application/json.")
+    return update_roles(handler.headers, read_json(handler))
 
 
 def login(body):

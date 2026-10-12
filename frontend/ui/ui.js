@@ -553,7 +553,159 @@
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', boot) : boot();
 
   const hasRole = (user, role) => Boolean(user) && (user.roles || [user.role]).includes(role);
+  const SIDE_ORDER = ['creator', 'brand', 'manager'];
+  const SIDE_LABEL = { creator: 'Creator', brand: 'Brand', manager: 'Manager' };
+  const SIDE_COPY = {
+    creator: 'Find brands you already mention, pitch them',
+    brand: 'Find creators who already love you, send proposals',
+    manager: "Run a roster, see every creator's deals",
+  };
+  const SIDE_KEY = 'u-active-side';
+  const activeSide = () => {
+    try { const role = localStorage.getItem(SIDE_KEY); return SIDE_ORDER.includes(role) ? role : null; } catch { return null; }
+  };
+  function rememberSide(role) {
+    try { localStorage.setItem(SIDE_KEY, role); } catch {}
+  }
+  async function setRole(role, on = true) {
+    const response = await fetch('/api/me/roles', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role, on }),
+    });
+    const data = await response.json().catch(() => ({ error: 'Bad response' }));
+    if (!response.ok) {
+      const error = new Error(data.error || 'That side could not be updated.');
+      error.status = response.status; error.data = data;
+      throw error;
+    }
+    return data.user;
+  }
+  function roleNotice(target, user, missingRole, message) {
+    if (!target) return;
+    const error = h('span', { class: 'u-error', role: 'alert', hidden: true });
+    const add = h('button', {
+      type: 'button', class: 'u-btn u-btn-primary u-btn-sm', onclick: async () => {
+        add.disabled = true; add.setAttribute('aria-busy', 'true'); error.hidden = true;
+        try { await setRole(missingRole, true); rememberSide(missingRole); location.reload(); }
+        catch (failure) { error.textContent = failure.message; error.hidden = false; add.disabled = false; add.removeAttribute('aria-busy'); }
+      },
+    }, `Add the ${SIDE_LABEL[missingRole]?.toLowerCase() || 'new'} side`);
+    target.replaceChildren(
+      h('strong', {}, `This is the ${SIDE_LABEL[missingRole]?.toLowerCase() || 'other'} side.`),
+      h('p', {}, message),
+      h('div', { class: 'u-row' }, add, h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Go to your dashboard')),
+      error);
+    target.hidden = false;
+  }
+  function signupSides(primary) {
+    const inputs = SIDE_ORDER.filter((role) => role !== primary).map((role) => {
+      const input = h('input', { type: 'checkbox', value: role });
+      return { role, input };
+    });
+    const el = h('fieldset', { class: 'u-side-choices' },
+      h('legend', {}, "I'm also a…"),
+      h('div', { class: 'u-side-choice-list' }, ...inputs.map(({ role, input }) =>
+        h('label', { class: 'u-side-choice' }, input, h('span', {}, SIDE_LABEL[role])))));
+    return { el, values: () => inputs.filter(({ input }) => input.checked).map(({ role }) => role) };
+  }
+  function sideSwitcher(user, currentRole) {
+    const roles = SIDE_ORDER.filter((role) => (user.roles || [user.role]).includes(role));
+    if (!roles.length) return h('span');
+    const remembered = activeSide();
+    const active = roles.includes(currentRole) ? currentRole : roles.includes(remembered) ? remembered : user.role;
+    rememberSide(active);
+    const rootEl = h('div', { class: 'u-side-switcher' });
+    const go = (role) => {
+      rememberSide(role);
+      location.href = `/dashboard?as=${encodeURIComponent(role)}`;
+    };
+    const options = roles.map((role) => h('button', {
+      type: 'button', class: `u-side-option${role === active ? ' is-current' : ''}`,
+      'aria-current': role === active ? 'page' : null,
+      onclick: () => go(role),
+    }, SIDE_LABEL[role]));
+    const missing = SIDE_ORDER.filter((role) => !roles.includes(role));
+    const addOptions = (close) => missing.length
+      ? missing.map((role) => h('button', {
+        type: 'button', class: 'u-side-add-option', onclick: async (event) => {
+          const button = event.currentTarget;
+          button.disabled = true; button.setAttribute('aria-busy', 'true');
+          try { await setRole(role, true); close(); go(role); }
+          catch (error) { toast(error.message, { kind: 'error' }); button.disabled = false; button.removeAttribute('aria-busy'); }
+        },
+      }, h('span', { class: 'u-side-add-name' }, SIDE_LABEL[role]), h('span', { class: 'u-side-add-copy' }, SIDE_COPY[role])))
+      : [h('p', { class: 'u-side-empty' }, 'You have all three sides.')];
+
+    const desktop = h('div', { class: 'u-side-desktop', role: 'group', 'aria-label': 'Account sides' }, ...options);
+    const addButton = h('button', { type: 'button', class: 'u-side-add-trigger', 'aria-haspopup': 'dialog', 'aria-expanded': 'false' }, '+ Add a side');
+    const popover = h('dialog', { class: 'u-side-popover', 'aria-label': 'Add a side' },
+      h('div', { class: 'u-side-popover-head' },
+        h('strong', {}, 'Add a side'),
+        h('button', { type: 'button', class: 'u-side-close', 'aria-label': 'Close' }, '×')),
+      h('div', { class: 'u-side-add-list' }));
+    const closePopover = () => { if (popover.open) popover.close(); addButton.setAttribute('aria-expanded', 'false'); };
+    const fillPopover = () => popover.querySelector('.u-side-add-list').replaceChildren(...addOptions(closePopover));
+    addButton.addEventListener('click', () => {
+      fillPopover();
+      if (popover.open) { closePopover(); return; }
+      const rect = addButton.getBoundingClientRect();
+      popover.show();
+      const bounds = popover.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = document.documentElement.clientHeight;
+      popover.style.left = `${Math.max(12, Math.min(rect.left, viewportWidth - bounds.width - 12))}px`;
+      popover.style.top = `${Math.max(12, Math.min(rect.bottom + 8, viewportHeight - bounds.height - 12))}px`;
+      addButton.setAttribute('aria-expanded', 'true');
+      (popover.querySelector('.u-side-add-option') || popover.querySelector('.u-side-close')).focus();
+    });
+    popover.querySelector('.u-side-close').addEventListener('click', closePopover);
+
+    const sheet = h('dialog', { class: 'u-side-sheet', 'aria-label': 'Switch account side' });
+    const sheetBody = h('div', { class: 'u-side-sheet-body' });
+    const renderSheetAdd = () => sheetBody.replaceChildren(
+      h('button', { type: 'button', class: 'u-side-back', onclick: renderSheetSides }, '← Your sides'),
+      h('div', { class: 'u-side-add-list' }, ...addOptions(() => sheet.close())));
+    const renderSheetSides = () => sheetBody.replaceChildren(...[
+      h('div', { class: 'u-side-sheet-options', role: 'group', 'aria-label': 'Choose a side' },
+        ...roles.map((role) => h('button', {
+          type: 'button', class: `u-side-sheet-option${role === active ? ' is-current' : ''}`,
+          'aria-current': role === active ? 'page' : null, onclick: () => go(role),
+        }, h('span', {}, SIDE_LABEL[role]), h('span', { 'aria-hidden': 'true' }, role === active ? 'Current' : '→')))),
+      missing.length ? h('button', { type: 'button', class: 'u-side-sheet-add', onclick: renderSheetAdd },
+        h('span', {}, '+'), h('span', {}, 'Add a side'), h('span', { 'aria-hidden': 'true' }, '→')) : null,
+    ].filter(Boolean));
+    const sheetHead = h('div', { class: 'u-side-sheet-head' },
+      h('span', { class: 'u-side-sheet-mark', 'aria-hidden': 'true' }, 'U'),
+      h('div', {}, h('strong', {}, 'Your sides'), h('small', {}, 'One account, every way you work.')),
+      h('button', { type: 'button', class: 'u-side-close', 'aria-label': 'Close', onclick: () => sheet.close() }, '×'));
+    sheet.append(sheetHead, sheetBody);
+    const mobile = h('button', {
+      type: 'button', class: 'u-side-mobile-trigger', 'aria-haspopup': 'dialog',
+      'aria-label': `Current side: ${SIDE_LABEL[active]}. Switch side`,
+      onclick: () => { renderSheetSides(); sheet.showModal(); },
+    }, `${SIDE_LABEL[active]} ▾`);
+    const focusable = () => {
+      const buttons = sheet.open ? [...sheet.querySelectorAll('button')]
+        : popover.open ? [addButton, ...popover.querySelectorAll('button')]
+          : matchMedia('(max-width: 600px)').matches ? [mobile] : [...desktop.querySelectorAll('button'), addButton];
+      return buttons.filter((button) => !button.disabled && button.getClientRects().length);
+    };
+    rootEl.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && popover.open) { closePopover(); addButton.focus(); return; }
+      if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) return;
+      const buttons = focusable(), index = buttons.indexOf(event.target);
+      if (index < 0 || buttons.length < 2) return;
+      event.preventDefault();
+      const delta = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
+      buttons[(index + delta + buttons.length) % buttons.length].focus();
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (popover.open && !rootEl.contains(event.target)) closePopover();
+    });
+    rootEl.append(desktop, addButton, mobile, popover, sheet);
+    return rootEl;
+  }
 
   window.U = { h, svg, $, $$, fmt, clock, ago, date, transition, toast, optimistic, copy, countUp, receipt, quoteEl, scoreRing, band, meter, why, sparkline,
-               seg, tabs, card, keys, rovingList, palette, settings, shortcutSheet, type, scan, reduced, get prefs() { return { ...prefs }; }, setPref, hasRole, PLATFORM, KIND };
+               seg, tabs, card, keys, rovingList, palette, settings, shortcutSheet, type, scan, reduced, get prefs() { return { ...prefs }; }, setPref,
+               hasRole, activeSide, rememberSide, sideSwitcher, signupSides, setRole, roleNotice, PLATFORM, KIND };
 })();

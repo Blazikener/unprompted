@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard · Unprompted</title>
 <meta name="description" content="Your creator receipts, brand searches and manager roster in one place.">
-<link rel="stylesheet" href="/ui/ui.css?v=3">
-<script src="/ui/ui.js?v=2"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=4">
+<script src="/ui/ui.js?v=3"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
   :root { --dash-ink: #d0f854; }
   body { min-width: 320px; }
-  .dash-bar { position: sticky; inset-block-start: 0; z-index: var(--z-sticky); min-height: 64px; flex-wrap: wrap; }
-  .dash-bar .grow { flex: 1; }
-  .dash-account { display: flex; align-items: center; gap: var(--s-2); flex: none; }
+  .dash-bar { position: sticky; inset-block-start: 0; z-index: var(--z-sticky); min-height: 64px; flex-wrap: nowrap; }
+  .dash-bar .grow { flex: 1; min-width: 0; }
+  .dash-account { display: flex; align-items: center; gap: var(--s-2); flex: 0 1 auto; min-width: 0; }
   .dash-main { width: min(1440px, 100% - clamp(28px, 6vw, 88px)); margin-inline: auto; padding-block: clamp(28px, 4vw, 56px) 80px; }
   .dash-hero { position: relative; isolation: isolate; display: block; padding: clamp(24px, 4vw, 48px);
                border: 1px solid var(--border); border-radius: var(--r-5); overflow: hidden; background: var(--surface-2); }
@@ -25,8 +25,10 @@
   .dash-title em { display: block; margin-top: 6px; color: var(--text-2); font: italic 400 0.78em/1.1 var(--voice); letter-spacing: -0.035em; }
   .dash-intro { max-width: 54ch; margin-top: var(--s-3); color: var(--text-2); }
   .dash-kicker, .panel-kicker { color: var(--text-3); font: 500 var(--fs-xs)/1.2 var(--mono); letter-spacing: 0.11em; text-transform: uppercase; }
-  .account-email { max-width: 220px; overflow: hidden; color: var(--text-2); font-size: var(--fs-sm); text-overflow: ellipsis; white-space: nowrap; }
-  .account-actions { display: flex; align-items: center; gap: var(--s-2); }
+  .account-email { flex: 0 1 160px; width: 160px; min-width: 80px; max-width: 160px; overflow: hidden; color: var(--text-2); font-size: var(--fs-sm); text-overflow: ellipsis; white-space: nowrap; }
+  .dash-account > .u-pill, .account-actions { flex: none; }
+  .account-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); flex-wrap: nowrap; }
+  @media (max-width: 1100px) { .account-email { flex-basis: 88px; width: 88px; min-width: 0; max-width: 88px; } }
   .dash-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: start; margin-top: var(--s-5); }
   .dash-rail { position: sticky; inset-block-start: 84px; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-4); background: var(--surface-2); }
   .rail-label { margin: 0 var(--s-2) var(--s-2); color: var(--text-3); font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
@@ -136,6 +138,14 @@
   .funnel-track i { display: block; height: 100%; border-radius: inherit; background: var(--highlight); }
   .funnel-row b { color: var(--text); font: 500 var(--fs-xs) var(--mono); text-align: end; }
   .account-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.65fr); gap: var(--s-5); }
+  .sides-account { display: grid; gap: var(--s-4); }
+  .side-setting-list { display: grid; gap: 8px; }
+  .side-setting-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface-2); }
+  .side-setting-copy { display: grid; gap: 4px; min-width: 0; }
+  .side-setting-copy strong { font-size: var(--fs-sm); }
+  .side-setting-copy small { color: var(--text-2); font-size: var(--fs-xs); }
+  .side-setting-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: var(--fs-xs); cursor: pointer; white-space: nowrap; }
+  .side-setting-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--highlight); }
   .account-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-3) var(--s-5); margin: 0; }
   .account-facts dt { color: var(--text-3); font-size: var(--fs-sm); }
   .account-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: var(--fs-sm); }
@@ -160,9 +170,11 @@
     .mobile-tabs .tab[aria-selected="true"]::before { display: none; }
   }
   @media (max-width: 700px) {
+    .dash-bar { height: auto; min-height: 64px; flex-wrap: wrap; }
     .dash-main { width: min(100% - 28px, 560px); padding-block: 20px 56px; }
     .dash-hero { padding: var(--s-4); }
     .dash-bar .dash-account { flex: 1 1 100%; justify-content: flex-end; }
+    .dash-bar .account-actions { flex-wrap: wrap; }
     .mobile-tabs { inset-block-start: 106px; }
     .usage-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
     .usage-card { padding: var(--s-3); }
@@ -219,7 +231,6 @@
   <button class="u-btn u-btn-ghost u-btn-sm dash-command" type="button" id="command" aria-label="Open command palette">Commands</button>
   <div class="dash-account">
     <span class="account-email" id="user-email"></span>
-    <span class="u-pill role-pill" id="role-pill"></span>
     <span class="u-pill" id="plan-pill"></span>
     <div class="account-actions" id="account-actions"></div>
   </div>
@@ -291,12 +302,22 @@ function activateTab(name, updateUrl = true) {
   }
   if (updateUrl) {
     const url = new URL(location.href);
-    if (tab === 'overview') url.searchParams.delete('as'); else url.searchParams.set('as', tab);
+    if (['creator', 'brand', 'manager'].includes(tab)) {
+      url.searchParams.set('as', tab);
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('as', data.role);
+      url.searchParams.set('tab', tab);
+    }
     history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
   }
 }
 function chooseTab(id) {
-  if (id !== data.role && (data.roles || []).includes(id)) { location.assign(`/dashboard?as=${id}`); return false; }
+  if (id !== data.role && (data.roles || []).includes(id)) {
+    U.rememberSide(id);
+    location.assign(`/dashboard?as=${id}`);
+    return false;
+  }
   activateTab(id);
   return true;
 }
@@ -338,7 +359,6 @@ function renderAccountHeader() {
     h('em', {}, "Let's see what moved."),
   );
   $('#user-email').textContent = user.email;
-  $('#role-pill').textContent = `${data.role[0].toUpperCase()}${data.role.slice(1)} ${(data.roles || []).length > 1 ? 'view' : 'account'}`;
   $('#dash-intro').textContent = data.role === 'creator'
     ? 'Your receipts, scan activity and future collabs, grounded in evidence.'
     : data.role === 'brand' ? 'Your saved searches, creator mentions and weekly digests, grounded in evidence.'
@@ -348,6 +368,7 @@ function renderAccountHeader() {
   $('#plan-pill').textContent = displayPlan[user.plan] || 'Free';
   $('#plan-pill').className = `u-pill${['pro', 'roster'].includes(user.plan) ? ' u-pill-ok' : ''}`;
   const actions = [];
+  actions.push(U.sideSwitcher(user, data.role));
   if (['pro', 'roster'].includes(user.plan)) actions.push(h('button', { class: 'u-btn u-btn-sm', type: 'button', onclick: openBilling }, 'Billing'));
   else actions.push(h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/creators/?upgrade=pro' }, 'Go Pro'));
   actions.push(h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out'));
@@ -779,6 +800,39 @@ function renderManager() {
 function renderAccount() {
   const panel = $('#panel-account'), user = data.user;
   const weeklyUsage = usageSection();
+  const sides = h('section', { class: 'sides-account u-card u-card-pad', 'aria-labelledby': 'your-sides-title' },
+    h('header', { class: 'panel-head' }, h('div', {}, h('span', { class: 'panel-kicker' }, 'Account access'),
+      h('h2', { id: 'your-sides-title' }, 'Your sides')), h('p', {}, 'One account can work in every way you do.')),
+    h('div', { class: 'side-setting-list' }, ...['creator', 'brand', 'manager'].map((role) => {
+      const primary = role === user.role;
+      const enabled = (data.roles || [user.role]).includes(role);
+      const locked = (user.lockedRoles || [user.role]).includes(role);
+      const copy = { creator: 'Find brands you already mention, pitch them', brand: 'Find creators who already love you, send proposals', manager: "Run a roster, see every creator's deals" }[role];
+      const toggle = primary ? h('span', { class: 'u-pill u-pill-ok' }, 'Main side')
+        : locked ? h('span', { class: 'u-pill u-pill-ok' }, 'Included for your team')
+        : h('label', { class: 'side-setting-toggle' },
+          h('input', { type: 'checkbox', checked: enabled, 'aria-label': `${enabled ? 'Remove' : 'Add'} ${role} side`,
+            onchange: async (event) => {
+              const input = event.currentTarget, next = input.checked;
+              input.disabled = true;
+              try {
+                const updated = await U.setRole(role, next);
+                data.user = updated; data.roles = updated.roles;
+                if (!updated.roles.includes(data.role)) {
+                  U.rememberSide(updated.role);
+                  location.replace(`/dashboard?as=${encodeURIComponent(updated.role)}`);
+                  return;
+                }
+                buildTabs();
+                render();
+                activateTab('account', false);
+                U.toast(`${role[0].toUpperCase()}${role.slice(1)} side ${next ? 'added' : 'removed'}.`, { kind: 'ok' });
+              } catch (error) { input.checked = !next; input.disabled = false; U.toast(error.message, { kind: 'error' }); }
+            } }),
+          h('span', {}, enabled ? 'On' : 'Off'));
+      return h('div', { class: 'side-setting-row' },
+        h('div', { class: 'side-setting-copy' }, h('strong', {}, `${role[0].toUpperCase()}${role.slice(1)}`), h('small', {}, copy)), toggle);
+    })));
   const facts = h('dl', { class: 'account-facts' },
     h('dt', {}, 'Email'), h('dd', {}, user.email),
     h('dt', {}, 'Plan'), h('dd', {}, h('span', { class: `u-pill${['pro', 'roster'].includes(user.plan) ? ' u-pill-ok' : ''}` }, displayPlan[user.plan] || 'Free')),
@@ -792,6 +846,7 @@ function renderAccount() {
   panel.replaceChildren(...[
     panelHead('Account', 'Your account', 'Plan, access and billing, without leaving your workspace.'),
     h('div', { class: 'account-card' }, card('Membership', facts), card('Actions', actions)),
+    sides,
     weeklyUsage ? h('section', { class: 'section-gap' }, h('h3', {}, 'Weekly usage'), weeklyUsage) : null,
   ].filter(Boolean));
 }
@@ -819,12 +874,21 @@ function addPaletteActions() {
 
 (async () => {
   try {
-    const asked = new URLSearchParams(location.search).get('as');
-    data = await api(`/dashboard${asked ? `?as=${encodeURIComponent(asked)}` : ''}`);
+    const params = new URLSearchParams(location.search), asked = params.get('as'), tab = params.get('tab');
+    const requested = ['creator', 'brand', 'manager'].includes(asked) ? asked : !asked ? U.activeSide() : null;
+    data = await api(`/dashboard${requested ? `?as=${encodeURIComponent(requested)}` : ''}`);
+    if (['creator', 'brand', 'manager'].includes(asked) && asked !== data.role) {
+      const url = new URL(location.href);
+      url.searchParams.set('as', data.role);
+      history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+    }
+    if (requested === data.role) U.rememberSide(data.role);
     buildTabs();
     render();
     addPaletteActions();
-    activateTab(asked === data.role || asked === 'account' ? asked : 'overview', false);
+    const initialTab = ['overview', 'account'].includes(tab) ? tab
+      : asked === 'account' ? 'account' : requested === data.role ? requested : 'overview';
+    activateTab(initialTab, false);
   } catch (error) {
     if (error.status === 401) { location.replace('/creators/?signin=1'); return; }
     $('#dashboard-error').hidden = false;

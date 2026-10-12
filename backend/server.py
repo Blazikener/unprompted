@@ -741,7 +741,9 @@ class Handler(SimpleHTTPRequestHandler):
         path = url.path
         m = re.fullmatch(r"/api/searches/(\d+)", path)
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
-        if path.startswith("/api/creators/"):
+        if path == "/api/me/roles":
+            self.api(lambda: creator.roles_route(self))
+        elif path.startswith("/api/creators/"):
             self.api(lambda: creator.dispatch(self))
         elif path.startswith("/api/digests"):
             self.api(lambda: digest.dispatch(self))
@@ -821,6 +823,8 @@ class Handler(SimpleHTTPRequestHandler):
         routes = {"/api/searches": run_search, "/api/checks": run_check,
                   "/api/searches/stream": lambda body, user: Stream(search_events(*parse(body), user=user))}
         route = routes.get(urlparse(self.path).path)
+        if urlparse(self.path).path == "/api/me/roles":
+            return self.api(lambda: creator.roles_route(self))
         if self.path.startswith("/api/creators/"):
             return self.api(lambda: creator.dispatch(self))
         if self.path.startswith("/api/digests"):

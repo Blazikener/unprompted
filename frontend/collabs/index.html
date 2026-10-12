@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Collabs · Unprompted</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/ui/ui.css?v=3">
+<link rel="stylesheet" href="/ui/ui.css?v=4">
 <link rel="stylesheet" href="/collab/collab.css?v=1">
-<script src="/ui/ui.js?v=2"></script>
+<script src="/ui/ui.js?v=3"></script>
 <script src="/collab/collab.js?v=1"></script>
 </head>
 <body class="u-stage">
@@ -18,7 +18,7 @@
   </nav>
   <span class="grow"></span>
   <span class="bar-note">Collabs</span>
-  <span id="who"></span>
+  <div id="who"></div>
 </header>
 <main class="page page-wide">
   <section id="app" aria-busy="true" tabindex="-1"><p class="u-muted">Loading your collabs…</p></section>
@@ -116,15 +116,14 @@
         section('Creator pitches', profile))];
   }
 
-  function roleSwitch() {
-    if ((data.roles || []).length < 2) return null;
-    return h('nav', { class: 'c-actions', 'aria-label': 'Account side' }, ...data.roles.map((r) => h('a', {
-      class: `u-btn u-btn-sm${r === data.role ? ' u-btn-primary' : ''}`, href: `/collabs?as=${r}`, 'aria-current': r === data.role ? 'page' : null,
-    }, r === 'brand' ? 'As a brand' : 'As a creator')));
+  function accountHeader(user, role = user.role) {
+    $('#who').replaceChildren(U.sideSwitcher(user, role), h('span', { class: 'email' }, user.email),
+      h('a', { href: '/dashboard' }, 'Dashboard'),
+      h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await C.call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
   }
 
   function render() {
-    show(roleSwitch(), ...(data.role === 'brand' ? brandView() : creatorView()));
+    show(...(data.role === 'brand' ? brandView() : creatorView()));
   }
 
   async function load() {
@@ -134,18 +133,27 @@
         return show(h('div', { class: 'c-card' }, h('h1', { class: 'u-h3' }, 'Sign in to see your collabs.'),
           h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/' }, 'Creator sign-in'), h('a', { class: 'u-btn', href: '/brands/' }, 'Brand sign-in'))));
       }
-      $('#who').replaceChildren(h('span', { class: 'email' }, me.email), h('a', { href: '/dashboard' }, 'Dashboard'),
-        h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await C.call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
+      accountHeader(me);
       if (!U.hasRole(me, 'creator') && !U.hasRole(me, 'brand')) {
-        return show(h('div', { class: 'c-card', role: 'status' }, h('h1', { class: 'u-h3' }, "You're signed in with a manager account."),
-          h('p', {}, 'Collabs belong to creator and brand accounts. Track your roster’s brands and deals from the roster page.'),
-          h('div', { class: 'c-actions' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/roster' }, 'Open your roster'))));
+        const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+        U.roleNotice(notice, me, 'creator', 'Collabs belong to creator and brand sides. Add the creator side to pitch brands and manage creator deals.');
+        return show(notice);
       }
-      data = await C.call(`/api/collabs/mine${params.get('as') ? `?as=${encodeURIComponent(params.get('as'))}` : ''}`);
-      render();
       const pitch = params.get('pitch');
+      const preferred = params.get('as') || (pitch && U.hasRole(me, 'creator') ? 'creator' : U.activeSide());
+      const requested = preferred && U.hasRole(me, preferred) ? preferred : '';
+      data = await C.call(`/api/collabs/mine${requested ? `?as=${encodeURIComponent(requested)}` : ''}`);
+      accountHeader(me, data.role);
+      render();
       if (pitch && data.role === 'creator') { history.replaceState(null, '', location.pathname + location.search); pitchDialog(pitch); }
     } catch (e) {
+      if (e.status === 403 && e.data?.role) {
+        const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+        U.roleNotice(notice, me || { role: e.data.role }, e.data.missing || 'creator',
+          'Collabs belong to creator and brand sides.');
+        show(notice);
+        return;
+      }
       show(h('div', { class: 'c-card', role: 'alert' }, h('p', {}, e.message)));
     }
   }
