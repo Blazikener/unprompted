@@ -13,6 +13,7 @@ import pytest  # noqa: E402
 from psycopg.types.json import Jsonb  # noqa: E402
 
 import collabs  # noqa: E402
+import creator  # noqa: E402
 import digest  # noqa: E402
 import server  # noqa: E402
 from server import ApiError  # noqa: E402
@@ -24,12 +25,19 @@ TERMS = {"deliverables": "2 TikToks + 1 story", "timing": "June", "budgetUsd": 2
 @pytest.fixture(autouse=True)
 def clean(monkeypatch):
     server.init_db()
-    with server.connect() as db:
-        db.execute("DELETE FROM collabs WHERE handle = %s OR lower(brand) LIKE 'collabtest%%'", (HANDLE,))
-        db.execute("DELETE FROM brand_profiles WHERE lower(brand) LIKE 'collabtest%%'")
-        db.execute("DELETE FROM creator_handles WHERE handle = %s", (HANDLE,))
-        db.execute("DELETE FROM users WHERE email LIKE 'collab-%%@example.test'")
+
+    def cleanup():
+        with server.connect() as db:
+            db.execute("DELETE FROM collabs WHERE handle = %s OR lower(brand) LIKE 'collabtest%%'", (HANDLE,))
+            db.execute("DELETE FROM brand_profiles WHERE lower(brand) LIKE 'collabtest%%'")
+            db.execute("DELETE FROM creator_handles WHERE handle = %s", (HANDLE,))
+            db.execute("DELETE FROM videos WHERE id LIKE 'collabs-proof-%%'")
+            db.execute("DELETE FROM users WHERE email LIKE 'collab-%%@example.test'")
+
+    cleanup()
     monkeypatch.setenv("LICENSE_NOTIFY_EMAIL", "ops@u.test")
+    yield
+    cleanup()
 
 
 @pytest.fixture
@@ -51,6 +59,34 @@ def verified_creator():
         db.execute("INSERT INTO creator_handles (user_id, platform, handle, code, verified_at, verified_by)"
                    " VALUES (%s, 'tiktok', %s, 'c', now(), 'operator')", (u["id"], HANDLE))
     return u
+
+
+def proof_video(handle):
+    video_id = "collabs-proof-" + secrets.token_hex(8)
+    with server.connect() as db:
+        db.execute(
+            "INSERT INTO videos (id, platform, handle, published_at, views, raw) "
+            "VALUES (%s, 'tiktok', %s, now(), 1200, %s)",
+            (video_id, handle, Jsonb({
+                "platform": "tiktok", "profileHandle": handle, "platformId": video_id,
+                "viewsCount": 1200, "publishedAt": "2026-10-01T00:00:00Z",
+            })),
+        )
+    return video_id
+
+
+def proof_request(user, handle, video_id, side=None):
+    with server.connect() as db:
+        cookie = creator.start_session(db, user["id"])[1].split(";", 1)[0]
+
+    class Handler:
+        command = "GET"
+        path = "/api/collabs/proof?v=%s&platform=tiktok&handle=%s%s" % (
+            video_id, handle, "&as=" + side if side else "",
+        )
+        headers = {"Cookie": cookie}
+
+    return collabs.dispatch(Handler())
 
 
 def add_scan(u, brand):
@@ -143,6 +179,39 @@ def test_roles_cannot_see_each_others_collabs(mail):
     with pytest.raises(ApiError):
         collabs.mine(new_user("manager"))
     assert collabs.load_mine(ali, c["id"])[1] == "creator"
+
+
+def test_brand_side_can_view_unowned_proof_but_explicit_creator_side_cannot():
+    user = new_user("creator")
+    with server.connect() as db:
+        db.execute("UPDATE users SET extra_roles = %s WHERE id = %s", (["brand"], user["id"]))
+    handle = "someone.else"
+    video_id = proof_video(handle)
+
+    proof = proof_request(user, handle, video_id)
+    assert proof["proof"]["url"].endswith(video_id)
+
+    with pytest.raises(ApiError) as error:
+        proof_request(user, handle, video_id, side="creator")
+    assert error.value.status == 403
+
+
+def test_creator_only_cannot_view_unowned_proof():
+    user = new_user("creator")
+    handle = "someone.else"
+    video_id = proof_video(handle)
+
+    with pytest.raises(ApiError) as error:
+        proof_request(user, handle, video_id)
+    assert error.value.status == 403
+
+
+def test_creator_only_can_view_verified_handle_proof():
+    user = verified_creator()
+    video_id = proof_video(HANDLE)
+
+    proof = proof_request(user, HANDLE, video_id)
+    assert proof["proof"]["url"].endswith(video_id)
 
 
 def test_proposal_from_a_weekly_report_link(mail, monkeypatch):

@@ -570,7 +570,17 @@ def dispatch(handler):
             q = parse_qs(urlparse(handler.path).query)
             platform, handle = licenses.norm((q.get("platform") or [""])[0], (q.get("handle") or [""])[0])
             user = creator.require_user(handler.headers)
-            if creator.has_role(user, "creator"):
+            creator_view = (q.get("as") or [None])[0] == "creator"
+            if creator_view:
+                if not creator.has_role(user, "creator"):
+                    raise ApiError(403, "Not allowed.")
+            elif creator.has_role(user, "brand"):
+                creator_view = False
+            elif creator.has_role(user, "creator"):
+                creator_view = True
+            else:
+                raise ApiError(403, "Not allowed.")
+            if creator_view:
                 with connect() as db:
                     owned = db.execute(
                         "SELECT 1 FROM creator_handles WHERE user_id = %s AND platform = %s"
@@ -579,8 +589,6 @@ def dispatch(handler):
                     ).fetchone()
                 if not owned:
                     raise ApiError(403, "Verify this handle before viewing its receipt.")
-            elif not creator.has_role(user, "brand"):
-                raise ApiError(403, "Not allowed.")
             return {"proof": video_proof((q.get("v") or [""])[0][:64], platform, handle)}
         if path == "/partners":
             return {"partners": [{"brand": p["brand"], "about": p["about"]} for p in partners()]}
