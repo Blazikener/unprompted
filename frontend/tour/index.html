@@ -251,10 +251,11 @@ function hrefFor(role) {
 }
 
 async function chooseSide(event, role) {
-  if (!user) return;
   event.preventDefault();
   const link = event.currentTarget;
   link.setAttribute('aria-busy', 'true');
+  user = await me;
+  if (!user) { location.href = hrefFor(role); return; }
   try {
     if (!U.hasRole(user, role)) user = await U.setRole(role, true);
     U.rememberSide(role);
@@ -320,7 +321,7 @@ $('#tour-next').addEventListener('click', () => {
   else setStep(currentStep + 1);
 });
 window.addEventListener('keydown', (event) => {
-  if (event.altKey || event.ctrlKey || event.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
   if (event.key === 'ArrowRight') { event.preventDefault(); setStep(currentStep + 1); }
   if (event.key === 'ArrowLeft') { event.preventDefault(); setStep(currentStep - 1); }
 });
@@ -341,8 +342,10 @@ const requested = Number.parseInt(new URLSearchParams(location.search).get('step
 setStep(Number.isFinite(requested) ? requested - 1 : 0, false);
 if (!Number.isFinite(requested) || requested < 1 || requested > steps.length) setStep(0);
 document.addEventListener('DOMContentLoaded', () => window.M?.scan($('#tour-art')), { once: true });
-fetch('/api/creators/me').then((response) => response.ok ? response.json() : null).then((data) => {
-  user = data?.user || null;
+const me = fetch('/api/creators/me').then((response) => response.ok ? response.json() : null)
+  .then((data) => data?.user || null, () => null);
+me.then((found) => {
+  user = found;
   if (!user) return;
   $('#who').replaceChildren(U.sideSwitcher(user, U.hasRole(user, U.activeSide()) ? U.activeSide() : user.role),
     h('span', { class: 'tour-email' }, user.email));
