@@ -266,6 +266,12 @@ def test_ld_item_parses_relay_video_jsonld():
     assert item["captionOnly"] is True
 
 
+def test_ld_item_does_not_treat_email_address_as_mention():
+    html = '<script id="VideoObject">{"name":"Hails@tiddle.io says #GRWM"}</script>'
+    item = tiktok_public.ld_item(html, "7502836286051421471")
+    assert item["textExtra"] == [{"hashtagName": "GRWM"}]
+
+
 @pytest.mark.parametrize("html", ["<html><body>no structured data</body></html>",
                                   '<script id="VideoObject">{"uploadDate":</script>'])
 def test_ld_item_returns_none_for_missing_or_malformed_jsonld(html):

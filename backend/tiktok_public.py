@@ -21,7 +21,7 @@ STATE_RE = re.compile(r'<script id="(?:__FRONTITY_CONNECT_STATE__|__UNIVERSAL_DA
                       r' type="application/json">(.*?)</script>', re.S)
 VIDEO_OBJECT_RE = re.compile(r'<script[^>]*id="VideoObject"[^>]*>(.*?)</script>', re.S)
 HASHTAG_RE = re.compile(r"#(\w+)")
-MENTION_RE = re.compile(r"@([\w.]{2,24})")
+MENTION_RE = re.compile(r"(?<![\w.])@([\w.]{2,24})")
 DURATION_RE = re.compile(r"^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$")
 CUE_RE = re.compile(r"(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d+)\s+-->\s+(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d+)")
 MAX_VIDEOS = 12

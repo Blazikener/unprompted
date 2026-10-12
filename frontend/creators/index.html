@@ -1032,6 +1032,7 @@ function render() {
     ? h('div', { class: 'u-stack', style: { '--gap': 'var(--s-2)' } },
       h('p', { class: 'note' }, note),
       !ro && !s.sample ? h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button',
+        style: { 'justify-self': 'start' },
         onclick: () => runScan(p.platform, p.handle, { full: true }) }, 'Run full scan') : null)
     : h('p', { class: 'note' }, note) : null;
   const chips = s.brands.length ? h('div', { class: 'chips', role: 'list', 'aria-label': 'Brands you talk about, with mention counts' }, ...s.brands.map((b, i) => b.locked
@@ -1041,7 +1042,9 @@ function render() {
   const head = h('div', { class: 'section-h' }, h('h2', { class: 'u-h3' }, ro ? 'Brands, most talked-about first' : 'Your brands, best pitch first'), h('small', {}, 'unpaid mentions rank above past sponsors'));
   const list = s.brands.length ? h('div', { id: 'brands' }, ...s.brands.map((b, i) => brandCard(b, i)))
     : h('div', { class: 'u-empty' }, h('b', {}, `No catalog brand in these ${p.videos} videos`),
-      h('span', {}, 'We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don\'t track yet, tell us in the sidebar and we\'ll add it.'));
+      h('span', {}, s.source === 'captions'
+        ? 'We read the captions, hashtags and @mentions. A full scan also reads what you said on camera.'
+        : 'We read every transcript, caption, hashtag and @mention. If you name-drop a brand we don\'t track yet, tell us in the sidebar and we\'ll add it.'));
   const upsell = free && locked && !ro && S.offer.plan ? h('div', { class: 'upsell' }, h('div', {}, h('b', {}, `${locked} more brand${locked === 1 ? '' : 's'} hidden`),
     h('span', {}, S.offer.arm === 'c' ? 'Weekly leads shows every brand and receipt, checks who’s paying, and emails you the brands paying creators every Monday.'
       : 'Pro shows every brand and receipt, checks who’s paying, and drafts the pitch.')),
