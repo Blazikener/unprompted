@@ -144,7 +144,8 @@ def partners():
 
 
 def partner(name):
-    return next((p for p in partners() if p["brand"].lower() == brand_key(name).lower()), None)
+    key = brand_key(name).casefold()
+    return next((p for p in partners() if brand_key(p["brand"]).casefold() == key), None)
 
 
 # ---------------------------------------------------------------- proof: the receipt that makes the ask credible
@@ -235,7 +236,7 @@ def propose(user, body, d=None):
 
 
 def pitch(user, body):
-    """A creator pitches a brand that's open to pitches, with a receipt from their own scan."""
+    """A creator pitches a brand that's open to pitches, with proof from a scan or verified handle."""
     p = partner(body.get("brand"))
     if not p:
         raise ApiError(404, "That brand isn't taking pitches on Unprompted yet. Add it to your watchlist and we'll tell you when it is.")
@@ -245,7 +246,17 @@ def pitch(user, body):
         platform, handle, proof = scan_proof(user, scan_id, p["brand"])
     else:
         platform, handle = licenses.norm(body.get("platform"), body.get("handle"))
-        proof = None
+        video_id = str(body.get("videoId") or body.get("video_id") or "")[:64]
+        if body.get("platform") or body.get("handle") or video_id:
+            with connect() as db:
+                owned = db.execute(
+                    "SELECT 1 FROM creator_handles WHERE user_id = %s AND platform = %s"
+                    " AND lower(handle) = %s AND verified_at IS NOT NULL",
+                    (user["id"], platform, handle),
+                ).fetchone()
+            if not owned:
+                raise ApiError(403, "Verify this handle before pitching with its receipt.")
+        proof = video_proof(video_id, platform, handle) if video_id else None
     with connect() as db:
         sent = db.execute("SELECT count(*) AS n FROM collabs WHERE origin = 'creator' AND creator_user_id = %s"
                           " AND created_at > now() - interval '7 days'", (user["id"],)).fetchone()["n"]
@@ -464,7 +475,10 @@ def weekly(user, force=False):
     if brands:
         sections.append(("Brands that found you this week", "".join(
             row(item["brand"], "found %d of your videos" % item["videos"] if item["videos"] else "checked your profile",
-                inbox_url() + "?pitch=" + quote(item["brand"], safe="") if item["open"]
+                inbox_url() + "?as=creator&pitch=" + quote(item["brand"], safe="")
+                + "&platform=" + quote(item["platform"], safe="")
+                + "&handle=" + quote(item["handle"], safe="")
+                + "&video=" + quote(str(item["videoId"] or ""), safe="") if item["open"]
                 else digest.app_url() + "/dashboard?as=creator", "Pitch" if item["open"] else "See it")
             for item in brands[:5]
         )))
@@ -506,7 +520,7 @@ def run_weekly(force=False):
             " OR u.id IN (SELECT h.user_id FROM creator_handles h JOIN collabs c ON c.platform = h.platform AND c.handle = h.handle"
             " WHERE h.verified_at IS NOT NULL AND c.status IN ('sent', 'countered'))"
             " OR u.id IN (SELECT user_id FROM creator_handles WHERE verified_at IS NOT NULL)"
-            " OR u.id IN (SELECT user_id FROM scans WHERE created_at > now() - interval '90 days'))"
+            " OR u.id IN (SELECT user_id FROM scans))"
             " AND (%s OR s.sent_at IS NULL OR s.sent_at < now() - %s)", (force, WEEKLY_EVERY)).fetchall()
     sent = 0
     for u in users:
@@ -553,9 +567,20 @@ def dispatch(handler):
             vid = (parse_qs(urlparse(handler.path).query).get("v") or [""])[0][:64]
             return {"brand": d["brand"], "video": digest.license_video(d, vid)}
         if path == "/proof":
-            creator.require_role(handler.headers, "brand")
             q = parse_qs(urlparse(handler.path).query)
             platform, handle = licenses.norm((q.get("platform") or [""])[0], (q.get("handle") or [""])[0])
+            user = creator.require_user(handler.headers)
+            if creator.has_role(user, "creator"):
+                with connect() as db:
+                    owned = db.execute(
+                        "SELECT 1 FROM creator_handles WHERE user_id = %s AND platform = %s"
+                        " AND lower(handle) = %s AND verified_at IS NOT NULL",
+                        (user["id"], platform, handle),
+                    ).fetchone()
+                if not owned:
+                    raise ApiError(403, "Verify this handle before viewing its receipt.")
+            elif not creator.has_role(user, "brand"):
+                raise ApiError(403, "Not allowed.")
             return {"proof": video_proof((q.get("v") or [""])[0][:64], platform, handle)}
         if path == "/partners":
             return {"partners": [{"brand": p["brand"], "about": p["about"]} for p in partners()]}

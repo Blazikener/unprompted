@@ -621,10 +621,13 @@ async function trackFoundBrand(brand, button) {
     });
     const result = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(result.error || 'Something went wrong.');
-    button.className = 'u-pill u-pill-ok found-tracking found-action';
-    button.textContent = 'Tracking';
-    button.disabled = true;
-    button.removeAttribute('aria-busy');
+    const key = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const item = data?.creator?.found?.brands?.find((row) => key(row.brand) === key(brand));
+    if (item) item.tracked = true;
+    document.querySelectorAll('[data-found-brand]').forEach((node) => {
+      if (key(node.dataset.foundBrand) !== key(brand) || node.tagName !== 'BUTTON') return;
+      node.replaceWith(h('span', { class: 'u-pill u-pill-ok found-action', 'data-found-brand': brand }, 'Tracking'));
+    });
   } catch (error) {
     button.disabled = false;
     button.removeAttribute('aria-busy');
@@ -641,12 +644,15 @@ function foundCard(found = {}) {
     const action = item.open
       ? h('a', {
         class: 'u-btn u-btn-sm u-btn-primary found-action',
-        href: `/collabs?as=creator&pitch=${encodeURIComponent(item.brand)}`,
+        'data-found-brand': item.brand,
+        href: `/collabs?as=creator&pitch=${encodeURIComponent(item.brand)}&platform=${encodeURIComponent(item.platform || '')}` +
+          `&handle=${encodeURIComponent(item.handle || '')}&video=${encodeURIComponent(item.videoId || '')}`,
       }, 'Pitch')
       : item.tracked
-        ? h('span', { class: 'u-pill u-pill-ok found-action' }, 'Tracking')
+        ? h('span', { class: 'u-pill u-pill-ok found-action', 'data-found-brand': item.brand }, 'Tracking')
         : h('button', {
           class: 'u-btn u-btn-ghost u-btn-sm found-action', type: 'button',
+          'data-found-brand': item.brand,
           onclick: (event) => trackFoundBrand(item.brand, event.currentTarget),
         }, 'Track brand');
     return h('li', {}, h('div', { class: 'list-row found-row' },

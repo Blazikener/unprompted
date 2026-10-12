@@ -75,7 +75,10 @@ def video(prefix, label, handle, platform="tiktok"):
         db.execute(
             "INSERT INTO videos (id, platform, handle, published_at, views, raw) "
             "VALUES (%s, %s, %s, now(), 1200, %s)",
-            (video_id, platform, handle, Jsonb({})),
+            (video_id, platform, handle, Jsonb({
+                "platform": platform, "profileHandle": handle, "platformId": video_id,
+                "viewsCount": 1200, "publishedAt": datetime.now(UTC).isoformat(),
+            })),
         )
     return video_id
 
@@ -92,8 +95,8 @@ def search(prefix, brand, user_id, params=None, created_at=None):
 def mention(search_id, video_id, kind="spoken"):
     with server.connect() as db:
         db.execute(
-            "INSERT INTO mentions (search_id, video_id, kind, hits) VALUES (%s, %s, %s, 1)",
-            (search_id, video_id, kind),
+            "INSERT INTO mentions (search_id, video_id, kind, hits, quote) VALUES (%s, %s, %s, 1, %s)",
+            (search_id, video_id, kind, Jsonb({"text": "I love this brand", "start": 9})),
         )
 
 
@@ -123,7 +126,7 @@ def test_verified_handle_reports_other_users_search(prefix):
     assert not {"user_id", "email"} & result["brands"][0].keys()
 
 
-def test_brand_name_uses_latest_search_and_searches_are_distinct(prefix):
+def test_brand_name_keeps_first_display_name_and_searches_are_distinct(prefix):
     user, finder = new_user(prefix, "creator"), new_user(prefix, "finder", "brand")
     verified_handle(user, "maya.eats")
     video_id = video(prefix, "same-video", "maya.eats")
@@ -135,7 +138,7 @@ def test_brand_name_uses_latest_search_and_searches_are_distinct(prefix):
 
     row = found.week(user)["brands"][0]
 
-    assert row["brand"] == f"{prefix} TRAIL CO"
+    assert row["brand"] == f"{prefix} Trail Co"
     assert (row["searches"], row["videos"]) == (2, 1)
 
 
@@ -199,6 +202,77 @@ def test_handle_matching_is_case_insensitive_and_other_users_checks_are_counted(
     assert (rows[searched_brand]["searches"], rows[searched_brand]["checks"]) == (1, 1)
     assert rows[check_brand]["checks"] == 1
     assert (rows[check_brand]["searches"], rows[check_brand]["videos"]) == (0, 0)
+    assert (rows[check_brand]["platform"], rows[check_brand]["handle"], rows[check_brand]["videoId"]) == (
+        "tiktok", "found.case", None,
+    )
+
+
+def test_brand_names_group_by_brand_key_and_keep_first_display_name(prefix):
+    user, finder = new_user(prefix, "creator"), new_user(prefix, "finder", "brand")
+    verified_handle(user, "maya.eats")
+    first = f"{prefix} Trail  Co"
+    later = f"{prefix} Trail Co"
+    video_one = video(prefix, "trail-one", "maya.eats")
+    video_two = video(prefix, "trail-two", "maya.eats")
+    search_one = search(prefix, first, finder["id"], created_at=datetime.now(UTC) - timedelta(hours=1))
+    search_two = search(prefix, later, finder["id"])
+    mention(search_one, video_one)
+    mention(search_two, video_two)
+    brand_user = new_user(prefix, "trail-brand", "brand")
+    collabs.set_profile(brand_user, {"brand": f"{prefix} Trail Co", "open": True})
+    collabs.watch(user, {"brand": f"{prefix} Trail Co"})
+
+    rows = found.week(user)["brands"]
+
+    assert len(rows) == 1 and rows[0]["brand"] == first
+    assert rows[0]["searches"] == 2 and rows[0]["open"] is True and rows[0]["tracked"] is True
+
+
+def test_found_brand_picks_best_handle_and_latest_video(prefix):
+    user, finder = new_user(prefix, "creator"), new_user(prefix, "finder", "brand")
+    verified_handle(user, "first.handle")
+    verified_handle(user, "second.handle")
+    brand = f"{prefix} Proof Brand"
+    ids = {
+        "first-old": video(prefix, "first-old", "first.handle"),
+        "first-new": video(prefix, "first-new", "first.handle"),
+        "second-old": video(prefix, "second-old", "second.handle"),
+        "second-new": video(prefix, "second-new", "second.handle"),
+    }
+    with server.connect() as db:
+        for label, days in (("first-old", 5), ("first-new", 4), ("second-old", 2), ("second-new", 1)):
+            db.execute("UPDATE videos SET published_at = now() - make_interval(days => %s) WHERE id = %s",
+                       (days, ids[label]))
+    search_id = search(prefix, brand, finder["id"])
+    for video_id in ids.values():
+        mention(search_id, video_id)
+
+    row = found.week(user)["brands"][0]
+
+    assert (row["platform"], row["handle"], row["videoId"]) == ("tiktok", "second.handle", ids["second-new"])
+
+
+def test_pitch_attaches_found_video_proof_to_its_verified_handle_and_rejects_other_handle(prefix):
+    user, brand_user = new_user(prefix, "creator"), new_user(prefix, "brand", "brand")
+    verified_handle(user, "found.handle")
+    found_video = video(prefix, "found-proof", "found.handle")
+    other_video = video(prefix, "other-proof", "other.handle")
+    brand = f"{prefix} Proof Pitch"
+    search_id = search(prefix, brand, brand_user["id"])
+    mention(search_id, found_video)
+    collabs.set_profile(brand_user, {"brand": brand, "open": True})
+
+    row = found.week(user)["brands"][0]
+    pitch = collabs.pitch(user, {
+        **{"deliverables": "1 TikTok", "timing": "June", "budgetUsd": 800},
+        "brand": brand, "platform": row["platform"], "handle": row["handle"], "videoId": row["videoId"],
+    })
+    assert pitch["handle"] == "found.handle" and pitch["proof"]["url"].endswith(found_video)
+    with pytest.raises(server.ApiError):
+        collabs.pitch(user, {
+            "deliverables": "1 TikTok", "timing": "June", "budgetUsd": 800, "brand": brand,
+            "platform": "tiktok", "handle": "found.handle", "videoId": other_video,
+        })
 
 
 def test_scanned_unverified_handle_is_only_reported_as_locked(prefix):
@@ -242,12 +316,14 @@ def test_weekly_includes_found_brand_when_it_is_the_only_signal(prefix, monkeypa
     video_id = video(prefix, "weekly-found", "maya.eats")
     search_id = search(prefix, brand, finder["id"])
     mention(search_id, video_id)
+    collabs.set_profile(finder, {"brand": brand, "open": True})
 
     subject, body, _ = collabs.weekly(user)
 
     assert subject.startswith("This week: 1 brand found your videos")
     assert "Brands that found you this week" in body and brand in body
-    assert "See it" in body and "u.test/dashboard?as=creator" in body
+    assert "Pitch" in body and "as=creator" in body and "platform=tiktok" in body
+    assert "handle=maya.eats" in body and video_id in body
 
 
 def test_weekly_masks_unverified_brands_and_links_to_claim(prefix, monkeypatch):
@@ -290,6 +366,21 @@ def test_weekly_sends_to_verified_handle_owner_without_watchlist_or_collabs(pref
     assert len(sent) == 1 and sent[0][0] == user["email"] and brand in sent[0][2]
     with server.connect() as db:
         assert db.execute("SELECT 1 FROM collab_weekly WHERE user_id = %s", (user["id"],)).fetchone()
+
+
+def test_weekly_scheduler_includes_old_scan_with_fresh_search(prefix, monkeypatch):
+    user, finder = new_user(prefix, "old-scanner"), new_user(prefix, "finder", "brand")
+    scan_id = scanned_handle(user, "old.scanner")
+    with server.connect() as db:
+        db.execute("UPDATE scans SET created_at = now() - interval '100 days' WHERE id = %s", (scan_id,))
+    video_id = video(prefix, "old-scan-fresh-search", "old.scanner")
+    brand = f"{prefix} Fresh Search"
+    mention(search(prefix, brand, finder["id"]), video_id)
+    sent = []
+    monkeypatch.setattr(collabs.digest, "send", lambda email, subject, body: sent.append((email, subject, body)) or True)
+
+    assert collabs.run_weekly(force=True) >= 1
+    assert any(mail[0] == user["email"] and "Verify to see who" in mail[2] for mail in sent)
 
 
 def test_dashboard_exposes_found_only_for_creator_role(prefix):

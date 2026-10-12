@@ -1,12 +1,12 @@
 """Weekly brand-discovery signals for claimed creator handles."""
 
-from datetime import datetime
-
 from server import connect
 
 
 def week(user, days=7):
     user_id = user["id"]
+    import collabs
+
     query = """
     WITH owned AS (
       SELECT DISTINCT platform, lower(handle) AS handle
@@ -24,109 +24,109 @@ def week(user, days=7):
       SELECT platform, handle, true AS is_owned FROM owned
       UNION ALL
       SELECT platform, handle, false AS is_owned FROM scanned
-    ),
-    brand_matches AS (
-      SELECT s.id AS search_id, s.brand, s.created_at, v.id AS video_id,
-             h.platform, h.handle, h.is_owned
-      FROM searches s
-      LEFT JOIN digests d ON d.id::text = s.params->>'digest'
-      JOIN mentions m ON m.search_id = s.id AND m.kind NOT IN ('owned', 'unverified')
-      JOIN videos v ON v.id = m.video_id
-      JOIN target_handles h ON h.platform = v.platform AND h.handle = lower(v.handle)
-      WHERE s.created_at > now() - make_interval(days => %s)
-        AND (
-          (s.user_id IS NOT NULL AND s.user_id <> %s)
-          OR (s.params ? 'digest' AND d.id IS NOT NULL AND d.user_id IS DISTINCT FROM %s)
-        )
-    ),
-    search_brands AS (
-      SELECT lower(brand) AS brand_key,
-             (array_agg(brand ORDER BY created_at DESC, search_id DESC))[1] AS brand,
-             count(DISTINCT search_id)::int AS searches,
-             count(DISTINCT video_id)::int AS videos,
-             0::int AS checks,
-             max(created_at) AS last_at
-      FROM brand_matches
-      WHERE is_owned
-      GROUP BY lower(brand)
-    ),
-    check_brands AS (
-      SELECT lower(c.brand) AS brand_key,
-             (array_agg(c.brand ORDER BY c.created_at DESC, c.id DESC))[1] AS brand,
-             0::int AS searches,
-             0::int AS videos,
-             count(*)::int AS checks,
-             max(c.created_at) AS last_at
-      FROM checks c
-      JOIN owned h ON h.platform = c.platform AND h.handle = lower(c.handle)
-      WHERE c.user_id IS NOT NULL
-        AND c.user_id IS DISTINCT FROM %s
-        AND c.created_at > now() - make_interval(days => %s)
-      GROUP BY lower(c.brand)
-    ),
-    merged_brands AS (
-      SELECT coalesce(s.brand_key, c.brand_key) AS brand_key,
-             coalesce(s.brand, c.brand) AS brand,
-             coalesce(s.searches, 0) AS searches,
-             coalesce(s.videos, 0) AS videos,
-             coalesce(c.checks, 0) AS checks,
-             greatest(s.last_at, c.last_at) AS last_at
-      FROM search_brands s
-      FULL OUTER JOIN check_brands c USING (brand_key)
-    ),
-    ranked_brands AS (
-      SELECT * FROM merged_brands
-      ORDER BY videos + checks DESC, last_at DESC
-      LIMIT 12
-    ),
-    locked_handles AS (
-      SELECT platform, handle, count(DISTINCT search_id)::int AS searches
-      FROM brand_matches
-      WHERE NOT is_owned
-      GROUP BY platform, handle
     )
-    SELECT 'brand' AS row_type, brand, searches, videos, checks, last_at,
-           NULL::text AS platform, NULL::text AS handle
-    FROM ranked_brands
-    UNION ALL
-    SELECT 'locked' AS row_type, NULL::text AS brand, searches, 0 AS videos, 0 AS checks,
-           NULL::timestamptz AS last_at, platform, handle
-    FROM locked_handles
+    SELECT s.id AS search_id, s.brand, s.created_at, v.id AS video_id, v.published_at,
+           h.platform, h.handle, h.is_owned
+    FROM searches s
+    LEFT JOIN digests d ON d.id::text = s.params->>'digest'
+    JOIN mentions m ON m.search_id = s.id AND m.kind NOT IN ('owned', 'unverified')
+    JOIN videos v ON v.id = m.video_id
+    JOIN target_handles h ON h.platform = v.platform AND h.handle = lower(v.handle)
+    WHERE s.created_at > now() - make_interval(days => %s)
+      AND (
+        (s.user_id IS NOT NULL AND s.user_id <> %s)
+        OR (s.params ? 'digest' AND d.id IS NOT NULL AND d.user_id IS DISTINCT FROM %s)
+      )
+    ORDER BY s.created_at ASC, s.id ASC
     """
     with connect() as db:
-        rows = db.execute(query, (user_id, user_id, days, user_id, user_id, user_id, days)).fetchall()
-        tracked = {
-            row["brand"].lower()
-            for row in db.execute("SELECT brand FROM creator_watch WHERE user_id = %s", (user_id,)).fetchall()
-        }
+        matches = db.execute(query, (user_id, user_id, days, user_id, user_id)).fetchall()
+        checks = db.execute(
+            "SELECT c.id, c.brand, c.created_at, c.platform, lower(c.handle) AS handle"
+            " FROM checks c JOIN creator_handles h ON h.user_id = %s AND h.verified_at IS NOT NULL"
+            " AND h.platform = c.platform AND lower(h.handle) = lower(c.handle)"
+            " WHERE c.user_id IS NOT NULL AND c.user_id <> %s"
+            " AND c.created_at > now() - make_interval(days => %s)"
+            " ORDER BY c.created_at ASC, c.id ASC",
+            (user_id, user_id, days),
+        ).fetchall()
+        tracked = db.execute("SELECT brand FROM creator_watch WHERE user_id = %s", (user_id,)).fetchall()
 
-    brand_rows = []
-    locked = []
-    for row in rows:
-        if row["row_type"] == "locked":
-            locked.append({"platform": row["platform"], "handle": row["handle"], "searches": row["searches"]})
-            continue
-        brand_rows.append({
-            "brand": row["brand"],
-            "searches": row["searches"],
-            "videos": row["videos"],
-            "checks": row["checks"],
-            "lastAt": row["last_at"].isoformat(),
-            "open": False,
-            "tracked": row["brand"].lower() in tracked,
+    def brand_key(name):
+        return collabs.brand_key(name).casefold()
+
+    groups = {}
+
+    def group_for(name):
+        key = brand_key(name)
+        return groups.setdefault(key, {
+            "brand": name, "search_ids": set(), "video_ids": set(), "check_ids": set(),
+            "last_at": None, "handles": {}, "check_handles": {},
         })
 
-    if brand_rows:
-        import collabs
+    events = [(row["created_at"], row["search_id"], "search", row) for row in matches]
+    events.extend((row["created_at"], row["id"], "check", row) for row in checks)
+    events.sort(key=lambda event: (event[0], event[1], event[2]))
+    locked_handles = {}
+    for created_at, _, kind, row in events:
+        if kind == "search" and not row["is_owned"]:
+            key = (row["platform"], row["handle"])
+            locked_handles.setdefault(key, set()).add(row["search_id"])
+            continue
+        entry = group_for(row["brand"])
+        entry["last_at"] = max(entry["last_at"], created_at) if entry["last_at"] else created_at
+        if kind == "check":
+            entry["check_ids"].add(row["id"])
+            key = (row["platform"], row["handle"])
+            handle = entry["check_handles"].setdefault(key, {"ids": set(), "latest": None})
+            handle["ids"].add(row["id"])
+            handle["latest"] = max(handle["latest"], (created_at, row["id"])) if handle["latest"] else (created_at, row["id"])
+        elif row["is_owned"]:
+            entry["search_ids"].add(row["search_id"])
+            entry["video_ids"].add(row["video_id"])
+            key = (row["platform"], row["handle"])
+            handle = entry["handles"].setdefault(key, {"video_ids": set(), "latest": None, "video_id": None})
+            handle["video_ids"].add(row["video_id"])
+            latest = (row["published_at"] or created_at, created_at, row["search_id"], str(row["video_id"]))
+            if handle["latest"] is None or latest > handle["latest"]:
+                handle["latest"], handle["video_id"] = latest, row["video_id"]
 
-        open_brands = {row["brand"].lower() for row in collabs.partners()}
-        for row in brand_rows:
-            row["open"] = row["brand"].lower() in open_brands
-
-    brand_rows.sort(key=lambda row: (
-        -(row["videos"] + row["checks"]),
-        -datetime.fromisoformat(row["lastAt"]).timestamp(),
-    ))
+    open_brands = {brand_key(row["brand"]) for row in collabs.partners()}
+    tracked_brands = {brand_key(row["brand"]) for row in tracked}
+    brand_rows = []
+    for key, entry in groups.items():
+        if entry["handles"]:
+            platform, handle = max(
+                entry["handles"].items(),
+                key=lambda item: (len(item[1]["video_ids"]), item[1]["latest"], item[0]),
+            )[0]
+            video_id = entry["handles"][(platform, handle)]["video_id"]
+        else:
+            platform, handle = max(
+                entry["check_handles"].items(),
+                key=lambda item: (len(item[1]["ids"]), item[1]["latest"], item[0]),
+            )[0]
+            video_id = None
+        brand_rows.append({
+            "brand": entry["brand"],
+            "searches": len(entry["search_ids"]),
+            "videos": len(entry["video_ids"]),
+            "checks": len(entry["check_ids"]),
+            "lastAt": entry["last_at"].isoformat(),
+            "platform": platform,
+            "handle": handle,
+            "videoId": video_id,
+            "open": key in open_brands,
+            "tracked": key in tracked_brands,
+            "_lastAt": entry["last_at"],
+        })
+    brand_rows.sort(key=lambda row: (-(row["videos"] + row["checks"]), -row["_lastAt"].timestamp()))
+    for row in brand_rows:
+        del row["_lastAt"]
+    locked = [
+        {"platform": platform, "handle": handle, "searches": len(search_ids)}
+        for (platform, handle), search_ids in locked_handles.items()
+    ]
     locked.sort(key=lambda row: (-row["searches"], row["platform"], row["handle"]))
     return {
         "days": days,
