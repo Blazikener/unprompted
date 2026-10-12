@@ -50,11 +50,11 @@ def user(db, email):
     return db.execute("INSERT INTO users (email, password) VALUES (%s, 'x') RETURNING id", (email,)).fetchone()["id"]
 
 
-def search(db, brand, user_id, count, days_old=0):
+def search(db, brand, user_id, count, days_old=0, params=None):
     return db.execute(
         "INSERT INTO searches (brand, params, total_count, total_views, user_id, created_at)"
-        " VALUES (%s, '{}'::jsonb, %s, 0, %s, now() - (%s * interval '1 day')) RETURNING id",
-        (brand, count, user_id, days_old),
+        " VALUES (%s, %s, %s, 0, %s, now() - (%s * interval '1 day')) RETURNING id",
+        (brand, Jsonb(params or {}), count, user_id, days_old),
     ).fetchone()["id"]
 
 
@@ -78,6 +78,20 @@ def test_brand_gaps_aggregate_searches_and_exclude_thick_or_old(prefix):
     thin_row = by_brand[thin.lower()]
     assert (thin_row["searches"], thin_row["people"], thin_row["best"]) == (2, 2, 3)
     assert mixed.lower() not in by_brand and old.lower() not in by_brand
+
+
+def test_brand_gaps_exclude_digest_and_seeding_searches(prefix):
+    brand = f"{prefix} Automated Brand"
+    with psycopg.connect(server.DB_URL, row_factory=psycopg.rows.dict_row) as db:
+        user_search = user(db, f"{prefix}-user@coverage.test")
+        digest_search = user(db, f"{prefix}-digest@coverage.test")
+        seeding_search = user(db, f"{prefix}-seeding@coverage.test")
+        search(db, brand, user_search, 3)
+        search(db, brand, digest_search, 0, params={"digest": True})
+        search(db, brand, seeding_search, 0, params={"digest": True, "seeding": True})
+
+    row = next(item for item in coverage.gaps()["brands"] if item["brand"].lower() == brand.lower())
+    assert (row["searches"], row["people"], row["best"]) == (1, 1, 3)
 
 
 def test_creator_misses_group_case_insensitively_and_ignore_demo(prefix):
@@ -105,6 +119,41 @@ def test_creator_misses_group_case_insensitively_and_ignore_demo(prefix):
     row = by_handle[("tiktok", handle.lower())]
     assert (row["attempts"], row["people"], row["reason"]) == (2, 2, "other_platform")
     assert ("instagram", demo_handle) not in by_handle
+
+
+def test_creator_misses_are_cleared_by_later_success(prefix):
+    cleared_handle = prefix + "-cleared"
+    public_handle = prefix + "-public"
+    active_handle = prefix + "-active"
+    with psycopg.connect(server.DB_URL, row_factory=psycopg.rows.dict_row) as db:
+        uid = user(db, f"{prefix}-person@coverage.test")
+        db.execute(
+            "INSERT INTO events (user_id, name, data, created_at) VALUES"
+            " (%s, 'scan_miss', %s, now() - interval '2 hours'),"
+            " (%s, 'scan', %s, now() - interval '1 hour'),"
+            " (%s, 'scan_miss', %s, now() - interval '2 hours'),"
+            " (%s, 'scan', %s, now() - interval '1 hour'),"
+            " (%s, 'scan', %s, now() - interval '2 hours'),"
+            " (%s, 'scan_miss', %s, now() - interval '1 hour')",
+            (
+                uid, Jsonb({"platform": "tiktok", "handle": cleared_handle, "reason": "unknown"}),
+                uid, Jsonb({"platform": "tiktok", "handle": cleared_handle, "source": "live", "videos": 1}),
+                uid, Jsonb({"platform": "tiktok", "handle": public_handle, "reason": "unknown"}),
+                uid, Jsonb({"platform": "tiktok", "handle": public_handle, "source": "public", "videos": 1}),
+                uid, Jsonb({"platform": "tiktok", "handle": active_handle, "videos": 1}),
+                uid, Jsonb({"platform": "tiktok", "handle": active_handle, "reason": "unknown"}),
+            ),
+        )
+
+    by_handle = {
+        (row["platform"], row["handle"]): row
+        for row in coverage.gaps()["creators"]
+    }
+    assert ("tiktok", cleared_handle) not in by_handle
+    public = by_handle[("tiktok", public_handle)]
+    assert public["attempts"] == 1
+    active = by_handle[("tiktok", active_handle)]
+    assert active["attempts"] == 1
 
 
 def request(base, method, path, token=None):
@@ -136,3 +185,11 @@ def test_admin_route_auth_methods_and_no_email(base, prefix):
     assert handle in [row["handle"] for row in report["creators"]]
     assert email not in json.dumps(report)
     assert request(base, "POST", "/api/admin/coverage", "run-secret")[0] == 405
+
+
+def test_admin_route_validates_days(base):
+    for days in ("0", "366", "abc"):
+        assert request(base, "GET", f"/api/admin/coverage?days={days}", "run-secret")[0] == 400
+    for days in (1, 365):
+        status, report = request(base, "GET", f"/api/admin/coverage?days={days}", "run-secret")
+        assert status == 200 and report["days"] == days
