@@ -6,7 +6,7 @@
 <title>Receipts by Unprompted</title>
 <meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with brands for future paid collabs: pitch them, or answer their invites.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/ui/ui.css?v=5">
+<link rel="stylesheet" href="/ui/ui.css?v=6">
 <script src="/ui/ui.js?v=4"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
@@ -33,6 +33,7 @@
           min-height: min(100svh - 64px, 1000px); display: grid; align-content: end; }
   .glass-stage { position: absolute; inset: 0 0 0 38%; z-index: -1; margin: 0; background: transparent;
                  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); }
+  .hero-in { position: relative; z-index: 1; }
   .glass-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none;
                         background: linear-gradient(90deg, var(--bg), transparent 30%), linear-gradient(transparent 70%, var(--bg)); }
   .glass-3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1200ms var(--ease-out); }
@@ -45,6 +46,30 @@
                     background: conic-gradient(from 200deg, oklch(0.86 0.11 225), oklch(0.7 0.16 285), oklch(0.86 0.1 340), oklch(0.92 0.1 130), oklch(0.86 0.11 225));
                     -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%); mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%);
                     rotate: -14deg; }
+  :root[data-theme="light"] .glass-stage { background: var(--bg); }
+  :root[data-theme="light"] .glass-poster { background: var(--bg); }
+  :root[data-theme="light"] .glass-poster::before {
+    background-image: radial-gradient(ellipse at 68% 38%, oklch(0.91 0.045 220), transparent 45%),
+                      radial-gradient(ellipse at 44% 67%, oklch(0.92 0.04 300), transparent 48%),
+                      radial-gradient(ellipse at 78% 75%, oklch(0.93 0.045 145), transparent 42%);
+  }
+  :root[data-theme="light"] .glass-poster i {
+    opacity: 0.25; filter: blur(5px);
+    background: conic-gradient(from 200deg, oklch(0.91 0.045 220), oklch(0.9 0.05 285), oklch(0.92 0.04 340), oklch(0.94 0.05 130), oklch(0.91 0.045 220));
+  }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .glass-stage { background: var(--bg); }
+    :root[data-theme="system"] .glass-poster { background: var(--bg); }
+    :root[data-theme="system"] .glass-poster::before {
+      background-image: radial-gradient(ellipse at 68% 38%, oklch(0.91 0.045 220), transparent 45%),
+                        radial-gradient(ellipse at 44% 67%, oklch(0.92 0.04 300), transparent 48%),
+                        radial-gradient(ellipse at 78% 75%, oklch(0.93 0.045 145), transparent 42%);
+    }
+    :root[data-theme="system"] .glass-poster i {
+      opacity: 0.25; filter: blur(5px);
+      background: conic-gradient(from 200deg, oklch(0.91 0.045 220), oklch(0.9 0.05 285), oklch(0.92 0.04 340), oklch(0.94 0.05 130), oklch(0.91 0.045 220));
+    }
+  }
   @media (max-width: 640px) { .glass-poster::before { background-image: url("/ui/img/glass-poster-m.webp"); } }
   .glass-pause { position: absolute; z-index: 2; inset-inline-end: 20px; inset-block-end: 20px; background: color-mix(in oklch, var(--surface) 88%, transparent); color: var(--text); border-color: var(--border-strong); backdrop-filter: blur(8px); }
   .glass-pause:hover { background: var(--surface); border-color: var(--border-strong); }
@@ -248,6 +273,10 @@
   .end-links a { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); } .end-links a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
   .end-word { margin: clamp(48px, 8vw, 120px) 0 0; font: 700 clamp(4rem, 23vw, 24rem)/0.74 var(--display); letter-spacing: -0.075em; text-transform: uppercase; text-align: center;
               background: linear-gradient(var(--text), color-mix(in oklch, var(--text) 6%, transparent)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+  :root[data-theme="light"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  }
   .end-fine { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); padding-block: var(--s-4); border-top: 1px solid var(--border);
               font: 500 0.6875rem/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
 
@@ -1175,7 +1204,7 @@ function syncGlassBtn() {
 function maybeGlass() {
   if (glass || glassLoading || document.readyState !== 'complete' || $('#landing').hidden) return;
   glassLoading = true;
-  import('/ui/glass3d.js?v=1')
+  import('/ui/glass3d.js?v=2')
     .then((m) => m.start($('.glass-3d'), { reduced: U.reduced, paused: glassPausedPref() }))
     .then((ctrl) => { glass = ctrl || null; syncGlassBtn(); })
     .catch(() => {})

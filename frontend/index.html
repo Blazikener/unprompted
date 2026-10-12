@@ -6,7 +6,7 @@
 <title>Unprompted</title>
 <meta name="description" content="Find the creators already talking about your brand on camera.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/ui/ui.css?v=5">
+<link rel="stylesheet" href="/ui/ui.css?v=6">
 <script src="/ui/ui.js?v=4"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
@@ -329,6 +329,10 @@
   .end-links a { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); } .end-links a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
   .end-word { margin: clamp(48px, 8vw, 120px) 0 0; font: 700 clamp(3rem, 15.5vw, 17rem)/0.74 var(--display); letter-spacing: -0.075em; text-transform: uppercase; text-align: center;
               background: linear-gradient(var(--text), color-mix(in oklch, var(--text) 6%, transparent)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+  :root[data-theme="light"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  }
 
   .examples, .recent { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
   .examples > span, .recent-h { font-size: var(--fs-sm); color: var(--text-2); margin-inline-end: 4px; }

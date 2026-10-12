@@ -109,14 +109,18 @@
     --ease-soft: cubic-bezier(0.3, 1, 0.7, 1);
     /* glass and iridescence: decoration only, never a meaning */
     --iris: linear-gradient(100deg, oklch(0.86 0.11 225), oklch(0.78 0.14 285) 45%, oklch(0.86 0.1 340) 75%, oklch(0.92 0.09 200));
+    --iris-light: linear-gradient(100deg, oklch(0.38 0.11 220), oklch(0.34 0.12 285) 45%, oklch(0.36 0.11 340) 75%, oklch(0.39 0.1 185));
     --glass: linear-gradient(160deg, oklch(1 0 0 / 0.07), oklch(1 0 0 / 0.02) 40%, oklch(1 0 0 / 0.035));
     --grid-line: light-dark(oklch(0.2 0.02 160 / 0.06), oklch(1 0 0 / 0.055));
     --motion-distance: 8px;
     --z-sticky: 10; --z-overlay: 50; --z-toast: 70;
   }
   :root[data-theme="dark"] { color-scheme: dark; }
-  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="light"] { color-scheme: light; --iris: var(--iris-light); }
   :root[data-theme="system"] { color-scheme: light dark; }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] { --iris: var(--iris-light); }
+  }
   /* Present mode: for projectors in bright rooms. Stronger lines, no faint text, a bit larger. */
   :root[data-present] { --border: var(--border-strong); --text-2: var(--text); --text-3: var(--text-2);
                         --fs-xs: 0.8125rem; --fs-sm: 0.875rem; --fs-md: 1rem; --fs-data: 0.9375rem; }
@@ -504,7 +508,6 @@
   .u-voice { font-family: var(--voice); font-style: italic; font-weight: 400; letter-spacing: -0.02em; text-transform: none; }
   .u-iris { background: var(--iris); -webkit-background-clip: text; background-clip: text; color: transparent;
             -webkit-box-decoration-break: clone; box-decoration-break: clone; padding-block: 0.18em; margin-block: -0.18em; }
-  :root[data-theme="light"] .u-iris { background: none; color: var(--accent); }
   .u-h3 { font-size: var(--fs-xl); }
   .u-lead { font-size: var(--fs-lg); color: var(--text-2); max-width: 62ch; }
 

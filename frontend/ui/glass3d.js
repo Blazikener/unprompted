@@ -2,7 +2,7 @@
 // inside the lens its brand lights up lime: the product in one picture (we listen to videos; the brand said gets marked).
 // Decoration only: loaded late, paused off screen / hidden / on request.
 const THREE_URL = '/ui/vendor/three/three.module.min.js';
-const BG = '#060708';                          // must match .glass-stage's background in the page CSS
+const BG = '#060708';
 const LIME = '#d0f854', INK = '#0b1a10';
 const FALLBACK_QUOTES = [
   { who: '@maya.eats', a: 'iced capp, extra large, nobody talk to me.', brand: 'Tim Hortons', b: 'hits different', ts: '0:05', views: '412K views' },
@@ -15,6 +15,20 @@ const FALLBACK_QUOTES = [
 ];
 
 let THREE;
+
+function lightTheme() {
+  const theme = document.documentElement.dataset.theme;
+  return theme === 'light' || (theme === 'system' && !matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+function pageBackground() {
+  const probe = document.createElement('span');
+  probe.style.cssText = 'position:fixed;visibility:hidden;color:var(--bg)';
+  document.body.append(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  return color;
+}
 
 function ribbon(U = 420, V = 36) {
   // Closed tube with a flat elliptical section along an upright oval, given a half twist: the section maps onto itself
@@ -49,20 +63,28 @@ function ribbon(U = 420, V = 36) {
   return g;
 }
 
-function envMap(renderer) {
-  // A dark studio with a few soft boxes (white key, cyan and violet strips, warm kicker): what the glass reflects.
+function envMap(renderer, light = false) {
+  // A studio with soft boxes: what the glass reflects.
   const env = new THREE.Scene();
-  const room = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 20), new THREE.MeshBasicMaterial({ color: 0x0b0c0e, side: THREE.BackSide }));
+  const room = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 20), new THREE.MeshBasicMaterial({ color: light ? 0xf8faf7 : 0x0b0c0e, side: THREE.BackSide }));
   env.add(room);
   const box = (w, h, x, y, z, rgb, look = [0, 0, 0]) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(...rgb), side: THREE.DoubleSide }));
     m.position.set(x, y, z); m.lookAt(...look); env.add(m);
   };
-  box(9, 3, 0, 8.5, 2, [5, 5, 5]);
-  box(1.2, 12, -8.5, 0, 1, [0.4, 2.2, 3.2]);
-  box(1.2, 12, 8.5, 1, -1, [2.4, 0.8, 3.6]);
-  box(6, 1.4, 3, -6, 6, [3, 1.8, 1.1]);
-  box(3, 3, -3, 2, -8.5, [1.4, 1.8, 0.5]);
+  if (light) {
+    box(9, 3, 0, 8.5, 2, [1.8, 1.8, 1.65]);
+    box(1.2, 12, -8.5, 0, 1, [0.7, 0.9, 1.05]);
+    box(1.2, 12, 8.5, 1, -1, [0.95, 0.75, 1.0]);
+    box(6, 1.4, 3, -6, 6, [1.05, 0.95, 0.75]);
+    box(3, 3, -3, 2, -8.5, [0.72, 0.92, 0.7]);
+  } else {
+    box(9, 3, 0, 8.5, 2, [5, 5, 5]);
+    box(1.2, 12, -8.5, 0, 1, [0.4, 2.2, 3.2]);
+    box(1.2, 12, 8.5, 1, -1, [2.4, 0.8, 3.6]);
+    box(6, 1.4, 3, -6, 6, [3, 1.8, 1.1]);
+    box(3, 3, -3, 2, -8.5, [1.4, 1.8, 0.5]);
+  }
   const pm = new THREE.PMREMGenerator(renderer);
   const tex = pm.fromScene(env, 0.035).texture;
   pm.dispose();
@@ -79,27 +101,34 @@ function wrapWords(ctx, words, max) {
   return lines;
 }
 
-function cardTexture(q, lit) {
+function cardTexture(q, lit, light = false) {
   const W = 768, H = 440, cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d');
   const r = 34;
-  x.beginPath(); x.roundRect(4, 4, W - 8, H - 8, r);
+  const inset = light ? 18 : 4;
+  x.beginPath(); x.roundRect(inset, inset, W - inset * 2, H - inset * 2, r);
+  if (light) {
+    x.shadowColor = 'rgba(24, 48, 32, 0.18)'; x.shadowBlur = 22; x.shadowOffsetY = 7;
+  }
   const g = x.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, lit ? '#1c211b' : '#16191a'); g.addColorStop(1, '#0d0f10');
+  g.addColorStop(0, light ? '#ffffff' : (lit ? '#1c211b' : '#16191a'));
+  g.addColorStop(1, light ? (lit ? '#f2f7e9' : '#f2f6f3') : '#0d0f10');
   x.fillStyle = g; x.fill();
-  x.lineWidth = 3; x.strokeStyle = lit ? 'rgba(208,248,84,0.55)' : 'rgba(255,255,255,0.14)'; x.stroke();
+  x.shadowColor = 'transparent'; x.shadowBlur = 0; x.shadowOffsetY = 0;
+  x.lineWidth = 3; x.strokeStyle = light ? (lit ? 'rgba(57,104,31,0.32)' : 'rgba(24,55,35,0.17)') : (lit ? 'rgba(208,248,84,0.55)' : 'rgba(255,255,255,0.14)'); x.stroke();
   // frame thumbnail
   x.save(); x.beginPath(); x.roundRect(36, 36, 96, 170, 16); x.clip();
-  const tg = x.createLinearGradient(36, 36, 132, 206); tg.addColorStop(0, '#24443a'); tg.addColorStop(1, '#3c2f5c');
+  const tg = x.createLinearGradient(36, 36, 132, 206);
+  tg.addColorStop(0, light ? '#d8e8dd' : '#24443a'); tg.addColorStop(1, light ? '#e7def2' : '#3c2f5c');
   x.fillStyle = tg; x.fillRect(36, 36, 96, 170); x.restore();
-  x.fillStyle = 'rgba(255,255,255,0.85)'; x.beginPath(); x.moveTo(76, 108); x.lineTo(76, 134); x.lineTo(98, 121); x.closePath(); x.fill();
-  x.font = '500 26px "IBM Plex Mono", monospace'; x.fillStyle = 'rgba(255,255,255,0.62)'; x.fillText(q.who, 160, 66);
+  x.fillStyle = light ? '#1e3628' : 'rgba(255,255,255,0.85)'; x.beginPath(); x.moveTo(76, 108); x.lineTo(76, 134); x.lineTo(98, 121); x.closePath(); x.fill();
+  x.font = '500 26px "IBM Plex Mono", monospace'; x.fillStyle = light ? '#203429' : 'rgba(255,255,255,0.62)'; x.fillText(q.who, 160, 66);
   const kind = lit ? 'SAID ON CAMERA' : 'LISTENING\u2026';
   x.font = '600 20px "Host Grotesk", sans-serif';
   const kw = x.measureText(kind).width + 34;
-  x.beginPath(); x.roundRect(W - 40 - kw, 40, kw, 36, 18); x.fillStyle = lit ? LIME : 'rgba(255,255,255,0.08)'; x.fill();
-  x.fillStyle = lit ? INK : 'rgba(255,255,255,0.55)'; x.fillText(kind, W - 40 - kw + 17, 65);
+  x.beginPath(); x.roundRect(W - 40 - kw, 40, kw, 36, 18); x.fillStyle = lit ? LIME : (light ? 'rgba(24,55,35,0.08)' : 'rgba(255,255,255,0.08)'); x.fill();
+  x.fillStyle = lit ? INK : (light ? '#42594a' : 'rgba(255,255,255,0.55)'); x.fillText(kind, W - 40 - kw + 17, 65);
   // the quote, brand marked only when lit
   x.font = 'italic 400 40px "Instrument Serif", "Newsreader", Georgia, serif';
   const words = [{ t: '\u201C\u2026' + q.a.split(' ')[0] }, ...q.a.split(' ').slice(1).map((t) => ({ t })),
@@ -111,19 +140,19 @@ function cardTexture(q, lit) {
       if (w.brand) {
         x.font = '700 34px "Host Grotesk", sans-serif';
         if (lit) { x.fillStyle = LIME; x.beginPath(); x.roundRect(160 + w.x - 6, y - 34, x.measureText(w.t).width + 12, 46, 6); x.fill(); x.fillStyle = INK; }
-        else x.fillStyle = 'rgba(255,255,255,0.5)';
+        else x.fillStyle = light ? '#42594a' : 'rgba(255,255,255,0.5)';
         x.fillText(w.t, 160 + w.x, y);
         x.font = 'italic 400 40px "Instrument Serif", "Newsreader", Georgia, serif';
       } else {
-        x.fillStyle = lit ? '#f4f5ef' : 'rgba(244,245,239,0.62)';
+        x.fillStyle = light ? '#263a2c' : (lit ? '#f4f5ef' : 'rgba(244,245,239,0.62)');
         x.fillText(w.t, 160 + w.x, y);
       }
     }
   });
   x.font = '500 24px "IBM Plex Mono", monospace';
-  x.beginPath(); x.roundRect(36, H - 84, 112, 44, 10); x.fillStyle = lit ? '#103a25' : 'rgba(255,255,255,0.06)'; x.fill();
-  x.fillStyle = lit ? LIME : 'rgba(255,255,255,0.5)'; x.fillText('\u25B6 ' + q.ts, 52, H - 54);
-  x.fillStyle = 'rgba(255,255,255,0.45)'; x.fillText(q.views, 170, H - 54);
+  x.beginPath(); x.roundRect(36, H - 84, 112, 44, 10); x.fillStyle = light ? '#e9f0e7' : (lit ? '#103a25' : 'rgba(255,255,255,0.06)'); x.fill();
+  x.fillStyle = light ? (lit ? '#365d28' : '#42594a') : (lit ? LIME : 'rgba(255,255,255,0.5)'); x.fillText('\u25B6 ' + q.ts, 52, H - 54);
+  x.fillStyle = light ? '#42594a' : 'rgba(255,255,255,0.45)'; x.fillText(q.views, 170, H - 54);
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
@@ -135,12 +164,15 @@ void main() { vec4 a = texture2D(uA, vUv), b = texture2D(uB, vUv); vec4 c = mix(
   gl_FragColor = vec4(mix(uBg, c.rgb, uFade), 1.0);
   #include <colorspace_fragment>
 }`;
-const GLOW_FS = `uniform float uTime; uniform vec3 uBg; uniform vec3 uA; uniform vec3 uB; uniform vec3 uC; varying vec2 vUv;
+const GLOW_FS = `uniform float uTime; uniform float uLight; uniform vec3 uBg; uniform vec3 uA; uniform vec3 uB; uniform vec3 uC; varying vec2 vUv;
 void main() { vec2 p = vUv - 0.5; float t = uTime * 0.05;
   float a = smoothstep(0.42, 0.0, length(p - vec2(-0.12 + 0.05 * sin(t * 3.0), 0.1 + 0.04 * cos(t * 2.0))));
   float b = smoothstep(0.38, 0.0, length(p - vec2(0.16 + 0.05 * cos(t * 2.5), -0.12 + 0.05 * sin(t * 1.7))));
   float c = smoothstep(0.16, 0.0, length(p - vec2(0.02, -0.02)));
-  vec3 col = uBg + uA * a * 0.55 + uB * b * 0.5 + uC * c * 0.18;
+  vec3 darkCol = uBg + uA * a * 0.55 + uB * b * 0.5 + uC * c * 0.18;
+  vec3 tint = uA * a * 0.55 + uB * b * 0.5 + uC * c * 0.18;
+  vec3 lightCol = mix(uBg, tint, clamp((a + b + c) * 0.18, 0.0, 0.32));
+  vec3 col = mix(darkCol, lightCol, uLight);
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -157,18 +189,21 @@ export async function start(canvas, { reduced = () => false, paused: startPaused
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' }); } catch { return null; }
   const stage = canvas.parentElement;
-  const bg = new THREE.Color(BG);
+  let light = lightTheme();
+  const bg = new THREE.Color(light ? pageBackground() : BG);
   renderer.setClearColor(bg, 1);
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.05;
   const scene = new THREE.Scene();
-  scene.environment = envMap(renderer);
+  const environments = { [light ? 'light' : 'dark']: envMap(renderer, light) };
+  scene.environment = environments[light ? 'light' : 'dark'];
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 80);
   camera.position.set(0, 0, 10);
 
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(30, 18), new THREE.ShaderMaterial({
     vertexShader: CARD_VS, fragmentShader: GLOW_FS, toneMapped: false,
-    uniforms: { uTime: { value: 0 }, uBg: { value: bg.clone() }, uA: { value: new THREE.Color('#5a3df0') }, uB: { value: new THREE.Color('#0aa3a8') }, uC: { value: new THREE.Color('#d0f854') } },
+    uniforms: { uTime: { value: 0 }, uLight: { value: light ? 1 : 0 }, uBg: { value: bg.clone() },
+      uA: { value: new THREE.Color(light ? '#dce6f4' : '#5a3df0') }, uB: { value: new THREE.Color(light ? '#e7dff0' : '#0aa3a8') }, uC: { value: new THREE.Color(light ? '#e3eed2' : '#d0f854') } },
   }));
   glow.position.z = -7;
   scene.add(glow);
@@ -184,15 +219,56 @@ export async function start(canvas, { reduced = () => false, paused: startPaused
 
   // Quote cards on belts behind (refracted) and a couple in front, wrapping left to right.
   const cards = quotes.map((q, i) => {
+    const textures = [cardTexture(q, false, light), cardTexture(q, true, light)];
     const mat = new THREE.ShaderMaterial({ vertexShader: CARD_VS, fragmentShader: CARD_FS, toneMapped: false,
-      uniforms: { uA: { value: cardTexture(q, false) }, uB: { value: cardTexture(q, true) }, uLit: { value: 0 }, uFade: { value: 0 }, uBg: { value: bg.clone() } } });
+      uniforms: { uA: { value: textures[0] }, uB: { value: textures[1] }, uLit: { value: 0 }, uFade: { value: 0 }, uBg: { value: bg.clone() } } });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6 * 440 / 768), mat);
     const front = i % 3 === 2;
-    m.userData = { phase: i / quotes.length, y: [-1.55, 0.35, 1.6, -0.5, 1.05, -1.75, 0.0][i % 7] * 1.05, z: front ? 1.3 : -1.1 - (i % 2) * 1.1,
+    m.userData = { quote: q, textures, phase: i / quotes.length, y: [-1.55, 0.35, 1.6, -0.5, 1.05, -1.75, 0.0][i % 7] * 1.05, z: front ? 1.3 : -1.1 - (i % 2) * 1.1,
       speed: front ? 0.42 : 0.3 + (i % 3) * 0.04, s: front ? 0.62 : 1 - (i % 2) * 0.12, lit: 0 };
     m.scale.setScalar(m.userData.s);
     scene.add(m);
     return m;
+  });
+
+  function syncTheme() {
+    const next = lightTheme();
+    stage.classList.toggle('theme-light', next);
+    if (next === light) return;
+    light = next;
+    bg.set(light ? pageBackground() : BG);
+    renderer.setClearColor(bg, 1);
+    glow.material.uniforms.uLight.value = light ? 1 : 0;
+    glow.material.uniforms.uBg.value.copy(bg);
+    glow.material.uniforms.uA.value.set(light ? '#dce6f4' : '#5a3df0');
+    glow.material.uniforms.uB.value.set(light ? '#e7dff0' : '#0aa3a8');
+    glow.material.uniforms.uC.value.set(light ? '#e3eed2' : '#d0f854');
+    const environment = light ? 'light' : 'dark';
+    if (!environments[environment]) environments[environment] = envMap(renderer, light);
+    scene.environment = environments[environment];
+    ring.material.roughness = light ? 0.18 : 0.035;
+    ring.material.dispersion = light ? 0.35 : 2.5;
+    ring.material.iridescence = light ? 0.28 : 1;
+    ring.material.iridescenceThicknessRange = light ? [80, 260] : [140, 640];
+    ring.material.clearcoatRoughness = light ? 0.18 : 0.04;
+    ring.material.specularIntensity = light ? 0.5 : 1;
+    ring.material.envMapIntensity = light ? 0.6 : 1.7;
+    ring.material.attenuationColor.set(light ? '#edf3ec' : '#e9f2ff');
+    ring.material.attenuationDistance = light ? 5 : 3;
+    ring.material.needsUpdate = true;
+    for (const m of cards) {
+      const data = m.userData;
+      data.textures.forEach((texture) => texture.dispose());
+      data.textures = [cardTexture(data.quote, false, light), cardTexture(data.quote, true, light)];
+      m.material.uniforms.uA.value = data.textures[0];
+      m.material.uniforms.uB.value = data.textures[1];
+      m.material.uniforms.uBg.value.copy(bg);
+    }
+  }
+  stage.classList.toggle('theme-light', light);
+  document.addEventListener('u:prefs', syncTheme);
+  matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => {
+    if (document.documentElement.dataset.theme === 'system') syncTheme();
   });
 
   let w = 0, h = 0, span = 8, narrow = false;
