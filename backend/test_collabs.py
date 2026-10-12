@@ -178,6 +178,16 @@ def test_creator_pitches_an_open_brand_with_a_receipt(mail):
     assert "CollabTest Candles" not in [p["brand"] for p in collabs.partners()]
 
 
+def test_creator_pitches_an_open_brand_with_verified_handle_and_no_scan(mail):
+    brand, ali = new_user("brand"), verified_creator()
+    collabs.set_profile(brand, {"brand": "CollabTest NoScan", "about": "Candles", "open": True})
+
+    c = collabs.pitch(ali, {**TERMS, "brand": "CollabTest NoScan", "platform": "tiktok", "handle": HANDLE})
+
+    assert c["brand"] == "CollabTest NoScan" and c["handle"] == HANDLE and c["proof"] is None
+    assert c["origin"] == "creator" and mail[-1][0] == brand["email"]
+
+
 def test_creator_primary_brand_side_can_be_discovered_and_pitched(mail):
     brand_side, ali = new_user("creator"), verified_creator()
     with server.connect() as db:

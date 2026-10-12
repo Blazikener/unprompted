@@ -122,7 +122,8 @@ def test_claim_verify_rules_and_inbox(monkeypatch, mail):
     ig = licenses.claim(other, {"platform": "instagram", "handle": "other.ig"})
     with pytest.raises(server.ApiError) as err:
         licenses.verify(other, {"platform": "instagram", "handle": "other.ig"})
-    assert "checked by hand" in str(err.value) and any("Instagram handle claim" in s for _, s, _ in mail)
+    assert "email address in your Instagram bio" in str(err.value) and "to ops@u.test" in str(err.value)
+    assert any("Instagram handle claim" in s for _, s, _ in mail)
     assert licenses.mark_verified(ig["id"], "operator")["verifiedBy"] == "operator"
 
     # Rules: below the minimum is declined for them (no email); an approved brand is accepted (email says so).
@@ -145,6 +146,35 @@ def test_claim_verify_rules_and_inbox(monkeypatch, mail):
     assert licenses.remove(ali, {"platform": "tiktok", "handle": "ali"})["handles"] == []
     with pytest.raises(server.ApiError):
         licenses.claim(ali, {"platform": "youtube", "handle": "ali"})
+
+
+@pytest.mark.parametrize(("contact", "notify_to", "expected_contact"), [
+    ("help@receipts.test", "ops@u.test", "help@receipts.test"),
+    ("", "ops@u.test", "ops@u.test"),
+    ("", "", ""),
+])
+def test_instagram_manual_verification_contact(monkeypatch, mail, contact, notify_to, expected_contact):
+    if contact:
+        monkeypatch.setenv("CONTACT_EMAIL", contact)
+    else:
+        monkeypatch.delenv("CONTACT_EMAIL", raising=False)
+    if notify_to:
+        monkeypatch.setenv("LICENSE_NOTIFY_EMAIL", notify_to)
+    else:
+        monkeypatch.delenv("LICENSE_NOTIFY_EMAIL", raising=False)
+    other = user(EMAILS[1])
+    claim = licenses.claim(other, {"platform": "instagram", "handle": "other.ig"})
+
+    with pytest.raises(server.ApiError) as err:
+        licenses.verify(other, {"platform": "instagram", "handle": "other.ig"})
+
+    destination = " to %s" % expected_contact if expected_contact else ""
+    assert str(err.value) == (
+        "Email %s%s from the email address in your Instagram bio. We'll confirm within a day." % (claim["code"], destination)
+    )
+    assert licenses.mine(other)["verificationEmail"] == expected_contact
+    if expected_contact:
+        assert expected_contact in mail[-1][2] and "DM" not in mail[-1][2]
 
 
 @pytest.fixture(scope="module")

@@ -739,6 +739,13 @@ class Handler(SimpleHTTPRequestHandler):
             return
         url = urlparse(self.path)
         path = url.path
+        if not waitlist_only() and path in ("/waitlist", "/waitlist/"):
+            self.send_response(302)
+            self.send_header("Location", "/")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         m = re.fullmatch(r"/api/searches/(\d+)", path)
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
         oauth_start = re.fullmatch(r"/auth/(tiktok|instagram)/start", path)

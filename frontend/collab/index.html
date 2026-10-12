@@ -78,7 +78,8 @@
         ctx = { brand: d.brand, platform: v.platform, handle: v.handle, proof: { ...v, brand: d.brand } };
       } else {
         const me = await C.call('/api/creators/me');
-        if (!me.user) return fail('Sign in with your brand account to invite creators.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Go to brand sign-in'));
+        if (!me.user) return fail('Sign in with your brand account to invite creators.',
+          h('a', { class: 'u-btn u-btn-primary', href: '/brands/?signin=1' }, 'Sign in as a brand'));
         account = me.user;
         who(me.user);
         if (!U.hasRole(me.user, 'brand')) {

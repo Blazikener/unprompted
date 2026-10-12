@@ -20,7 +20,7 @@ from pathlib import Path
 from string import Template
 from datetime import datetime, timedelta, timezone
 from urllib import error, request
-from urllib.parse import urlparse
+from urllib.parse import quote as urlquote, urlparse
 
 from psycopg.types.json import Jsonb
 
@@ -413,12 +413,24 @@ def sample():
             " WHERE r.html IS NOT NULL ORDER BY r.id DESC LIMIT 1").fetchone()
     if not run:
         raise ApiError(404, "No sample digest yet.")
+    brand_url = esc("%s/brands/" % app_url())
+    collab_url = esc("%s/collab/new?brand=%s" % (app_url(), urlquote(run["brand"], safe="")))
     sample_html = re.sub(
-        r'href="[^"]*/(?:digest/%s(?:\?unsubscribe=1)?|license/%s/[^"]*|collab/new/%s[^"]*)"' % ((re.escape(run["token"]),) * 3),
-        lambda _: 'href="%s"' % esc("%s/brands/" % app_url()),
-        run["html"])
+        r'(<a\b[^>]*\bhref="[^"]*/license/%s/[^"]*"[^>]*>).*?</a>' % re.escape(run["token"]),
+        lambda m: re.sub(r'href="[^"]*"', 'href="%s"' % collab_url, m.group(1), count=1) + "Invite to collab</a>",
+        run["html"], flags=re.I | re.S)
+    sample_html = re.sub(
+        r'href="[^"]*/license/%s/[^"]*"' % re.escape(run["token"]),
+        'href="%s"' % collab_url, sample_html, flags=re.I)
+    sample_html = re.sub(
+        r'href="[^"]*/collab/new/%s[^"]*"' % re.escape(run["token"]),
+        'href="%s"' % collab_url, sample_html, flags=re.I)
+    sample_html = re.sub(
+        r'href="[^"]*/digest/%s(?:\?unsubscribe=1)?[^"]*"' % re.escape(run["token"]),
+        'href="%s"' % brand_url, sample_html, flags=re.I)
     sample_html = sample_html.replace(run["token"], "sample")
     sample_html = sample_html.replace(esc(run["email"]), "you@brand.com")
+    sample_html = re.sub(r"(?i)\blicen[cs]e(?:s)?(?:\s+for\s+ads)?\b", "Invite to collab", sample_html)
     return {"brand": run["brand"], "newCount": run["new_count"], "createdAt": run["created_at"], "html": sample_html}
 
 

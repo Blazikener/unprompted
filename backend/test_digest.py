@@ -489,7 +489,7 @@ def test_sample_api_is_anonymized_and_does_not_call_oriane(base, monkeypatch):
     d = digest.subscribe({"email": subscriber, "brand": "Tim Hortons"})
     manage = digest.manage_url(d["token"])
     sample_html = (
-        '<!doctype html><html><body><p>2 new Tim Hortons videos.</p><a href="%s">License</a>'
+        '<!doctype html><html><body><p>2 new Tim Hortons videos.</p><a href="%s">License for ads</a>'
         '<a href="%s">Manage</a><a href="%s?unsubscribe=1">Unsubscribe</a>'
         '<p>You get this because %s saved a search.</p></body></html>' % (digest.license_url(d["token"], "v1"), manage, manage, subscriber)
     )
@@ -502,7 +502,9 @@ def test_sample_api_is_anonymized_and_does_not_call_oriane(base, monkeypatch):
     assert result["brand"] == "Tim Hortons" and result["newCount"] == 2 and result["createdAt"]
     assert d["token"] not in result["html"] and subscriber not in result["html"]
     assert "you@brand.com" in result["html"]
-    assert result["html"].count('href="https://u.test/brands/"') == 3
+    assert result["html"].count('href="https://u.test/brands/"') == 2
+    assert 'href="https://u.test/collab/new?brand=Tim%20Hortons">Invite to collab</a>' in result["html"]
+    assert "license" not in result["html"].lower() and "licence" not in result["html"].lower()
 
 
 def test_frontend_routes(base):
