@@ -102,6 +102,9 @@
       }
       return fail(e.message);
     }
+    const lead = ctx.proof
+      ? `They already talk about ${ctx.brand || 'you'} without being paid. Propose new content, in their style: what gets made, when, and the budget.`
+      : 'Propose new content, in their style: what gets made, when, and the budget.';
     const t = C.termsForm({ budgetUsd: '' });
     const brand = h('input', { class: 'u-input', value: ctx.brand, required: true, maxlength: 60 });
     const err = h('p', { class: 'u-error', role: 'alert' });
@@ -123,7 +126,7 @@
       h('small', { class: 'u-hint' }, `@${ctx.handle} can accept, counter or decline from a link, no account needed. If they're not on Receipts yet, we pass it on. You'll hear back by email.`));
     show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Invite to collab'),
         h('h1', {}, `Work with @${ctx.handle} on what's next.`),
-        h('p', { class: 'u-lead' }, `They already talk about ${ctx.brand || 'you'} without being paid. Propose new content, in their style: what gets made, when, and the budget.`)),
+        h('p', { class: 'u-lead' }, lead)),
       ctx.proof ? C.proof({ proof: ctx.proof, handle: ctx.handle, platform: ctx.platform }) : null, form);
   }
 
