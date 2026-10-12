@@ -107,7 +107,10 @@
     .scan-form .u-seg > label { flex: 1; }
     #scan-btn { flex-basis: 100%; }
   }
-  @media (max-width: 600px) { .hero-top .no-narrow { display: none; } }
+  @media (max-width: 600px) {
+    .hero-top { flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+    .hero-top .no-narrow { display: none; }
+  }
 
   /* ---- landing sections: editorial grid, numbered chapters, poster headings */
   .role-doors { padding-block: clamp(56px, 7vw, 96px); border-bottom: 1px solid var(--border); }
@@ -370,10 +373,10 @@
     </figure>
     <button class="u-btn u-btn-sm glass-pause no-present" id="glass-pause" type="button" hidden>Pause animation</button>
     <div class="u-wide hero-in">
-      <div class="hero-top" aria-hidden="true"><span>Receipts</span><span>TikTok / Instagram</span><span class="no-narrow">Brand mentions, proven</span></div>
-      <h1 class="hero-h" id="hero-h" data-split>The brands you talk about <span class="u-voice u-iris">should be paying you.</span></h1>
+      <div class="hero-top" aria-hidden="true"><span>Receipts</span><span>For creators, brands and managers</span><span class="no-narrow">Brand mentions, proven</span></div>
+      <h1 class="hero-h" id="hero-h" data-split>Your brand mentions, <span class="u-voice u-iris">turned into paid collabs.</span></h1>
       <div class="hero-row">
-        <p class="u-lead hero-lead" data-reveal>Paste your handle. We read your videos' transcripts, find every brand you've said, tagged or featured, and hand you the receipt: quote, timestamp, frame, views. Then it works both ways. Pitch the brands paying creators right now, and answer brands that invite you to make new paid content.</p>
+        <p class="u-lead hero-lead" data-reveal>We find every brand you've mentioned on TikTok or Instagram, prove it, and help you pitch them your next paid collab. Brands use it to find creators who already love them.</p>
         <div class="hero-form" data-reveal>
         <form class="scan-form" id="scan-form">
           <section id="role-notice" class="role-notice u-card u-card-pad" role="status" aria-live="polite" hidden></section>
@@ -394,7 +397,7 @@
           <span class="u-progress-text" id="scan-stage" role="status" aria-live="polite"></span>
         </div>
         <div class="miss u-well" id="miss" role="status" hidden></div>
-          <div class="fine hero-fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="u-btn u-btn-ghost u-btn-sm linkish" type="button" id="sample">See a sample report</button></div>
+          <div class="fine hero-fine" id="fine"><span>Free: your top 3 brands with receipts. Pro ($<span data-price>29</span>/mo): every brand, who's paying creators right now, and a pitch draft.</span> <button class="u-btn u-btn-ghost u-btn-sm linkish" type="button" id="sample">See a sample report</button> <a class="u-btn u-btn-ghost u-btn-sm linkish" href="/tour">Take the 60-second tour →</a></div>
         </div>
       </div>
     </div>

@@ -82,6 +82,13 @@ def test_design_system_is_served(base):
         assert status == 200 and marker in body
 
 
+def test_tour_routes_serve_html(base):
+    for path in ("/tour", "/tour/"):
+        status, body = call(base, "GET", path)
+        assert status == 200 and body.startswith(b"<!doctype html>")
+        assert b"Creators mention brands every day." in body
+
+
 def test_verify_page_routes(base):
     for path in ("/verify", "/verify/"):
         status, body = call(base, "GET", path)

@@ -11,6 +11,11 @@
 <style>
 @layer page {
   :root { --dash-ink: #d0f854; }
+  .tour-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-3);
+                 padding: var(--s-3) var(--s-4); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--surface-2); }
+  .tour-banner p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
+  .tour-banner-actions { display: flex; align-items: center; gap: var(--s-2); }
+  @media (max-width: 390px) { .tour-banner { padding: var(--s-3); } }
   body { min-width: 320px; }
   .dash-bar { position: sticky; inset-block-start: 0; z-index: var(--z-sticky); min-height: 64px; flex-wrap: nowrap; }
   .dash-bar .grow { flex: 1; min-width: 0; }
@@ -830,6 +835,7 @@ function renderOverview() {
   const recent = card('Recent activity', activityList(data.activity));
   panel.replaceChildren(...[
     panelHead('At a glance', 'Overview', summary),
+    tourBanner(),
     usageSection(),
     setupChecklist(),
     h('div', { class: 'metric-grid' }, ...metrics),
@@ -841,6 +847,18 @@ function renderOverview() {
     h('div', { class: 'action-grid section-gap' }, actions),
   ].filter(Boolean));
   animateCounts(panel);
+}
+function tourBanner() {
+  try { if (localStorage.getItem('u-tour-done') === '1') return null; } catch {}
+  return h('aside', { class: 'tour-banner', 'aria-label': 'Product tour' },
+    h('p', {}, 'New here? Take the 60-second tour'),
+    h('div', { class: 'tour-banner-actions' },
+      h('a', { class: 'u-btn u-btn-sm', href: '/tour' }, 'Tour'),
+      h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', 'aria-label': 'Dismiss tour suggestion',
+        onclick: (event) => {
+          try { localStorage.setItem('u-tour-done', '1'); } catch {}
+          event.currentTarget.closest('.tour-banner')?.remove();
+        } }, '×')));
 }
 function renderCreator() {
   const panel = $('#panel-creator'), c = data.creator, k = data.collabs;
@@ -969,6 +987,7 @@ function render() {
 $('#command').addEventListener('click', () => U.palette.open());
 function addPaletteActions() {
   U.palette.add({ id: 'dashboard-home', label: 'Dashboard overview', hint: 'Your role-specific workspace', group: 'Go to', keywords: 'overview analytics dashboard', run: () => { location.href = '/dashboard'; } });
+  U.palette.add({ id: 'dashboard-tour', label: 'Tour', hint: '60-second product walkthrough', group: 'Go to', keywords: 'guided tour new here', run: () => { location.href = '/tour'; } });
   if (data.role === 'creator') {
     U.palette.add({ id: 'dashboard-verify', label: 'Verify channel', group: 'Go to', keywords: 'verify channel ownership', run: () => { location.href = '/verify'; } });
     U.palette.add({ id: 'dashboard-receipts', label: 'Creator receipts', group: 'Go to', keywords: 'scans mentions', run: () => { location.href = '/creators/'; } });
