@@ -591,7 +591,7 @@
       },
     }, `Add the ${SIDE_LABEL[missingRole]?.toLowerCase() || 'new'} side`);
     target.replaceChildren(
-      h('strong', {}, `You're signed in with a ${role} account.`),
+      h('strong', {}, `This is the ${role} side.`),
       h('p', {}, message),
       h('div', { class: 'u-row' }, add, h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Go to your dashboard')),
       error);
