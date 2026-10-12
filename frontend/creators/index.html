@@ -900,12 +900,12 @@ function scanProgress(platform, handle) {
   const timer = setInterval(tick, 1000);
   return () => { clearInterval(timer); box.hidden = true; };
 }
-async function runScan(platform, handle) {
+async function runScan(platform, handle, opts = {}) {
   if (!canUseCreatorFeatures()) return;
   const btn = $('#scan-btn'), inp = $('#handle'); $('#miss').hidden = true;
   btn.disabled = inp.disabled = true; btn.setAttribute('aria-busy', 'true');
   const done = scanProgress(platform, handle);
-  try { const scan = await api('/scans', { platform, handle }); done(); showScan(scan, true); loadHistory(); }
+  try { const scan = await api('/scans', { platform, handle, ...opts }); done(); showScan(scan, true); loadHistory(); }
   catch (e) { done(); if (e.status === 404 && e.data?.suggestions) showMiss(e); else if (!handleCreatorRoleError(e) && !(await paywalled(e))) toast(e.message, 'error'); }
   btn.disabled = inp.disabled = false; btn.removeAttribute('aria-busy');
 }
@@ -1007,7 +1007,8 @@ function render() {
     ? h('div', { class: 'banner' }, h('p', {}, h('b', {}, 'Sample report'), ' on fixture data, unlocked as Pro. Yours takes about ten seconds.'), h('div', { class: 'u-row' }, ...presentControls(s), cta))
     : ro ? h('div', { class: 'banner' }, h('p', {}, h('b', {}, h('bdi', {}, '@' + p.handle), '’s brand receipts'), ` verified from ${p.videos} ${PLATFORM[p.platform]} videos with Receipts by Unprompted.`),
       h('div', { class: 'u-row' }, ...presentControls(s), cta)) : null;
-  const srcLabel = s.source === 'demo' ? 'Demo data' : s.source === 'public' ? 'Public data' : 'Live';
+  const srcLabel = s.source === 'demo' ? 'Demo data' : s.source === 'public' ? 'Public data'
+    : s.source === 'captions' ? 'Captions only' : 'Live';
   const identity = h('div', { class: 'profile' }, avatar(p.pfp, 64), h('div', { class: 'u-stack', style: { '--gap': '4px' } },
     h('h1', { class: 'u-h2', id: 'result-h', tabindex: '-1' }, h('bdi', {}, p.name || '@' + p.handle), h('span', { class: `u-pill ${s.source === 'demo' ? 'u-pill-warn' : 'u-pill-ok'}` }, srcLabel)),
     h('div', { class: 'meta' },
@@ -1025,7 +1026,14 @@ function render() {
     h('li', { class: 'u-computed-tag' }, 'Computed'));
   const note = s.sample ? 'Fixture creator: the videos, quotes and numbers below are made up to show the format. Your report reads your real videos.'
     : s.source === 'demo' ? 'Demo mode: these are fixture videos, so the quotes and numbers are made up. The flow is real; the data isn\'t.'
+    : s.source === 'captions' ? `Free scan: read from the captions and hashtags of your latest ${p.videos} TikTok videos. Brands you only said out loud need a full scan.`
     : s.source === 'public' ? `Read straight from TikTok's public pages: the latest ${p.videos} videos, their captions, tags and TikTok's own auto-captions where available. ${free && S.offer.arm === 'a' ? 'Pro scans use our full transcript index: up to 100 videos, every spoken mention, frame-level receipts.' : ['pro', 'roster'].includes(s.plan) ? 'Our transcript index doesn\'t cover this creator yet, so older videos aren\'t included.' : ''}` : '';
+  const noteBlock = note ? s.source === 'captions'
+    ? h('div', { class: 'u-stack', style: { '--gap': 'var(--s-2)' } },
+      h('p', { class: 'note' }, note),
+      !ro && !s.sample ? h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button',
+        onclick: () => runScan(p.platform, p.handle, { full: true }) }, 'Run full scan') : null)
+    : h('p', { class: 'note' }, note) : null;
   const chips = s.brands.length ? h('div', { class: 'chips', role: 'list', 'aria-label': 'Brands you talk about, with mention counts' }, ...s.brands.map((b, i) => b.locked
     ? h('span', { role: 'listitem', class: 'r-chip locked' }, h('span', { class: 'blur', 'aria-hidden': 'true' }, 'Hidden'), h('span', { class: 'sr-only' }, 'Hidden brand'), ` ${b.category}`, h('b', {}, String(mentionCount(b))))
     : h('span', { role: 'listitem' }, h('button', { type: 'button', class: 'r-chip', 'aria-label': `${b.brand}: ${mentionCount(b)} mention${mentionCount(b) === 1 ? '' : 's'}. Show receipts`, onclick: () => openBrand(i) },
@@ -1038,7 +1046,7 @@ function render() {
     h('span', {}, S.offer.arm === 'c' ? 'Weekly leads shows every brand and receipt, checks who’s paying, and emails you the brands paying creators every Monday.'
       : 'Pro shows every brand and receipt, checks who’s paying, and drafts the pitch.')),
     h('button', { class: 'u-btn u-btn-primary', type: 'button', id: 'upsell', onclick: () => openUpgrade() }, `${S.offer.arm === 'a' ? 'Go Pro' : S.offer.name}, $${S.offer.price}/mo`)) : null;
-  $('#result').replaceChildren(...[banner, identity, stats, note ? h('p', { class: 'note' }, note) : null, chips, head, list, upsell].filter(Boolean));
+  $('#result').replaceChildren(...[banner, identity, stats, noteBlock, chips, head, list, upsell].filter(Boolean));
   autoGrow($('#result'));
 
   $('#rate').hidden = $('#share-box').hidden = ro; $('#new-scan').textContent = ro ? 'Scan my own handle' : 'New scan';

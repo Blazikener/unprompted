@@ -382,25 +382,29 @@ def public_videos(platform, handle):
     return tiktok_public.fetch(handle) if platform == "tiktok" else []
 
 
-def fetch_videos(platform, handle, plan="free"):
+def _public_scan_source(videos):
+    return "public" if any(video.get("transcriptChunks") for video in videos) else "captions"
+
+
+def fetch_videos(platform, handle, plan="free", full=False):
     """Free TikTok scans read the public page first (no Oriane credits); Pro and Instagram go to Oriane first.
 
     Whichever source is second is the fallback, so a creator missing from one is still served by the other.
     """
     if demo.active():
         return demo.creator_videos(platform, handle), "demo"
-    public_first = platform == "tiktok" and plan != "pro"
+    public_first = platform == "tiktok" and plan != "pro" and not full
     if public_first:
         videos = public_videos(platform, handle)
         if videos:
-            return videos, "public"
+            return videos, _public_scan_source(videos)
     with connect() as db:
         cached = db.execute("SELECT body FROM misses WHERE platform = %s AND handle = %s AND created_at > now() - interval '%s days'"
                             % ("%s", "%s", MISS_TTL_DAYS), (platform, handle)).fetchone()
     if cached:
         videos = [] if public_first else public_videos(platform, handle)
         if videos:
-            return videos, "public"
+            return videos, _public_scan_source(videos)
         body = cached["body"]
         raise ApiError(404, body["error"], reason=body["reason"], suggestions=body["suggestions"], cached=True)
     filters = {"profileHandle": {"exactMatch": {"values": [handle]}}, "platform": {"includes": [platform]}}
@@ -409,7 +413,7 @@ def fetch_videos(platform, handle, plan="free"):
         return videos, "live"
     videos = [] if public_first else public_videos(platform, handle)
     if videos:
-        return videos, "public"
+        return videos, _public_scan_source(videos)
     miss = not_indexed(platform, handle)
     with connect() as db:
         db.execute("INSERT INTO misses (platform, handle, body) VALUES (%s, %s, %s)"
@@ -721,20 +725,22 @@ def run_scan(user, body):
     if platform not in ("instagram", "tiktok") or not HANDLE_RE.fullmatch(handle):
         raise ApiError(400, "Enter a TikTok or Instagram handle (letters, numbers, dots, underscores; no spaces)."
                        if " " in handle else "Enter a TikTok or Instagram handle, or paste your profile link.")
+    full = bool(body.get("full")) and platform == "tiktok"
     with connect() as db:
         recent = db.execute("SELECT * FROM scans WHERE user_id = %s AND platform = %s AND handle = %s AND created_at > now() - interval '1 day'"
                             " ORDER BY id DESC LIMIT 1", (user["id"], platform, handle)).fetchone()
-        if recent and not body.get("fresh"):
+        caption_upgrade = bool(full and recent and recent["source"] == "captions")
+        if recent and not body.get("fresh") and not caption_upgrade:
             return scan_view(recent, plan_of(user))
         used = db.execute("SELECT count(*) AS n FROM scans WHERE user_id = %s AND created_at > now() - interval '7 days'",
                           (user["id"],)).fetchone()["n"]
     limit = PLANS[plan_of(user)]["scansPerWeek"]
-    if used >= limit:
+    if used >= limit and not caption_upgrade:
         import packaging
         track(user["id"], "paywall", {"reason": "scan_quota", "plan": plan_of(user)})
         raise ApiError(402, packaging.quota_message(user, limit))
     try:
-        videos, source = fetch_videos(platform, handle, user["plan"])
+        videos, source = fetch_videos(platform, handle, user["plan"], full=full)
     except ApiError as e:
         if e.status == 404:
             track(user["id"], "scan_miss", {"platform": platform, "handle": handle, "reason": e.extra.get("reason", "demo"),
@@ -747,7 +753,8 @@ def run_scan(user, body):
             cur.executemany(VIDEO_UPSERT, [video_row(v) for v in videos])
         row = db.execute("INSERT INTO scans (user_id, platform, handle, source, profile, brands) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *",
                          (user["id"], platform, handle, source, Jsonb(prof), Jsonb(rows))).fetchone()
-    track(user["id"], "scan", {"platform": platform, "handle": handle, "brands": len(rows), "source": source, "videos": len(videos)})
+    track(user["id"], "scan", {"platform": platform, "handle": handle, "brands": len(rows), "source": source,
+                               "videos": len(videos), "full": full})
     return scan_view(row, plan_of(user))
 
 
