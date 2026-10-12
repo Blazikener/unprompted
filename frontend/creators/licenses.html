@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>License offers · Receipts</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/ui/ui.css?v=3">
-<script src="/ui/ui.js?v=2"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=4">
+<script src="/ui/ui.js?v=3"></script>
 <style>
 @layer page {
   .u-bar { gap: var(--s-3); }
@@ -99,7 +99,7 @@
     <a href="/creators/" aria-current="page">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
   </nav>
   <span class="grow"></span>
-  <span id="who" class="no-present"></span>
+  <div id="who" class="no-present"></div>
 </header>
 <main class="page">
   <div class="intro">
@@ -124,19 +124,17 @@
     const data = await res.json();
     if (!res.ok) {
       const error = new Error(data.error || 'Something went wrong.'); error.status = res.status; error.data = data;
-      if (res.status === 403 && data.role) showRoleNotice(data.role);
+      if (res.status === 403 && data.role) showRoleNotice(data.role, data.missing || 'creator');
       throw error;
     }
     return data;
   }
-  function showRoleNotice(role) {
+  function showRoleNotice(role, missing = 'creator') {
     $('#app').removeAttribute('aria-busy');
-    $('#app').replaceChildren(h('section', { class: 'role-notice u-card u-card-pad', role: 'status' },
-      h('strong', {}, `You're signed in with a ${role || 'different'} account.`),
-      h('p', {}, 'License offers and handle verification are for creator accounts.'),
-      h('div', { class: 'u-row' },
-        h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: '/dashboard' }, 'Go to your dashboard'),
-        h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out'))));
+    const notice = h('section', { class: 'role-notice u-card u-card-pad', role: 'status' });
+    U.roleNotice(notice, typeof role === 'string' ? { role } : role, missing,
+      'License offers and handle verification are for creator accounts.');
+    $('#app').replaceChildren(notice);
   }
   async function signOut() { await call('/api/creators/logout', {}); location.href = '/'; }
   const brands = (s) => s.split(',').map((b) => b.trim()).filter(Boolean);
@@ -180,10 +178,13 @@
     const title = h('h2', {}, 'Create your creator account');
     const roleLinks = h('p', { class: 'u-hint' }, 'Brand or manager? Sign up on the ',
       h('a', { href: '/brands/' }, 'Brands'), ' / ', h('a', { href: '/creators/roster' }, 'Managers'), ' page.');
+    const also = U.signupSides('creator');
+    const alsoWrap = h('div', {}, also.el);
     const toggle = h('button', { class: 'u-btn u-btn-ghost', type: 'button', onclick: () => {
       signup = !signup;
       title.textContent = signup ? 'Create your creator account' : 'Sign in to see your offers';
       roleLinks.hidden = !signup;
+      alsoWrap.hidden = !signup;
       submit.textContent = signup ? 'Create account' : 'Sign in';
       toggle.textContent = signup ? 'I already have an account' : 'Create an account';
       pw.autocomplete = signup ? 'new-password' : 'current-password';
@@ -192,7 +193,8 @@
       e.preventDefault(); err.textContent = '';
       await pending(submit, async () => {
         try {
-          await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value, ...(signup ? { role: 'creator' } : {}) });
+          await call(`/api/creators/${signup ? 'signup' : 'login'}`, { email: email.value, password: pw.value,
+            ...(signup ? { role: 'creator', also: also.values() } : {}) });
           const query = new URLSearchParams(location.search);
           if (!query.has('claim') && query.get('connect') !== 'done') location.href = '/dashboard';
           else load();
@@ -204,7 +206,7 @@
       h('div', { class: 'row' }, submit, toggle), err);
     $('#app').removeAttribute('aria-busy');
     $('#app').replaceChildren(h('section', { class: 'sec signin' }, h('div', { class: 'sec-head' }, title),
-      roleLinks, h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
+      roleLinks, alsoWrap, h('p', { class: 'sec-p' }, 'Same account as Receipts. Free.'), form));
   }
 
   function handles(d) {
@@ -433,10 +435,11 @@
     try {
       const me = await call('/api/creators/me');
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
-      if (!U.hasRole(me.user, 'creator')) { showRoleNotice(me.user.role); return; }
-      call('/api/creators/visit', { page: 'inbox' }).catch(() => {});   // a return visit, for the packaging test's week-4 count
-      $('#who').replaceChildren(h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
+      $('#who').replaceChildren(U.sideSwitcher(me.user, U.hasRole(me.user, 'creator') ? 'creator' : me.user.role),
+        h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
         h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await call('/api/creators/logout', {}); location.reload(); } }, 'Sign out'));
+      if (!U.hasRole(me.user, 'creator')) { showRoleNotice(me.user); return; }
+      call('/api/creators/visit', { page: 'inbox' }).catch(() => {});   // a return visit, for the packaging test's week-4 count
       let connected = false;
       if (new URLSearchParams(location.search).get('connect') === 'done') {   // back from Stripe onboarding
         await call('/api/licenses/payouts/refresh', {}).catch(() => {});
@@ -447,7 +450,7 @@
       render(d);
       if (connected && d.payouts.online) U.toast(d.payouts.payoutsEnabled ? 'Payouts are on' : 'Stripe still needs a few details to turn payouts on', { kind: d.payouts.payoutsEnabled ? 'ok' : 'info' });
     } catch (ex) {
-      if (ex.status === 403 && ex.data?.role) { showRoleNotice(ex.data.role); return; }
+      if (ex.status === 403 && ex.data?.role) { showRoleNotice(ex.data.role, ex.data.missing || 'creator'); return; }
       $('#app').removeAttribute('aria-busy'); $('#app').replaceChildren(h('p', { class: 'u-error', role: 'alert' }, ex.message));
     }
   }

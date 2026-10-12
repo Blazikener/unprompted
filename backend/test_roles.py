@@ -1,4 +1,4 @@
-"""Accounts keep one role and role-specific APIs reject other accounts."""
+"""Accounts can add sides while role-specific APIs reject missing access."""
 import http.cookiejar
 import json
 import os
@@ -16,6 +16,7 @@ import pytest
 from psycopg.types.json import Jsonb
 
 import creator  # noqa: E402
+import licenses  # noqa: E402
 import rosters  # noqa: E402
 import server  # noqa: E402
 
@@ -62,11 +63,13 @@ class Client:
             return error.code, json.load(error)
 
 
-def signup(client, role=None):
+def signup(client, role=None, also=None):
     email = "roles-%s@example.test" % secrets.token_hex(8)
     body = {"email": email, "password": "password-123"}
     if role is not None:
         body["role"] = role
+    if also is not None:
+        body["also"] = also
     return client.request("POST", "/api/creators/signup", body)
 
 
@@ -92,20 +95,24 @@ def test_role_gates_return_role_and_search_list_is_brand_only(base):
     assert signup(brand_client, "brand")[0] == 201
 
     status, error = brand_client.request("POST", "/api/creators/scans", {"platform": "tiktok", "handle": "maya.eats"})
-    assert status == 403 and error["role"] == "brand" and "creator accounts" in error["error"]
+    assert status == 403 and error["role"] == "brand" and error["missing"] == "creator"
+    assert "creator accounts" in error["error"]
 
     for path, body in (
         ("/api/searches", {"brand": "Alpha"}),
         ("/api/checks", {"platform": "tiktok", "handle": "maya.eats", "brand": "Alpha"}),
     ):
         status, error = creator_client.request("POST", path, body)
-        assert status == 403 and error["role"] == "creator" and "brand accounts" in error["error"]
+        assert status == 403 and error["role"] == "creator" and error["missing"] == "brand"
+        assert "brand accounts" in error["error"]
     assert creator_client.request("GET", "/api/searches") == (200, [])
 
     status, error = creator_client.request("GET", "/api/rosters/mine")
-    assert status == 403 and error["role"] == "creator" and "manager accounts" in error["error"]
+    assert status == 403 and error["role"] == "creator" and error["missing"] == "manager"
+    assert "manager accounts" in error["error"]
     status, error = brand_client.request("GET", "/api/licenses/mine")
-    assert status == 403 and error["role"] == "brand" and "creator accounts" in error["error"]
+    assert status == 403 and error["role"] == "brand" and error["missing"] == "creator"
+    assert "creator accounts" in error["error"]
     assert Client(base).request("GET", "/api/rosters/mine")[0] == 401
 
     with pytest.raises(server.ApiError) as error:
@@ -219,3 +226,70 @@ def test_listed_accounts_use_both_creator_and_brand_sides(base, monkeypatch):
 
     monkeypatch.setenv("MULTI_ROLE_ACCOUNTS", "@example.test")
     assert plain.request("GET", "/api/creators/me")[1]["user"]["roles"] == ["creator", "brand"]
+
+
+def test_signup_also_and_role_order(base):
+    client = Client(base)
+    status, signed = signup(client, "brand", ["manager", "creator", "brand"])
+    assert status == 201
+    assert signed["user"]["role"] == "brand"
+    assert signed["user"]["roles"] == ["brand", "creator", "manager"]
+
+
+def test_extra_role_management_add_remove_and_validation(base):
+    assert Client(base).request("POST", "/api/me/roles", {"role": "brand", "on": True})[0] == 401
+    for primary in ("creator", "brand", "manager"):
+        client = Client(base)
+        assert signup(client, primary)[0] == 201
+        status, _ = client.request("GET", "/api/me/roles")
+        assert status == 405
+        status, error = client.request("POST", "/api/me/roles", {"role": primary, "on": False})
+        assert status == 400 and error["error"] == "That's your main side."
+        expected = [primary]
+        for side in ("creator", "brand", "manager"):
+            if side == primary:
+                continue
+            status, out = client.request("POST", "/api/me/roles", {"role": side, "on": True})
+            assert status == 200
+            expected = [primary, *(r for r in ("creator", "brand", "manager") if r != primary and r in expected + [side])]
+            assert out["user"]["roles"] == expected
+        for side in ("creator", "brand", "manager"):
+            if side == primary:
+                continue
+            status, out = client.request("POST", "/api/me/roles", {"role": side, "on": False})
+            assert status == 200
+            expected.remove(side)
+            assert out["user"]["roles"] == expected
+        status, error = client.request("POST", "/api/me/roles", {"role": "admin", "on": True})
+        assert status == 400
+
+
+def test_creator_can_add_brand_and_manager_sides(base, monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "1")
+    monkeypatch.setenv("ORIANE_API_KEY", "")
+    monkeypatch.setattr(server, "oriane", lambda *args, **kwargs: {
+        "data": {"results": [], "aggregations": {"totalViewsCount": 0}},
+        "metadata": {"pagination": {"totalCount": 0}},
+    })
+    client = Client(base)
+    assert signup(client)[0] == 201
+    status, error = client.request("POST", "/api/searches", {"brand": "Alpha"})
+    assert status == 403 and error["missing"] == "brand"
+    assert client.request("GET", "/api/rosters/mine")[0] == 403
+
+    assert client.request("POST", "/api/me/roles", {"role": "brand", "on": True})[0] == 200
+    assert client.request("POST", "/api/searches", {"brand": "Alpha"})[0] == 200
+    assert client.request("POST", "/api/me/roles", {"role": "manager", "on": True})[0] == 200
+    assert client.request("GET", "/api/rosters/mine")[0] == 200
+    manager_view = client.request("GET", "/api/creators/dashboard?as=manager")[1]
+    assert manager_view["role"] == "manager" and manager_view["manager"] is not None
+
+
+def test_roster_pilot_grants_extra_role_manager(base, monkeypatch):
+    client = Client(base)
+    status, signed = signup(client)
+    assert status == 201
+    assert client.request("POST", "/api/me/roles", {"role": "manager", "on": True})[0] == 200
+    monkeypatch.setattr(licenses, "notify", lambda *args, **kwargs: None)
+    result = rosters.admin_grant({"email": signed["user"]["email"]})
+    assert any(row["email"] == signed["user"]["email"] for row in result["rosters"])

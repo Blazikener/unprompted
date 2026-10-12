@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Collab · Unprompted</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/ui/ui.css?v=3">
+<link rel="stylesheet" href="/ui/ui.css?v=4">
 <link rel="stylesheet" href="/collab/collab.css?v=1">
-<script src="/ui/ui.js?v=2"></script>
+<script src="/ui/ui.js?v=3"></script>
 <script src="/collab/collab.js?v=1"></script>
 </head>
 <body class="u-stage">
@@ -18,7 +18,7 @@
   </nav>
   <span class="grow"></span>
   <span class="bar-note">Future collab</span>
-  <span id="who"></span>
+  <div id="who"></div>
 </header>
 <main class="page">
   <section id="app" aria-busy="true" tabindex="-1"><p class="u-muted">Loading…</p></section>
@@ -30,6 +30,7 @@
   const parts = location.pathname.split('/').filter(Boolean);       // ['collab', token] | ['collab', 'new'] | ['collab', 'new', digestToken]
   const q = new URLSearchParams(location.search);
   const app = $('#app');
+  let account = null;
   const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); app.focus({ preventScroll: true }); };
   const fail = (msg, extra) => show(h('div', { class: 'c-card', role: 'alert' }, h('h1', { class: 'u-h3' }, msg), extra || null));
 
@@ -63,8 +64,13 @@
       } else {
         const me = await C.call('/api/creators/me');
         if (!me.user) return fail('Sign in with your brand account to invite creators.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Go to brand sign-in'));
-        if (!U.hasRole(me.user, 'brand')) return fail(`You're signed in with a ${me.user.role} account.`, h('p', {}, 'Invites are sent by brand accounts. Creators pitch brands from their collabs inbox.', ' ', h('a', { href: '/collabs' }, 'Open your collabs')));
+        account = me.user;
         who(me.user);
+        if (!U.hasRole(me.user, 'brand')) {
+          const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+          U.roleNotice(notice, me.user, 'brand', 'Invites are sent from brand sides. Creators pitch brands from their collabs inbox.');
+          return show(notice);
+        }
         const mine = await C.call('/api/collabs/mine?as=brand');
         ctx = { brand: q.get('brand') || mine.profile?.brand || '', platform: q.get('platform') || 'tiktok', handle: (q.get('handle') || '').replace(/^@/, ''),
                 videoId: q.get('v') || '', brandEditable: true };
@@ -74,7 +80,14 @@
           ctx.proof = p.proof || null;
         }
       }
-    } catch (e) { return fail(e.message); }
+    } catch (e) {
+      if (e.status === 403 && e.data?.role) {
+        const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+        U.roleNotice(notice, account || { role: e.data.role }, e.data.missing || 'brand', 'Invites are sent from brand sides.');
+        return show(notice);
+      }
+      return fail(e.message);
+    }
     const t = C.termsForm({ budgetUsd: '' });
     const brand = h('input', { class: 'u-input', value: ctx.brand, required: true, maxlength: 60 });
     const err = h('p', { class: 'u-error', role: 'alert' });
@@ -119,10 +132,12 @@
     handle.focus();
   }
 
-  function who(user) {
-    $('#who').replaceChildren(h('span', { class: 'email' }, user.email), h('a', { href: '/collabs' }, 'Collabs'), h('a', { href: '/dashboard' }, 'Dashboard'));
+  function who(user, role = user.role) {
+    $('#who').replaceChildren(U.sideSwitcher(user, role), h('span', { class: 'email' }, user.email),
+      h('a', { href: '/collabs' }, 'Collabs'), h('a', { href: '/dashboard' }, 'Dashboard'));
   }
 
+  C.call('/api/creators/me').then(({ user }) => { if (user) who(user); }).catch(() => {});
   if (parts[1] === 'new') compose();
   else if (/^[0-9a-f]{32}$/.test(parts[1] || '')) viewCollab(parts[1]);
   else fail("This collab link isn't valid.");
