@@ -123,6 +123,7 @@ def test_creator_misses_group_case_insensitively_and_ignore_demo(prefix):
 
 def test_creator_misses_are_cleared_by_later_success(prefix):
     cleared_handle = prefix + "-cleared"
+    public_handle = prefix + "-public"
     active_handle = prefix + "-active"
     with psycopg.connect(server.DB_URL, row_factory=psycopg.rows.dict_row) as db:
         uid = user(db, f"{prefix}-person@coverage.test")
@@ -130,11 +131,15 @@ def test_creator_misses_are_cleared_by_later_success(prefix):
             "INSERT INTO events (user_id, name, data, created_at) VALUES"
             " (%s, 'scan_miss', %s, now() - interval '2 hours'),"
             " (%s, 'scan', %s, now() - interval '1 hour'),"
+            " (%s, 'scan_miss', %s, now() - interval '2 hours'),"
+            " (%s, 'scan', %s, now() - interval '1 hour'),"
             " (%s, 'scan', %s, now() - interval '2 hours'),"
             " (%s, 'scan_miss', %s, now() - interval '1 hour')",
             (
                 uid, Jsonb({"platform": "tiktok", "handle": cleared_handle, "reason": "unknown"}),
-                uid, Jsonb({"platform": "tiktok", "handle": cleared_handle, "videos": 1}),
+                uid, Jsonb({"platform": "tiktok", "handle": cleared_handle, "source": "live", "videos": 1}),
+                uid, Jsonb({"platform": "tiktok", "handle": public_handle, "reason": "unknown"}),
+                uid, Jsonb({"platform": "tiktok", "handle": public_handle, "source": "public", "videos": 1}),
                 uid, Jsonb({"platform": "tiktok", "handle": active_handle, "videos": 1}),
                 uid, Jsonb({"platform": "tiktok", "handle": active_handle, "reason": "unknown"}),
             ),
@@ -145,6 +150,8 @@ def test_creator_misses_are_cleared_by_later_success(prefix):
         for row in coverage.gaps()["creators"]
     }
     assert ("tiktok", cleared_handle) not in by_handle
+    public = by_handle[("tiktok", public_handle)]
+    assert public["attempts"] == 1
     active = by_handle[("tiktok", active_handle)]
     assert active["attempts"] == 1
 

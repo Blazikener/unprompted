@@ -58,6 +58,7 @@ def gaps(days=DEFAULT_DAYS):
                   SELECT 1
                   FROM events s
                   WHERE s.name = 'scan'
+                    AND s.data->>'source' = 'live'
                     AND s.data->>'platform' = e.data->>'platform'
                     AND lower(s.data->>'handle') = lower(e.data->>'handle')
                     AND s.created_at > e.created_at
