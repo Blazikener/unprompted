@@ -152,7 +152,9 @@ def partner(name):
 
 def video_proof(video_id, platform, handle):
     with connect() as db:
-        row = db.execute("SELECT v.raw, m.kind, m.quote FROM videos v LEFT JOIN mentions m ON m.video_id = v.id"
+        row = db.execute("SELECT v.raw, m.kind, m.quote, s.brand FROM videos v"
+                         " LEFT JOIN mentions m ON m.video_id = v.id"
+                         " LEFT JOIN searches s ON s.id = m.search_id"
                          " WHERE v.id = %s ORDER BY m.search_id DESC NULLS LAST LIMIT 1", (video_id,)).fetchone()
     if not row:
         return None
@@ -160,7 +162,7 @@ def video_proof(video_id, platform, handle):
     if (raw.get("platform") or "").lower() != platform or (raw.get("profileHandle") or "").lower() != handle:
         raise ApiError(400, "That video isn't by @%s." % handle)
     return {"url": post_url(raw), "quote": row["quote"], "views": raw.get("viewsCount") or 0,
-            "publishedAt": raw.get("publishedAt"), "kind": row["kind"]}
+            "publishedAt": raw.get("publishedAt"), "kind": row["kind"], "brand": row["brand"]}
 
 
 def scan_proof(user, scan_id, brand):

@@ -34,6 +34,7 @@
   let accountReady = Promise.resolve(null);
   const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); app.focus({ preventScroll: true }); };
   const fail = (msg, extra) => show(h('div', { class: 'c-card', role: 'alert' }, h('h1', { class: 'u-h3' }, msg), extra || null));
+  const affinity = (proof, b) => !!(proof && proof.quote && ['spoken','tagged'].includes(proof.kind) && proof.brand && b && proof.brand.trim().toLowerCase() === b.trim().toLowerCase());
 
   // ---------------------------------------------------------------- one collab, answered from its link (no account)
   async function viewCollab(token) {
@@ -74,7 +75,7 @@
       if (digestToken) {
         const d = await C.call(`/api/collabs/digest/${digestToken}?v=${encodeURIComponent(q.get('v') || '')}`);
         const v = d.video;
-        ctx = { brand: d.brand, platform: v.platform, handle: v.handle, proof: v };
+        ctx = { brand: d.brand, platform: v.platform, handle: v.handle, proof: { ...v, brand: d.brand } };
       } else {
         const me = await C.call('/api/creators/me');
         if (!me.user) return fail('Sign in with your brand account to invite creators.', h('a', { class: 'u-btn u-btn-primary', href: '/brands/' }, 'Go to brand sign-in'));
@@ -102,11 +103,18 @@
       }
       return fail(e.message);
     }
-    const lead = ctx.proof
-      ? `They already talk about ${ctx.brand || 'you'} without being paid. Propose new content, in their style: what gets made, when, and the budget.`
-      : 'Propose new content, in their style: what gets made, when, and the budget.';
+    const genericLead = 'Propose new content, in their style: what gets made, when, and the budget.';
     const t = C.termsForm({ budgetUsd: '' });
     const brand = h('input', { class: 'u-input', value: ctx.brand, required: true, maxlength: 60 });
+    const lead = h('p', { class: 'u-lead' });
+    const updateLead = () => {
+      const currentBrand = (ctx.brandEditable ? brand.value : ctx.brand || '').trim();
+      lead.textContent = affinity(ctx.proof, currentBrand)
+        ? `They already talk about ${currentBrand} without being paid. ${genericLead}`
+        : genericLead;
+    };
+    updateLead();
+    if (ctx.brandEditable) brand.addEventListener('input', updateLead);
     const err = h('p', { class: 'u-error', role: 'alert' });
     const submit = h('button', { class: 'u-btn u-btn-primary', type: 'submit' }, 'Send the proposal');
     const form = h('form', { class: 'c-card', onsubmit: (e) => {
@@ -126,7 +134,7 @@
       h('small', { class: 'u-hint' }, `@${ctx.handle} can accept, counter or decline from a link, no account needed. If they're not on Receipts yet, we pass it on. You'll hear back by email.`));
     show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Invite to collab'),
         h('h1', {}, `Work with @${ctx.handle} on what's next.`),
-        h('p', { class: 'u-lead' }, lead)),
+        lead),
       ctx.proof ? C.proof({ proof: ctx.proof, handle: ctx.handle, platform: ctx.platform }) : null, form);
   }
 

@@ -922,7 +922,7 @@ function renderManager() {
     h('p', { class: 'plan-note' }, `Roster access: ${m.access || 'not active'} · Last report: ${date(m.lastReportAt)}`),
     h('div', { class: 'action-grid' }, h('a', { class: 'u-btn u-btn-primary', href: '/creators/roster' }, 'Open roster and reports')))
     : emptyState('Build your first creator roster', 'Add the creators you represent and get one weekly picture of brand mentions and opportunities.', '/creators/roster', 'Set up your roster');
-  panel.replaceChildren(panelHead('Manager', 'Your roster', summary), content);
+  panel.replaceChildren(panelHead('Manager', 'Your roster', summary), tourBanner(), content);
 }
 function renderAccount() {
   const panel = $('#panel-account'), user = data.user;
@@ -972,6 +972,7 @@ function renderAccount() {
     h('button', { class: 'u-btn', type: 'button', onclick: signOut }, 'Sign out'));
   panel.replaceChildren(...[
     panelHead('Account', 'Your account', 'Plan, access and billing, without leaving your workspace.'),
+    tourBanner(),
     h('div', { class: 'account-card' }, card('Membership', facts), card('Actions', actions)),
     sides,
     weeklyUsage ? h('section', { class: 'section-gap' }, h('h3', {}, 'Weekly usage'), weeklyUsage) : null,

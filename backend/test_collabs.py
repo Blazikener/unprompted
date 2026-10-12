@@ -31,6 +31,8 @@ def clean(monkeypatch):
             db.execute("DELETE FROM collabs WHERE handle = %s OR lower(brand) LIKE 'collabtest%%'", (HANDLE,))
             db.execute("DELETE FROM brand_profiles WHERE lower(brand) LIKE 'collabtest%%'")
             db.execute("DELETE FROM creator_handles WHERE handle = %s", (HANDLE,))
+            db.execute("DELETE FROM mentions WHERE video_id LIKE 'collabs-proof-%%'")
+            db.execute("DELETE FROM searches WHERE brand LIKE 'CollabTest Proof%%'")
             db.execute("DELETE FROM videos WHERE id LIKE 'collabs-proof-%%'")
             db.execute("DELETE FROM users WHERE email LIKE 'collab-%%@example.test'")
 
@@ -87,6 +89,24 @@ def proof_request(user, handle, video_id, side=None):
         headers = {"Cookie": cookie}
 
     return collabs.dispatch(Handler())
+
+
+def test_video_proof_includes_brand_and_kind_and_null_brand_without_mention():
+    mentioned_video = proof_video(HANDLE)
+    unmentioned_video = proof_video("collab.other")
+    with server.connect() as db:
+        search_id = db.execute(
+            "INSERT INTO searches (brand, params, total_count, total_views) VALUES (%s, %s, 1, 1200) RETURNING id",
+            ("CollabTest Proof", Jsonb({})),
+        ).fetchone()["id"]
+        db.execute(
+            "INSERT INTO mentions (search_id, video_id, kind, hits, quote) VALUES (%s, %s, 'spoken', 1, %s)",
+            (search_id, mentioned_video, Jsonb({"text": "I love this brand"})),
+        )
+
+    proof = collabs.video_proof(mentioned_video, "tiktok", HANDLE)
+    assert proof["brand"] == "CollabTest Proof" and proof["kind"] == "spoken"
+    assert collabs.video_proof(unmentioned_video, "tiktok", "collab.other")["brand"] is None
 
 
 def add_scan(u, brand):
