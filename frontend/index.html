@@ -83,11 +83,19 @@
   body:not(.is-landing) .searchbar:not(.hero-form) { position: static; }
   .app-topbar .wordmark { flex: none; font-size: var(--fs-lg); view-transition-name: none; }
   .app-topbar #app-account { margin-inline-start: auto; }
-  .brand-account-chip { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px 10px; }
-  .brand-account-email { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-account-chip { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 6px 10px; min-width: 0; white-space: nowrap; }
+  .brand-account-email { flex: 0 1 auto; min-width: 0; max-width: clamp(76px, 9vw, 128px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .brand-account-usage { color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
   .brand-account-actions { display: inline-flex; align-items: center; gap: 6px; }
   .brand-account-actions .u-btn { min-height: 30px; }
+  @media (max-width: 1300px) {
+    .landing-top { height: auto; min-height: 64px; flex-wrap: wrap; padding-block: 8px; }
+    .landing-top .grow { display: none; }
+    .landing-top #landing-account { flex: 1 1 100%; min-width: 0; }
+    .landing-top .brand-account-chip { width: 100%; }
+    .landing-top .brand-account-email { max-width: 88px; }
+    .landing-top .brand-account-usage { display: none; }
+  }
   .context-notice:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
   .context-notice p { margin: 0; flex: 1 1 36ch; }
 
@@ -363,6 +371,11 @@
   :root[data-motion="reduce"] .story-meter, :root[data-motion="reduce"] .story-visual { display: none; }
   @media (max-width: 600px) {
     .hero-top .no-narrow, .landing-top .no-narrow { display: none; }
+    .landing-top { padding-block: 8px; }
+    .landing-top .brand-account-chip { justify-content: flex-start; gap: 4px; }
+    .landing-top .brand-account-email, .landing-top .brand-account-usage { display: none; }
+    .landing-top .brand-account-actions { gap: 2px; }
+    .landing-top .brand-account-actions .u-btn { padding-inline: 6px; font-size: var(--fs-xs); }
     .b-gap-visual { grid-template-columns: minmax(0, 1fr); }
     .b-vid { grid-row: auto; max-width: 260px; justify-self: center; width: 100%; }
     .b-inbox li img { width: 44px; height: 78px; }

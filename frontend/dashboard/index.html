@@ -25,9 +25,10 @@
   .dash-title em { display: block; margin-top: 6px; color: var(--text-2); font: italic 400 0.78em/1.1 var(--voice); letter-spacing: -0.035em; }
   .dash-intro { max-width: 54ch; margin-top: var(--s-3); color: var(--text-2); }
   .dash-kicker, .panel-kicker { color: var(--text-3); font: 500 var(--fs-xs)/1.2 var(--mono); letter-spacing: 0.11em; text-transform: uppercase; }
-  .account-email { flex: 0 1 220px; width: 220px; min-width: 80px; max-width: 220px; overflow: hidden; color: var(--text-2); font-size: var(--fs-sm); text-overflow: ellipsis; white-space: nowrap; }
+  .account-email { flex: 0 1 160px; width: 160px; min-width: 80px; max-width: 160px; overflow: hidden; color: var(--text-2); font-size: var(--fs-sm); text-overflow: ellipsis; white-space: nowrap; }
   .dash-account > .u-pill, .account-actions { flex: none; }
   .account-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); flex-wrap: nowrap; }
+  @media (max-width: 1100px) { .account-email { flex-basis: 88px; width: 88px; min-width: 0; max-width: 88px; } }
   .dash-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: start; margin-top: var(--s-5); }
   .dash-rail { position: sticky; inset-block-start: 84px; padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-4); background: var(--surface-2); }
   .rail-label { margin: 0 var(--s-2) var(--s-2); color: var(--text-3); font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
@@ -169,7 +170,7 @@
     .mobile-tabs .tab[aria-selected="true"]::before { display: none; }
   }
   @media (max-width: 700px) {
-    .dash-bar { flex-wrap: wrap; }
+    .dash-bar { height: auto; min-height: 64px; flex-wrap: wrap; }
     .dash-main { width: min(100% - 28px, 560px); padding-block: 20px 56px; }
     .dash-hero { padding: var(--s-4); }
     .dash-bar .dash-account { flex: 1 1 100%; justify-content: flex-end; }
@@ -805,8 +806,10 @@ function renderAccount() {
     h('div', { class: 'side-setting-list' }, ...['creator', 'brand', 'manager'].map((role) => {
       const primary = role === user.role;
       const enabled = (data.roles || [user.role]).includes(role);
+      const locked = (user.lockedRoles || [user.role]).includes(role);
       const copy = { creator: 'Find brands you already mention, pitch them', brand: 'Find creators who already love you, send proposals', manager: "Run a roster, see every creator's deals" }[role];
       const toggle = primary ? h('span', { class: 'u-pill u-pill-ok' }, 'Main side')
+        : locked ? h('span', { class: 'u-pill u-pill-ok' }, 'Included for your team')
         : h('label', { class: 'side-setting-toggle' },
           h('input', { type: 'checkbox', checked: enabled, 'aria-label': `${enabled ? 'Remove' : 'Add'} ${role} side`,
             onchange: async (event) => {
@@ -815,8 +818,14 @@ function renderAccount() {
               try {
                 const updated = await U.setRole(role, next);
                 data.user = updated; data.roles = updated.roles;
-                if (!updated.roles.includes(data.role)) { location.replace(`/dashboard?as=${encodeURIComponent(updated.role)}`); return; }
+                if (!updated.roles.includes(data.role)) {
+                  U.rememberSide(updated.role);
+                  location.replace(`/dashboard?as=${encodeURIComponent(updated.role)}`);
+                  return;
+                }
+                buildTabs();
                 render();
+                activateTab('account', false);
                 U.toast(`${role[0].toUpperCase()}${role.slice(1)} side ${next ? 'added' : 'removed'}.`, { kind: 'ok' });
               } catch (error) { input.checked = !next; input.disabled = false; U.toast(error.message, { kind: 'error' }); }
             } }),
@@ -868,6 +877,11 @@ function addPaletteActions() {
     const params = new URLSearchParams(location.search), asked = params.get('as'), tab = params.get('tab');
     const requested = ['creator', 'brand', 'manager'].includes(asked) ? asked : !asked ? U.activeSide() : null;
     data = await api(`/dashboard${requested ? `?as=${encodeURIComponent(requested)}` : ''}`);
+    if (['creator', 'brand', 'manager'].includes(asked) && asked !== data.role) {
+      const url = new URL(location.href);
+      url.searchParams.set('as', data.role);
+      history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+    }
     if (requested === data.role) U.rememberSide(data.role);
     buildTabs();
     render();

@@ -503,7 +503,8 @@ def plan_of(user):
 def public_user(u):
     import packaging
     return {
-        "id": u["id"], "email": u["email"], "role": u["role"], "roles": roles_of(u), "plan": u["plan"],
+        "id": u["id"], "email": u["email"], "role": u["role"], "roles": roles_of(u),
+        "lockedRoles": locked_roles(u), "plan": u["plan"],
         "limits": PLANS[plan_of(u)], "billing": bool(u.get("stripe_customer")),
         "arm": packaging.user_arm(u),
     }
@@ -546,6 +547,17 @@ def roles_of(user):
     if email in listed or "@" + email.rpartition("@")[2] in listed:
         extras.update(("creator", "brand"))
     return [primary, *(role for role in ("creator", "brand", "manager") if role != primary and role in extras)]
+
+
+def locked_roles(user):
+    """Return the main side and sides included by the account's team plan."""
+    primary = user["role"]
+    locked = {primary}
+    listed = {e.strip().lower() for e in os.environ.get("MULTI_ROLE_ACCOUNTS", "").split(",") if e.strip()}
+    email = (user.get("email") or "").lower()
+    if email in listed or "@" + email.rpartition("@")[2] in listed:
+        locked.update(("creator", "brand"))
+    return [primary, *(role for role in ("creator", "brand", "manager") if role != primary and role in locked)]
 
 
 def has_role(user, role):
@@ -633,6 +645,8 @@ def update_roles(headers, body):
             raise ApiError(401, "Sign in to continue.")
         if not enabled and role == current["role"]:
             raise ApiError(400, "That's your main side.")
+        if not enabled and role in locked_roles(current):
+            raise ApiError(409, "Your team plan includes this side.")
         previous = set(current.get("extra_roles") or [])
         extras = set(previous)
         if enabled:

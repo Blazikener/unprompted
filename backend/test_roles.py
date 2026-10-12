@@ -34,7 +34,9 @@ def schema_and_cleanup():
     server.init_db()
     yield
     with server.connect() as db:
-        users = db.execute("SELECT id FROM users WHERE email LIKE 'roles-%@example.test'").fetchall()
+        users = db.execute(
+            "SELECT id FROM users WHERE email LIKE 'roles-%@example.test' OR email LIKE 'roles-%@oriane.test'"
+        ).fetchall()
         ids = [row["id"] for row in users]
         if ids:
             db.execute("DELETE FROM events WHERE user_id = ANY(%s)", (ids,))
@@ -279,6 +281,26 @@ def test_role_updates_preserve_sides_from_a_stale_user(base, monkeypatch):
     with server.connect() as db:
         extras = db.execute("SELECT extra_roles FROM users WHERE id = %s", (signed["user"]["id"],)).fetchone()["extra_roles"]
     assert extras == ["brand", "manager"]
+
+
+def test_team_granted_sides_are_locked(base, monkeypatch):
+    monkeypatch.setenv("MULTI_ROLE_ACCOUNTS", "@oriane.test")
+    email = "roles-%s@oriane.test" % secrets.token_hex(8)
+    client = Client(base)
+    status, signed = client.request(
+        "POST", "/api/creators/signup", {"email": email, "password": "password-123", "role": "creator"}
+    )
+
+    assert status == 201
+    assert signed["user"]["roles"] == ["creator", "brand"]
+    assert signed["user"]["lockedRoles"] == ["creator", "brand"]
+    status, error = client.request("POST", "/api/me/roles", {"role": "brand", "on": False})
+    assert status == 409 and error["error"] == "Your team plan includes this side."
+
+    status, updated = client.request("POST", "/api/me/roles", {"role": "manager", "on": True})
+    assert status == 200
+    assert updated["user"]["roles"] == ["creator", "brand", "manager"]
+    assert updated["user"]["lockedRoles"] == ["creator", "brand"]
 
 
 def test_creator_can_add_brand_and_manager_sides(base, monkeypatch):

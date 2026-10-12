@@ -31,13 +31,14 @@
   const q = new URLSearchParams(location.search);
   const app = $('#app');
   let account = null;
+  let accountReady = Promise.resolve(null);
   const show = (...kids) => { app.removeAttribute('aria-busy'); app.replaceChildren(...kids.filter(Boolean)); app.focus({ preventScroll: true }); };
   const fail = (msg, extra) => show(h('div', { class: 'c-card', role: 'alert' }, h('h1', { class: 'u-h3' }, msg), extra || null));
 
   // ---------------------------------------------------------------- one collab, answered from its link (no account)
   async function viewCollab(token) {
     const api = `/api/collabs/t/${token}`;
-    const render = (c) => {
+    const render = (c, collabSide) => {
       document.title = `${C.headline(c)} · Unprompted`;
       show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, c.side === 'creator' ? 'For @' + c.handle : 'For ' + c.brand),
           h('h1', {}, C.headline(c), '.')),
@@ -47,9 +48,15 @@
           C.actions(c, (body) => C.call(api, body), render),
           C.termsList(c)),
         C.proof(c),
-        h('p', { class: 'u-muted' }, h('a', { href: '/collabs' }, 'All your collabs'), ' · signed-in creators and brands see these in one inbox.'));
+        h('p', { class: 'u-muted' }, h('a', { href: collabSide ? `/collabs?as=${encodeURIComponent(collabSide)}` : '/collabs' }, 'All your collabs'),
+          ' · signed-in creators and brands see these in one inbox.'));
     };
-    try { render(await C.call(api)); } catch (e) { fail(e.message); }
+    try {
+      const [c, user] = await Promise.all([C.call(api), accountReady]);
+      const collabSide = user && U.hasRole(user, c.side) ? c.side : null;
+      if (collabSide) { U.rememberSide(collabSide); who(user, collabSide); }
+      render(c, collabSide);
+    } catch (e) { fail(e.message); }
   }
 
   // ---------------------------------------------------------------- composing a brand's invite
@@ -137,7 +144,11 @@
       h('a', { href: '/collabs' }, 'Collabs'), h('a', { href: '/dashboard' }, 'Dashboard'));
   }
 
-  C.call('/api/creators/me').then(({ user }) => { if (user) who(user); }).catch(() => {});
+  accountReady = C.call('/api/creators/me').then(({ user }) => {
+    account = user || null;
+    if (account) who(account);
+    return account;
+  }).catch(() => null);
   if (parts[1] === 'new') compose();
   else if (/^[0-9a-f]{32}$/.test(parts[1] || '')) viewCollab(parts[1]);
   else fail("This collab link isn't valid.");
