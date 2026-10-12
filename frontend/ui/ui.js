@@ -581,7 +581,6 @@
   }
   function roleNotice(target, user, missingRole, message) {
     if (!target) return;
-    const role = user?.role || 'different';
     const error = h('span', { class: 'u-error', role: 'alert', hidden: true });
     const add = h('button', {
       type: 'button', class: 'u-btn u-btn-primary u-btn-sm', onclick: async () => {
@@ -591,7 +590,7 @@
       },
     }, `Add the ${SIDE_LABEL[missingRole]?.toLowerCase() || 'new'} side`);
     target.replaceChildren(
-      h('strong', {}, `This is the ${role} side.`),
+      h('strong', {}, `This is the ${SIDE_LABEL[missingRole]?.toLowerCase() || 'other'} side.`),
       h('p', {}, message),
       h('div', { class: 'u-row' }, add, h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Go to your dashboard')),
       error);
