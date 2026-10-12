@@ -264,6 +264,23 @@ def test_extra_role_management_add_remove_and_validation(base):
         assert status == 400
 
 
+def test_role_updates_preserve_sides_from_a_stale_user(base, monkeypatch):
+    client = Client(base)
+    status, signed = signup(client)
+    assert status == 201
+    stale_user = {**signed["user"], "extra_roles": []}
+    monkeypatch.setattr(creator, "require_user", lambda _headers: stale_user)
+
+    first = creator.update_roles({}, {"role": "brand", "on": True})
+    second = creator.update_roles({}, {"role": "manager", "on": True})
+
+    assert first["user"]["roles"] == ["creator", "brand"]
+    assert second["user"]["roles"] == ["creator", "brand", "manager"]
+    with server.connect() as db:
+        extras = db.execute("SELECT extra_roles FROM users WHERE id = %s", (signed["user"]["id"],)).fetchone()["extra_roles"]
+    assert extras == ["brand", "manager"]
+
+
 def test_creator_can_add_brand_and_manager_sides(base, monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "1")
     monkeypatch.setenv("ORIANE_API_KEY", "")

@@ -122,6 +122,19 @@ def test_creator_pitches_an_open_brand_with_a_receipt(mail):
     assert "CollabTest Candles" not in [p["brand"] for p in collabs.partners()]
 
 
+def test_creator_primary_brand_side_can_be_discovered_and_pitched(mail):
+    brand_side, ali = new_user("creator"), verified_creator()
+    with server.connect() as db:
+        db.execute("UPDATE users SET extra_roles = %s WHERE id = %s", (["brand"], brand_side["id"]))
+    scan = add_scan(ali, "CollabTest Added Side")
+    collabs.set_profile(brand_side, {"brand": "CollabTest Added Side", "about": "Candles", "open": True})
+
+    assert "CollabTest Added Side" in [p["brand"] for p in collabs.partners()]
+    pitch = collabs.pitch(ali, {**TERMS, "brand": "CollabTest Added Side", "scanId": scan})
+    assert pitch["brand"] == "CollabTest Added Side" and pitch["origin"] == "creator"
+    assert mail[-1][0] == brand_side["email"]
+
+
 def test_roles_cannot_see_each_others_collabs(mail):
     brand, other, ali = new_user("brand"), new_user("brand"), verified_creator()
     c = collabs.propose(brand, {**TERMS, "brand": "CollabTest Tims", "platform": "tiktok", "handle": HANDLE})
@@ -171,3 +184,30 @@ def test_watchlist_and_monday_email(mail):
     assert not [m for m in mail if m[0] == ali["email"]]
     collabs.watch(ali, {"brand": "CollabTest Glow", "remove": True})
     assert collabs.watchlist(ali) == []
+
+
+def test_weekly_uses_creator_side_for_brand_primary_user(mail):
+    user = new_user("brand")
+    with server.connect() as db:
+        db.execute("UPDATE users SET extra_roles = %s WHERE id = %s", (["creator"], user["id"]))
+    collabs.watch(user, {"brand": "CollabTest Glow"})
+    collabs.set_profile(user, {"brand": "CollabTest Glow"})
+
+    assert collabs.run_weekly(force=True) == 1
+    sent = [message for message in mail if message[0] == user["email"]]
+    assert len(sent) == 1 and "CollabTest Glow now taking pitches" in sent[0][1]
+
+
+def test_weekly_continues_after_one_users_failure(mail, monkeypatch):
+    broken, healthy = new_user("creator"), new_user("creator")
+    collabs.watch(broken, {"brand": "CollabTest Broken"})
+    collabs.watch(healthy, {"brand": "CollabTest Healthy"})
+
+    def build(user):
+        if user["id"] == broken["id"]:
+            raise RuntimeError("broken weekly report")
+        return "Weekly", "<p>Ready</p>", []
+
+    monkeypatch.setattr(collabs, "weekly", build)
+    assert collabs.run_weekly(force=True) == 1
+    assert [message[0] for message in mail] == [healthy["email"]]

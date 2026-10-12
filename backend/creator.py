@@ -626,24 +626,27 @@ def update_roles(headers, body):
         raise ApiError(400, "Choose creator, brand or manager.")
     if not isinstance(enabled, bool):
         raise ApiError(400, "Choose whether to add or remove the side.")
-    if not enabled and role == user["role"]:
-        raise ApiError(400, "That's your main side.")
-
-    extras = set(user.get("extra_roles") or [])
-    if enabled:
-        if role != user["role"]:
-            extras.add(role)
-        event = "role_added"
-    else:
-        extras.discard(role)
-        event = "role_removed"
-    extra_roles = [side for side in ("creator", "brand", "manager") if side != user["role"] and side in extras]
+    event = "role_added" if enabled else "role_removed"
     with connect() as db:
+        current = db.execute("SELECT * FROM users WHERE id = %s FOR UPDATE", (user["id"],)).fetchone()
+        if not current:
+            raise ApiError(401, "Sign in to continue.")
+        if not enabled and role == current["role"]:
+            raise ApiError(400, "That's your main side.")
+        previous = set(current.get("extra_roles") or [])
+        extras = set(previous)
+        if enabled:
+            if role != current["role"]:
+                extras.add(role)
+        else:
+            extras.discard(role)
+        extra_roles = [side for side in ("creator", "brand", "manager") if side != current["role"] and side in extras]
         updated = db.execute(
             "UPDATE users SET extra_roles = %s WHERE id = %s RETURNING *",
             (extra_roles, user["id"]),
         ).fetchone()
-    if set(user.get("extra_roles") or []) != set(extra_roles):
+        changed = previous != set(updated.get("extra_roles") or [])
+    if changed:
         track(user["id"], event, {"role": role})
     return {"user": public_user(updated)}
 

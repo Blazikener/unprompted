@@ -139,12 +139,12 @@
         U.roleNotice(notice, me, 'creator', 'Collabs belong to creator and brand sides. Add the creator side to pitch brands and manage creator deals.');
         return show(notice);
       }
-      const preferred = params.get('as') || U.activeSide();
+      const pitch = params.get('pitch');
+      const preferred = params.get('as') || (pitch && U.hasRole(me, 'creator') ? 'creator' : U.activeSide());
       const requested = preferred && U.hasRole(me, preferred) ? preferred : '';
       data = await C.call(`/api/collabs/mine${requested ? `?as=${encodeURIComponent(requested)}` : ''}`);
       accountHeader(me, data.role);
       render();
-      const pitch = params.get('pitch');
       if (pitch && data.role === 'creator') { history.replaceState(null, '', location.pathname + location.search); pitchDialog(pitch); }
     } catch (e) {
       if (e.status === 403 && e.data?.role) {

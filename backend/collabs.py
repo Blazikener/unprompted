@@ -10,6 +10,7 @@ and a note) or declines; a counter goes back to the first side. Each side has a 
 Creators also keep a watchlist of brands they want to work with; a Monday email lists the collabs waiting for them and
 which watched brands are open to pitches. No Oriane credits are spent anywhere in this module.
 """
+import logging
 import re
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
@@ -133,9 +134,11 @@ def set_profile(user, body):
 def partners():
     """Brands open to pitches: one row per brand name (the newest profile wins)."""
     with connect() as db:
-        rows = db.execute("SELECT DISTINCT ON (lower(p.brand)) p.brand, p.about, p.user_id, u.email, u.role FROM brand_profiles p"
-                          " JOIN users u ON u.id = p.user_id WHERE p.open"
-                          " ORDER BY lower(p.brand), p.updated_at DESC").fetchall()
+        rows = db.execute(
+            "SELECT DISTINCT ON (lower(p.brand)) p.brand, p.about, p.user_id, u.email, u.role, u.extra_roles"
+            " FROM brand_profiles p JOIN users u ON u.id = p.user_id WHERE p.open"
+            " ORDER BY lower(p.brand), p.updated_at DESC"
+        ).fetchall()
     return [r for r in rows if creator.has_role(r, "brand")]
 
 
@@ -430,7 +433,7 @@ def tell(c, what, by=None):
 
 def weekly(user, force=False):
     """(subject, html, open brands named) of a creator's Monday email, or None when nothing needs them."""
-    inbox = mine(user)
+    inbox = mine(user, "creator")
     turn = [i for i in inbox["collabs"] if i["yourTurn"]]
     with connect() as db:
         last = db.execute("SELECT open_seen FROM collab_weekly WHERE user_id = %s", (user["id"],)).fetchone()
@@ -478,20 +481,25 @@ def run_weekly(force=False):
             " AND (%s OR s.sent_at IS NULL OR s.sent_at < now() - %s)", (force, WEEKLY_EVERY)).fetchall()
     sent = 0
     for u in users:
-        if not creator.has_role(u, "creator"):
-            continue
-        mail = weekly(u)
-        if not mail:
-            continue
-        with connect() as db:
-            claimed = db.execute("INSERT INTO collab_weekly (user_id, sent_at, open_seen) VALUES (%s, now(), %s) ON CONFLICT (user_id)"
-                                 " DO UPDATE SET sent_at = now(), open_seen = excluded.open_seen"
-                                 " WHERE %s OR collab_weekly.sent_at < now() - %s RETURNING user_id",
-                                 (u["id"], mail[2], force, WEEKLY_EVERY)).fetchone()
-        if claimed:
-            digest.send(u["email"], mail[0], mail[1])
-            creator.track(u["id"], "collab_weekly", {"subject": mail[0]})
-            sent += 1
+        try:
+            if not creator.has_role(u, "creator"):
+                continue
+            mail = weekly(u)
+            if not mail:
+                continue
+            with connect() as db:
+                claimed = db.execute(
+                    "INSERT INTO collab_weekly (user_id, sent_at, open_seen) VALUES (%s, now(), %s) ON CONFLICT (user_id)"
+                    " DO UPDATE SET sent_at = now(), open_seen = excluded.open_seen"
+                    " WHERE %s OR collab_weekly.sent_at < now() - %s RETURNING user_id",
+                    (u["id"], mail[2], force, WEEKLY_EVERY),
+                ).fetchone()
+            if claimed:
+                digest.send(u["email"], mail[0], mail[1])
+                creator.track(u["id"], "collab_weekly", {"subject": mail[0]})
+                sent += 1
+        except Exception:
+            logging.exception("Collab weekly failed for user %s", u["id"])
     return sent
 
 
@@ -546,4 +554,3 @@ def dispatch(handler):
     if path == "/watch":
         return watch(creator.require_role(handler.headers, "creator"), body)
     raise ApiError(404, "Not found.")
-
