@@ -448,7 +448,8 @@ def weekly(user, force=False):
     if brands:
         bits.append("%d brand%s found your videos" % (len(brands), "" if len(brands) == 1 else "s"))
     elif locked:
-        bits.append("your videos showed up in %d brand searches" % sum(row["searches"] for row in locked))
+        total = sum(row["searches"] for row in locked)
+        bits.append("your videos showed up in %d brand search%s" % (total, "" if total == 1 else "es"))
     if turn:
         bits.append("%d collab%s waiting for you" % (len(turn), "" if len(turn) == 1 else "s"))
     if opened:
