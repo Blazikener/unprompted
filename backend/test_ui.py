@@ -5,6 +5,7 @@ DATABASE_URL=postgresql:///unprompted_test pytest backend/test_ui.py
 """
 import json
 import os
+import re
 import threading
 import urllib.error
 import urllib.request
@@ -94,6 +95,26 @@ def test_verify_page_routes(base):
         status, body = call(base, "GET", path)
         assert status == 200 and b"Verify your channel." in body
         assert b"Brands can only invite verified creators they find to collabs." in body
+
+
+def test_top_bar_pages_have_synchronous_ui_and_theme_toggle(base):
+    routes = (
+        "/", "/brands", "/brands/", "/tour", "/tour/", "/dashboard", "/collabs", "/collabs/",
+        "/collab/new", "/collab/new/maya", "/verify", "/creators/r/maya.eats",
+        "/creators/roster", "/creators/licenses", "/digest/sample", "/offer/demo", "/license/demo/token",
+        "/admin/", "/waitlist", "/join", "/waitlist/admin", "/demo/credits", "/ui/kit.html",
+    )
+    for path in routes:
+        status, body = call(base, "GET", path)
+        assert status == 200, path
+        if b"<header" not in body and b"<nav" not in body:
+            continue
+        assert b"data-u-theme-toggle" in body, path
+        html = body.decode()
+        head = re.search(r"<head\b[^>]*>(.*?)</head>", html, re.DOTALL | re.IGNORECASE)
+        assert head, path
+        script = re.search(r'<script\b[^>]*src=["\']/ui/ui\.js(?:\?v=\d+)?["\'][^>]*>', head.group(1), re.IGNORECASE)
+        assert script and not re.search(r"\b(?:async|defer|type\s*=\s*[\"']module)", script.group(), re.IGNORECASE), path
 
 
 def test_dashboard_found_links_use_verify(base):

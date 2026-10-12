@@ -166,6 +166,8 @@
   .u-btn-sm { --h: 32px; padding: 0 14px; font-size: var(--fs-sm); gap: 6px; }
   .u-btn-lg { --h: 52px; padding: 0 26px; font-size: var(--fs-lg); }
   .u-btn-icon { width: var(--h); padding: 0; }
+  .u-theme-toggle-button { flex: 0 0 36px; width: 36px; min-width: 36px; height: 36px; padding: 0; }
+  .u-theme-toggle-button svg { width: 18px; height: 18px; }
   .u-btn[aria-busy="true"] { color: transparent; position: relative; pointer-events: none; }
   .u-btn[aria-busy="true"]::after { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor;
                                     border-color: var(--on-accent) var(--on-accent) transparent transparent; animation: u-spin 0.7s linear infinite; }
@@ -514,6 +516,7 @@
   .u-bar-link:hover, .u-bar-link[aria-current="page"] { color: var(--text); }
   @media (max-width: 600px) {
     .u-bar { height: auto; min-height: 64px; padding-block: 8px; }
+    .u-theme-toggle-button { flex-basis: 32px; width: 32px; min-width: 32px; height: 32px; }
   }
   .u-aud { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 3px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); }
   .u-aud a { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 10px; border-radius: var(--r-pill);
