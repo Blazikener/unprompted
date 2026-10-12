@@ -80,3 +80,10 @@ def test_design_system_is_served(base):
                          ("/ui/kit.html", b"Make the receipt the whole interface.")):
         status, body = call(base, "GET", path)
         assert status == 200 and marker in body
+
+
+def test_tour_routes_serve_html(base):
+    for path in ("/tour", "/tour/"):
+        status, body = call(base, "GET", path)
+        assert status == 200 and body.startswith(b"<!doctype html>")
+        assert b"Creators mention brands every day." in body

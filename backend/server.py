@@ -788,6 +788,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/index.html"
             elif path in ("/dashboard", "/dashboard/"):
                 self.path = "/dashboard/index.html"
+            elif path in ("/tour", "/tour/"):
+                self.path = "/tour/index.html"
             elif re.fullmatch(r"/creators/r/[^/]+", path):
                 self.path = "/creators/index.html"
             elif re.fullmatch(r"/digest/[^/]+", path):
