@@ -29,6 +29,8 @@ RELAY_TIKTOK_URL = re.compile(
 )
 DIRECT_FAILURE_TTL = 600
 _direct_failure_until = 0.0
+RELAY_RETRY_STATUSES = {403, 429, 500, 502, 503, 504}
+RELAY_RETRY_DELAYS = (1.5, 3)
 
 
 def _retryable_direct_error(exc):
@@ -42,19 +44,71 @@ def _fetch_via_relay(url, relay_url, secret):
                           headers={"Content-Type": "application/json"})
     try:
         with request.urlopen(req, timeout=TIMEOUT) as response:
-            result = json.load(response)
-    except (error.URLError, OSError, ValueError, TypeError):
-        return None
-    if not isinstance(result, dict) or result.get("ok") is not True or result.get("status") != 200:
-        return None
+            try:
+                result = json.load(response)
+            except (ValueError, TypeError) as exc:
+                return None, None, repr(exc), False
+    except (error.URLError, OSError) as exc:
+        return None, getattr(exc, "code", None), repr(exc), True
+    if not isinstance(result, dict):
+        return None, None, "invalid relay response", False
+    status = result.get("status")
     body = result.get("body")
-    return body if isinstance(body, str) and body.strip() else None
+    if result.get("ok") is True and status == 200 and isinstance(body, str) and body.strip():
+        return body, status, None, False
+    detail = result.get("error")
+    if detail is None:
+        if result.get("ok") is True and status != 200:
+            detail = "relay returned status %s" % status
+        elif result.get("ok") is True:
+            detail = "relay returned an empty body"
+        elif result.get("ok") is False:
+            detail = "relay returned ok=false"
+        else:
+            detail = "invalid relay response"
+    retryable = (
+        result.get("ok") is True and status in RELAY_RETRY_STATUSES
+        or result.get("ok") is False and detail != "URL not allowed"
+    )
+    return None, status, detail, retryable
+
+
+def _handle_from_url(url):
+    path = RELAY_TIKTOK_URL.fullmatch(url).group(1)
+    return path.removeprefix("embed/@") if path.startswith("embed/@") else path[1:].split("/video/", 1)[0]
+
+
+def _safe_relay_text(value, relay_url, secret):
+    text = str(value).replace("\n", " ").replace("\r", " ")
+    for sensitive in (relay_url, secret):
+        if sensitive:
+            text = text.replace(sensitive, "[redacted]")
+    return text
+
+
+def _log_relay_failure(url, status, detail, relay_url, secret):
+    status_text = "None" if status is None else _safe_relay_text(status, relay_url, secret)
+    error_text = _safe_relay_text(detail, relay_url, secret)[:120]
+    log(_handle_from_url(url), "relay failed: status=%s error=%s" % (status_text, error_text))
+
+
+def _relay_body(url, relay_url, secret):
+    path = RELAY_TIKTOK_URL.fullmatch(url).group(1)
+    attempts = 3 if path.startswith("embed/@") else 1
+    for attempt in range(attempts):
+        body, status, detail, retryable = _fetch_via_relay(url, relay_url, secret)
+        if body is not None:
+            _log_relay(url)
+            return body
+        _log_relay_failure(url, status, detail, relay_url, secret)
+        if not retryable or attempt + 1 == attempts:
+            break
+        time.sleep(RELAY_RETRY_DELAYS[attempt])
+    return None
 
 
 def _log_relay(url):
-    path = RELAY_TIKTOK_URL.fullmatch(url).group(1)
-    handle = path.removeprefix("embed/@") if path.startswith("embed/@") else path[1:].split("/video/", 1)[0]
-    log(handle, "via relay")
+    log(_handle_from_url(url), "via relay")
 
 
 def get(url):
@@ -63,10 +117,11 @@ def get(url):
     relay_url = os.environ.get("MAIL_RELAY_URL")
     relay_secret = os.environ.get("MAIL_RELAY_SECRET")
     can_relay = bool(match and relay_url and relay_secret)
+    relay_attempted = False
     if can_relay and time.monotonic() < _direct_failure_until:
-        body = _fetch_via_relay(url, relay_url, relay_secret)
+        relay_attempted = True
+        body = _relay_body(url, relay_url, relay_secret)
         if body is not None:
-            _log_relay(url)
             return body
     req = request.Request(url, headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
     try:
@@ -75,10 +130,9 @@ def get(url):
     except (error.URLError, OSError) as exc:
         if _retryable_direct_error(exc):
             _direct_failure_until = time.monotonic() + DIRECT_FAILURE_TTL
-            if can_relay:
-                body = _fetch_via_relay(url, relay_url, relay_secret)
+            if can_relay and not relay_attempted:
+                body = _relay_body(url, relay_url, relay_secret)
                 if body is not None:
-                    _log_relay(url)
                     return body
         raise
 
@@ -131,7 +185,14 @@ def creator_page(handle):
 def video_detail(handle, video_id):
     try:
         state = embedded_state(get(VIDEO_URL % (handle, video_id)))
-        return state["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
+        scope = state.get("__DEFAULT_SCOPE__") if isinstance(state, dict) else None
+        page = scope.get("webapp.video-detail") if isinstance(scope, dict) else None
+        info = page.get("itemInfo") if isinstance(page, dict) else None
+        item = info.get("itemStruct") if isinstance(info, dict) else None
+        if not isinstance(item, dict):
+            log(handle, "video %s: no item data in page" % video_id)
+            return None
+        return item
     except (error.URLError, OSError, ValueError, KeyError, TypeError) as e:
         log(handle, "video %s failed: %r" % (video_id, e))
         return None
