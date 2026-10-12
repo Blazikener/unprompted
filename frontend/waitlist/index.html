@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Receipts early access: turn the brands you already talk about into your next deal</title>
 <meta name="description" content="Receipts reads your public videos' transcripts, finds every brand you've said on camera and turns it into proof you're a real fan: your pitch for the next paid collab. Join the waitlist: invites go out in waves.">
-<meta name="theme-color" content="#060708">
+<meta name="theme-color" content="#0d0f0e">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Receipts by Unprompted">
 <meta property="og:title" content="You already said the brand. Now land the deal.">
@@ -21,13 +21,11 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preload" href="/ui/fonts/host-grotesk-latin-073d27d1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/ui/fonts/instrument-serif-latin-253e49fe.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/ui/ui.css?v=4">
-<script src="/ui/ui.js?v=3"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=6">
+<script src="/ui/ui.js?v=4"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
-  /* The launch page is always the dark cinema, whatever theme a returning visitor picked elsewhere. */
-  html, body { color-scheme: dark; background: #060708; }
   :root[data-theme="light"] .u-iris { background: var(--iris); -webkit-background-clip: text; background-clip: text; color: transparent; }
   body { overflow-x: clip; }
   ::selection { background: var(--highlight); color: var(--on-highlight); }
@@ -44,7 +42,7 @@
   .wl-bar:not(.is-stuck) .live-dot { opacity: 0; }
   .wl-bar .live-dot { transition: opacity 300ms var(--ease-out); }
   #join { scroll-margin-top: 88px; }
-  .wl-bar.is-stuck { background: oklch(0.1 0.004 160 / 0.72); backdrop-filter: blur(16px) saturate(1.4); border-bottom-color: var(--border); }
+  .wl-bar.is-stuck { background: color-mix(in oklch, var(--bg) 88%, transparent); backdrop-filter: blur(16px) saturate(1.4); border-bottom-color: var(--border); }
   .wl-bar .u-logo small { color: var(--text-2); }
   .wl-bar-cta { display: inline-flex; gap: var(--s-2); align-items: center; }
   .wl-bar-cta .u-btn { opacity: 0; translate: 0 -6px; pointer-events: none; transition: opacity 300ms var(--ease-out), translate 300ms var(--ease-out); }
@@ -56,13 +54,22 @@
 
   /* ---- hero */
   .hero { position: relative; isolation: isolate; min-height: 100svh; display: grid; align-content: center; padding-block: 112px 72px; overflow: clip; }
-  .glass-stage { position: absolute; inset: 0 0 0 40%; z-index: -2; margin: 0; background: #060708;
+  .glass-stage { position: absolute; inset: 0 0 0 40%; z-index: -2; margin: 0; background: var(--bg);
                  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24%); mask-image: linear-gradient(90deg, transparent, #000 24%); }
-  .glass-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #060708, transparent 34%), linear-gradient(transparent 72%, #060708); }
+  .glass-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, var(--bg), transparent 34%), linear-gradient(transparent 72%, var(--bg)); }
+  :root[data-theme="light"] .glass-stage { opacity: 0.42; }
   .glass-3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1400ms var(--ease-out); }
   .glass-stage.has-3d .glass-3d { opacity: 1; }
   .glass-stage.has-3d .glass-poster { opacity: 0; }
-  .glass-poster { position: absolute; inset: 0; background: #060708 url("/ui/img/glass-poster.webp") center / cover no-repeat; transition: opacity 1400ms var(--ease-out); }
+  .glass-poster { position: absolute; inset: 0; background: var(--cinema) url("/ui/img/glass-poster.webp") center / cover no-repeat; transition: opacity 1400ms var(--ease-out); }
+  :root[data-theme="light"] .glass-poster { background: radial-gradient(ellipse at 68% 38%, oklch(0.91 0.045 220), transparent 45%),
+                                                      radial-gradient(ellipse at 44% 67%, oklch(0.92 0.04 300), transparent 48%),
+                                                      radial-gradient(ellipse at 78% 75%, oklch(0.93 0.045 145), transparent 42%), var(--bg); }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .glass-poster { background: radial-gradient(ellipse at 68% 38%, oklch(0.91 0.045 220), transparent 45%),
+                                                                  radial-gradient(ellipse at 44% 67%, oklch(0.92 0.04 300), transparent 48%),
+                                                                  radial-gradient(ellipse at 78% 75%, oklch(0.93 0.045 145), transparent 42%), var(--bg); }
+  }
   .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
                   background: radial-gradient(60% 50% at 18% 30%, oklch(0.44 0.12 160 / 0.22), transparent 70%),
                               radial-gradient(40% 40% at 8% 90%, oklch(0.7 0.16 285 / 0.12), transparent 70%); }
@@ -75,9 +82,9 @@
   .hero-pane { position: relative; }
 
   /* ---- the join card (glass), then the ticket that replaces it */
-  .join { position: relative; display: grid; gap: var(--s-4); padding: clamp(20px, 2.2vw, 32px); border-radius: var(--r-5); border: 1px solid oklch(1 0 0 / 0.12);
-          background: linear-gradient(160deg, oklch(0.2 0.01 160 / 0.7), oklch(0.12 0.006 160 / 0.78)); backdrop-filter: blur(22px) saturate(1.5);
-          box-shadow: 0 40px 120px -40px oklch(0 0 0 / 0.9), inset 0 1px 0 oklch(1 0 0 / 0.08); }
+  .join { position: relative; display: grid; gap: var(--s-4); padding: clamp(20px, 2.2vw, 32px); border-radius: var(--r-5); border: 1px solid var(--border-strong);
+          background: color-mix(in oklch, var(--surface) 92%, transparent); backdrop-filter: blur(22px) saturate(1.5);
+          box-shadow: var(--shadow-pop), inset 0 1px 0 var(--border); }
   .join::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
                   background: linear-gradient(140deg, oklch(0.86 0.11 225 / 0.55), transparent 30%, transparent 70%, oklch(0.92 0.19 122 / 0.4));
                   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
@@ -86,9 +93,9 @@
   .join-step { font: 500 0.6875rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
   .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); border: 0; padding: 0; margin: 0; }
   .roles legend { margin-bottom: var(--s-2); }
-  .role { position: relative; display: grid; gap: 2px; padding: 12px 12px 11px; border-radius: var(--r-3); border: 1px solid var(--border); background: oklch(1 0 0 / 0.03);
+  .role { position: relative; display: grid; gap: 2px; padding: 12px 12px 11px; border-radius: var(--r-3); border: 1px solid var(--border); background: var(--surface-2);
           cursor: pointer; transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
-  .role:hover { border-color: var(--border-strong); background: oklch(1 0 0 / 0.06); }
+  .role:hover { border-color: var(--border-strong); background: var(--surface-3); }
   .role:active { transform: scale(0.98); }
   .role input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
   .role b { font-weight: 600; font-size: var(--fs-md); }
@@ -96,7 +103,7 @@
   .role:has(input:checked) { border-color: var(--highlight); background: oklch(0.92 0.19 122 / 0.08); box-shadow: inset 0 0 0 1px var(--highlight); }
   .role:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
   .email-row { display: flex; gap: var(--s-2); }
-  .email-row .u-input { flex: 1; min-width: 0; background: oklch(0 0 0 / 0.35); }
+  .email-row .u-input { flex: 1; min-width: 0; background: var(--surface); }
   .go { --h: 52px; white-space: nowrap; background: var(--highlight); color: var(--on-highlight); border-color: transparent; font-weight: 600; }
   .go:hover { background: var(--lime-10); }
   .go .arrow { display: inline-block; transition: translate 200ms var(--ease-out); }
@@ -109,7 +116,7 @@
   .form-err:empty { display: none; }
   .social { display: flex; align-items: center; gap: var(--s-3); font-size: var(--fs-sm); color: var(--text-2); }
   .faces { display: flex; }
-  .faces i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #0d0f10; margin-inline-start: -8px; background: var(--c); display: grid; place-items: center;
+  .faces i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--bg); margin-inline-start: -8px; background: var(--c); display: grid; place-items: center;
              font: 600 0.625rem/1 var(--display); font-style: normal; color: oklch(0.15 0.02 160); }
   .faces i:first-child { margin-inline-start: 0; }
 
@@ -137,11 +144,11 @@
   .t-num b { font: 600 clamp(3.4rem, 2rem + 4vw, 4.8rem)/0.95 var(--display); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
   .t-bar { height: 34px; margin-top: 12px; background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 4px, var(--ink) 4px 5px, transparent 5px 8px, var(--ink) 8px 11px, transparent 11px 12px); opacity: 0.85; }
   .t-foot { text-align: center; font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.45 0.01 160); margin-top: 8px; }
-  .share { display: grid; gap: var(--s-3); padding: var(--s-5); border-radius: var(--r-4); border: 1px solid var(--border); background: oklch(0.14 0.006 160 / 0.8); backdrop-filter: blur(16px); }
+  .share { display: grid; gap: var(--s-3); padding: var(--s-5); border-radius: var(--r-4); border: 1px solid var(--border); background: var(--surface-2); backdrop-filter: blur(16px); }
   .share h3 { font: 600 var(--fs-lg)/1.2 var(--display); letter-spacing: -0.02em; }
   .share p { font-size: var(--fs-sm); color: var(--text-2); }
   .link-row { display: flex; gap: var(--s-2); }
-  .link-row input { flex: 1; min-width: 0; font: 400 var(--fs-sm) var(--mono); background: oklch(0 0 0 / 0.35); }
+  .link-row input { flex: 1; min-width: 0; font: 400 var(--fs-sm) var(--mono); background: var(--surface); }
   .share-btns { display: flex; flex-wrap: wrap; gap: var(--s-2); }
   .share-btns .u-btn { flex: 1 1 auto; }
   .ladder { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
@@ -156,12 +163,12 @@
   .q legend, .q > label { font-size: var(--fs-sm); font-weight: 500; color: var(--text); margin-bottom: 6px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--border-strong);
-          font-size: var(--fs-sm); color: var(--text-2); cursor: pointer; transition: all 140ms var(--ease-out); }
-  .chip:hover { color: var(--text); border-color: oklch(1 0 0 / 0.4); }
+          background: var(--surface); font-size: var(--fs-sm); color: var(--text-2); cursor: pointer; transition: all 140ms var(--ease-out); }
+  .chip:hover { color: var(--text); border-color: var(--border-strong); }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-  .chip:has(input:checked) { background: var(--text); color: #060708; border-color: var(--text); }
+  .chip:has(input:checked) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   .chip:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .qs .u-input, .qs .u-textarea { background: oklch(0 0 0 / 0.35); }
+  .qs .u-input, .qs .u-textarea { background: var(--surface); }
   .qs-actions { display: flex; gap: var(--s-2); align-items: center; justify-content: space-between; flex-wrap: wrap; }
 
   /* ---- marquee of receipts */
@@ -171,7 +178,7 @@
   .tape-row.rev { animation-direction: reverse; animation-duration: 85s; margin-top: var(--s-4); }
   .tape:hover .tape-row { animation-play-state: paused; }
   @keyframes tape { to { translate: -50% 0; } }
-  .rc { flex: none; width: 360px; display: grid; gap: 10px; padding: 18px 20px; border-radius: var(--r-4); border: 1px solid var(--border); background: oklch(0.15 0.006 160); }
+  .rc { flex: none; width: 360px; display: grid; gap: 10px; padding: 18px 20px; border-radius: var(--r-4); border: 1px solid var(--border); background: var(--surface); }
   .rc q { quotes: none; font: italic 400 1.125rem/1.4 var(--serif); color: var(--text); }
   .rc-meta { display: flex; justify-content: space-between; gap: 10px; font: 400 0.75rem var(--mono); color: var(--text-2); }
   .rc-meta b { color: var(--text); font-weight: 500; }
@@ -187,22 +194,24 @@
 
   /* problem: three numbers */
   .pain-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-5); overflow: hidden; }
-  .pain-grid > div { background: #0a0c0d; padding: clamp(24px, 3vw, 44px); display: grid; gap: var(--s-3); align-content: start; }
+  .pain-grid > div { background: var(--surface-2); padding: clamp(24px, 3vw, 44px); display: grid; gap: var(--s-3); align-content: start; }
   .pain-grid .big { font: 600 clamp(2.6rem, 1.4rem + 3vw, 4.2rem)/1 var(--display); letter-spacing: -0.05em; }
   .pain-grid p { color: var(--text-2); max-width: 34ch; }
 
   /* how it works: three steps with a mock UI each */
   .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); counter-reset: step; }
-  .step { display: grid; grid-template-rows: auto 1fr; gap: var(--s-5); padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border); background: linear-gradient(180deg, oklch(0.16 0.006 160), oklch(0.11 0.004 160)); }
+  .step { display: grid; grid-template-rows: auto 1fr; gap: var(--s-5); padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border); background: linear-gradient(180deg, var(--surface), var(--surface-2)); }
   .step-txt { display: grid; gap: var(--s-2); }
   .step-txt .n { font: 500 0.75rem var(--mono); color: var(--highlight); letter-spacing: 0.1em; }
   .step-txt h3 { font: 600 var(--fs-2xl)/1.05 var(--display); letter-spacing: -0.035em; }
   .step-txt p { color: var(--text-2); font-size: var(--fs-md); }
-  .mock { align-self: end; border-radius: var(--r-3); border: 1px solid var(--border); background: #08090a; padding: 14px; display: grid; gap: 10px; min-height: 196px; align-content: start; font-size: var(--fs-sm); }
+  .mock { --text: var(--on-cinema); --text-2: color-mix(in oklch, var(--on-cinema) 72%, transparent); --text-3: color-mix(in oklch, var(--on-cinema) 58%, transparent);
+          --border: color-mix(in oklch, var(--on-cinema) 16%, transparent); --border-strong: color-mix(in oklch, var(--on-cinema) 28%, transparent);
+          align-self: end; border-radius: var(--r-3); border: 1px solid var(--border); background: var(--cinema); color: var(--on-cinema); padding: 14px; display: grid; gap: 10px; min-height: 196px; align-content: start; font-size: var(--fs-sm); }
   .mock-input { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: var(--r-2); border: 1px solid var(--border-strong); font: 400 var(--fs-sm) var(--mono); }
   .mock-input .caret { width: 1.5px; height: 18px; background: var(--highlight); animation: blink 1s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
-  .mock-btn { justify-self: start; height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--text); color: #060708; font-weight: 600; font-size: var(--fs-xs); }
+  .mock-btn { justify-self: start; height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--on-cinema); color: var(--cinema); font-weight: 600; font-size: var(--fs-xs); }
   .mock-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-2); background: oklch(1 0 0 / 0.04); }
   .mock-line .k { font: 400 0.6875rem var(--mono); color: var(--text-2); }
   .mock-q { font: italic 400 0.9375rem/1.45 var(--serif); }
@@ -213,7 +222,7 @@
 
   /* who it's for */
   .who { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
-  .who-card { position: relative; display: grid; gap: var(--s-4); align-content: start; padding: clamp(24px, 2.6vw, 36px); border-radius: var(--r-5); border: 1px solid var(--border); background: oklch(0.13 0.005 160); overflow: hidden; }
+  .who-card { position: relative; display: grid; gap: var(--s-4); align-content: start; padding: clamp(24px, 2.6vw, 36px); border-radius: var(--r-5); border: 1px solid var(--border); background: var(--surface-2); overflow: hidden; }
   .who-card::after { content: ""; position: absolute; inset: auto -30% -60% auto; width: 80%; aspect-ratio: 1; border-radius: 50%; background: var(--glow); filter: blur(60px); opacity: 0.35; pointer-events: none; }
   .who-card h3 { font: 600 var(--fs-3xl)/1 var(--display); letter-spacing: -0.045em; }
   .who-card .tag { justify-self: start; font: 500 0.6875rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 9px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); color: var(--text-2); }
@@ -240,7 +249,7 @@
 
   /* final call */
   .end { text-align: center; display: grid; justify-items: center; gap: var(--s-6); padding-block: clamp(96px, 14vw, 200px) clamp(64px, 7vw, 112px); position: relative; isolation: isolate; overflow: clip; }
-  .end::before { content: ""; position: absolute; z-index: -1; inset: 10% 20%; border-radius: 50%; background: radial-gradient(closest-side, oklch(0.44 0.12 160 / 0.45), transparent); filter: blur(40px); }
+  .end::before { content: ""; position: absolute; z-index: -1; inset: 10% 20%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in oklch, var(--accent) 25%, transparent), transparent); filter: blur(40px); }
   .end-h { font: 600 clamp(2.8rem, 1rem + 7vw, 8.4rem)/0.88 var(--display); letter-spacing: -0.055em; max-width: 14ch; text-wrap: balance; }
   .end-h .u-voice { display: block; }
   .end .u-btn { --h: 60px; padding-inline: 34px; font-size: var(--fs-lg); }
@@ -256,7 +265,7 @@
     .hero-grid { grid-template-columns: 1fr; gap: var(--s-6); }
     .hero-pane { max-width: 620px; }
     .glass-stage { opacity: 0.6; }
-    .glass-stage::after { background: linear-gradient(90deg, #060708 8%, transparent 75%), linear-gradient(transparent 60%, #060708); }
+    .glass-stage::after { background: linear-gradient(90deg, var(--bg) 8%, transparent 75%), linear-gradient(transparent 60%, var(--bg)); }
     .steps, .who { grid-template-columns: 1fr; }
     .step { grid-template-columns: 1fr 1fr; grid-template-rows: none; align-items: center; }
     .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -264,7 +273,7 @@
   }
   @media (max-width: 720px) {
     .glass-stage { inset: 0 0 auto 0; height: 440px; opacity: 0.7; -webkit-mask-image: none; mask-image: none; }
-    .glass-stage::after { background: linear-gradient(transparent 30%, #060708); }
+    .glass-stage::after { background: linear-gradient(transparent 30%, var(--bg)); }
     .glass-poster { background-image: url("/ui/img/glass-poster-m.webp"); }
     .hero { padding-block: 96px 48px; align-content: start; }
     .pain-grid { grid-template-columns: 1fr; }
@@ -288,6 +297,7 @@
 <a class="sr-only" href="#join-email">Skip to the sign-up form</a>
 <header class="wl-bar" id="bar">
   <a class="u-logo" href="/waitlist" aria-label="Receipts by Unprompted"><mark>Re</mark>ceipts<small>by Unprompted</small></a>
+  <span data-u-theme-toggle></span>
   <div class="wl-bar-cta">
     <span class="live-dot">Early access · opening in waves</span>
     <a class="u-btn u-btn-sm go" href="#join" id="bar-join" style="--h:36px">Join the waitlist</a>
@@ -723,7 +733,7 @@ $$('.tape-row').forEach((r, i) => r.querySelectorAll('.rc').forEach((c, j) => { 
 
 // ---- the glass lens (decoration; a still poster stays under reduced motion or without WebGL)
 let glass = null;
-const startGlass = () => import('/ui/glass3d.js?v=1').then((m) => m.start($('.glass-3d'), { reduced: U.reduced })).then((c) => { glass = c || null; }).catch(() => {});
+const startGlass = () => import('/ui/glass3d.js?v=2').then((m) => m.start($('.glass-3d'), { reduced: U.reduced })).then((c) => { glass = c || null; }).catch(() => {});
 const idle = (f) => (window.requestIdleCallback || ((g) => setTimeout(g, 300)))(f);
 if (document.readyState === 'complete') idle(startGlass); else addEventListener('load', () => idle(startGlass));
 document.addEventListener('u:prefs', () => glass?.refresh());

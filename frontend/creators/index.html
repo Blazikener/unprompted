@@ -6,8 +6,8 @@
 <title>Receipts by Unprompted</title>
 <meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with brands for future paid collabs: pitch them, or answer their invites.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/ui/ui.css?v=4">
-<script src="/ui/ui.js?v=3"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=6">
+<script src="/ui/ui.js?v=4"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
@@ -29,26 +29,50 @@
 
   .avatar { width: var(--size, 40px); height: var(--size, 40px); border-radius: 50%; object-fit: cover; background: var(--surface-3); flex: none; display: block; }
 
-  /* ---- hero: cinema black whatever the theme (Palomino), poster type, the glass lens behind (ui/glass3d.js) */
-  .hero { position: relative; isolation: isolate; color-scheme: dark; background: #060708; color: var(--text); overflow: clip;
+  .hero { position: relative; isolation: isolate; background: var(--bg); color: var(--text); overflow: clip;
           min-height: min(100svh - 64px, 1000px); display: grid; align-content: end; }
-  .glass-stage { position: absolute; inset: 0 0 0 38%; z-index: -1; margin: 0; background: #060708;
+  .glass-stage { position: absolute; inset: 0 0 0 38%; z-index: -1; margin: 0; background: transparent;
                  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); }
+  .hero-in { position: relative; z-index: 1; }
   .glass-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-                        background: linear-gradient(90deg, #060708, transparent 30%), linear-gradient(transparent 70%, #060708); }
+                        background: linear-gradient(90deg, var(--bg), transparent 30%), linear-gradient(transparent 70%, var(--bg)); }
   .glass-3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1200ms var(--ease-out); }
   .glass-stage.has-3d .glass-3d { opacity: 1; }
   .glass-stage.has-3d .glass-poster { opacity: 0; }
-  .glass-poster { position: absolute; inset: 0; display: grid; place-items: center; background: #060708; transition: opacity 1200ms var(--ease-out); }
+  .glass-poster { position: absolute; inset: 0; display: grid; place-items: center; background: var(--cinema); transition: opacity 1200ms var(--ease-out); }
   .glass-poster::before { content: ""; position: absolute; z-index: 1; inset: 0; background-image: url("/ui/img/glass-poster.webp");
                           background-position: center; background-size: cover; background-repeat: no-repeat; }
   .glass-poster i { position: relative; z-index: 0; width: min(42vh, 360px); aspect-ratio: 0.72; border-radius: 50%; opacity: 0.7; filter: blur(0.5px);
                     background: conic-gradient(from 200deg, oklch(0.86 0.11 225), oklch(0.7 0.16 285), oklch(0.86 0.1 340), oklch(0.92 0.1 130), oklch(0.86 0.11 225));
                     -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%); mask: radial-gradient(closest-side, transparent 78%, #000 80%, #000 94%, transparent 96%);
                     rotate: -14deg; }
+  :root[data-theme="light"] .glass-stage { background: var(--bg); }
+  :root[data-theme="light"] .glass-poster { background: var(--bg); }
+  :root[data-theme="light"] .glass-poster::before {
+    background-image: radial-gradient(ellipse at 68% 38%, oklch(0.91 0.045 220), transparent 45%),
+                      radial-gradient(ellipse at 44% 67%, oklch(0.92 0.04 300), transparent 48%),
+                      radial-gradient(ellipse at 78% 75%, oklch(0.93 0.045 145), transparent 42%);
+  }
+  :root[data-theme="light"] .glass-poster i {
+    opacity: 0.25; filter: blur(5px);
+    background: conic-gradient(from 200deg, oklch(0.91 0.045 220), oklch(0.9 0.05 285), oklch(0.92 0.04 340), oklch(0.94 0.05 130), oklch(0.91 0.045 220));
+  }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .glass-stage { background: var(--bg); }
+    :root[data-theme="system"] .glass-poster { background: var(--bg); }
+    :root[data-theme="system"] .glass-poster::before {
+      background-image: radial-gradient(ellipse at 68% 38%, oklch(0.91 0.045 220), transparent 45%),
+                        radial-gradient(ellipse at 44% 67%, oklch(0.92 0.04 300), transparent 48%),
+                        radial-gradient(ellipse at 78% 75%, oklch(0.93 0.045 145), transparent 42%);
+    }
+    :root[data-theme="system"] .glass-poster i {
+      opacity: 0.25; filter: blur(5px);
+      background: conic-gradient(from 200deg, oklch(0.91 0.045 220), oklch(0.9 0.05 285), oklch(0.92 0.04 340), oklch(0.94 0.05 130), oklch(0.91 0.045 220));
+    }
+  }
   @media (max-width: 640px) { .glass-poster::before { background-image: url("/ui/img/glass-poster-m.webp"); } }
-  .glass-pause { position: absolute; z-index: 2; inset-inline-end: 20px; inset-block-end: 20px; background: oklch(0 0 0 / 0.4); color: var(--text); border-color: oklch(1 0 0 / 0.24); backdrop-filter: blur(8px); }
-  .glass-pause:hover { background: oklch(0 0 0 / 0.7); border-color: oklch(1 0 0 / 0.5); }
+  .glass-pause { position: absolute; z-index: 2; inset-inline-end: 20px; inset-block-end: 20px; background: color-mix(in oklch, var(--surface) 88%, transparent); color: var(--text); border-color: var(--border-strong); backdrop-filter: blur(8px); }
+  .glass-pause:hover { background: var(--surface); border-color: var(--border-strong); }
   .hero-in { display: grid; gap: var(--s-6); padding-block: var(--s-7) var(--s-8); }
   .hero-top { display: flex; justify-content: space-between; gap: var(--s-4); padding-bottom: var(--s-3); border-bottom: 1px solid var(--border);
               font: 500 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); }
@@ -56,8 +80,8 @@
   .hero-h .u-voice { display: block; text-transform: none; font-size: 0.86em; line-height: 0.95; letter-spacing: -0.03em; --split-delay: 250ms; }
   .hero-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--s-6) var(--s-8); align-items: end; }
   .hero-lead { max-width: 46ch; color: var(--text-2); }
-  .hero-form { display: grid; gap: var(--s-3); max-width: 620px; padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border);
-               background: oklch(0.14 0.005 160 / 0.62); backdrop-filter: blur(18px) saturate(1.4); box-shadow: 0 30px 80px -30px oklch(0 0 0 / 0.8), inset 0 1px 0 oklch(1 0 0 / 0.07); }
+  .hero-form { display: grid; gap: var(--s-3); max-width: 620px; padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border-strong);
+               background: color-mix(in oklch, var(--surface) 92%, transparent); backdrop-filter: blur(18px) saturate(1.4); box-shadow: var(--shadow-pop), inset 0 1px 0 var(--border); }
   .hero-fine { padding-top: var(--s-2); }
   .hero-scroll { position: absolute; inset-inline-start: 50%; bottom: 14px; translate: -50% 0; display: grid; justify-items: center; gap: 6px;
                  font: 500 0.625rem/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3); }
@@ -97,7 +121,7 @@
   @media (max-width: 960px) {
     .hero { min-height: 0; align-content: start; }
     .glass-stage { inset: 0 0 auto 0; height: 480px; opacity: 0.85; -webkit-mask-image: none; mask-image: none; }
-    .glass-stage::after { background: linear-gradient(transparent 45%, #060708); }
+    .glass-stage::after { background: linear-gradient(transparent 45%, var(--bg)); }
     .hero-in { padding-block: 150px var(--s-7); gap: var(--s-5); }
     .hero-row { grid-template-columns: minmax(0, 1fr); }
     .hero-form { order: -1; padding: var(--s-4); }
@@ -240,7 +264,7 @@
   :root[data-theme="light"] .price li::before, :root[data-theme="light"] .ticks li::before { background: var(--accent); }
 
   /* the end card and the oversized wordmark footer (Palomino) */
-  .end { color-scheme: dark; background: #060708; color: var(--text); border-top: 1px solid var(--border); overflow: clip; padding-top: clamp(80px, 12vw, 180px); }
+  .end { background: var(--bg); color: var(--text); border-top: 1px solid var(--border); overflow: clip; padding-top: clamp(80px, 12vw, 180px); }
   .end-in { display: grid; gap: var(--s-6); }
   .end-h { font: 600 var(--fs-5xl)/0.9 var(--display); letter-spacing: -0.05em; text-transform: uppercase; max-width: 13ch; }
   .end-h .u-voice { display: block; text-transform: none; }
@@ -248,7 +272,11 @@
   .end-links { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
   .end-links a { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); } .end-links a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
   .end-word { margin: clamp(48px, 8vw, 120px) 0 0; font: 700 clamp(4rem, 23vw, 24rem)/0.74 var(--display); letter-spacing: -0.075em; text-transform: uppercase; text-align: center;
-              background: linear-gradient(oklch(0.96 0.008 110), oklch(0.96 0.008 110 / 0.06)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+              background: linear-gradient(var(--text), color-mix(in oklch, var(--text) 6%, transparent)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+  :root[data-theme="light"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  }
   .end-fine { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); padding-block: var(--s-4); border-top: 1px solid var(--border);
               font: 500 0.6875rem/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
 
@@ -362,6 +390,7 @@
     <a class="u-bar-link" href="/collabs">Collabs</a>
   </nav>
   <button class="u-btn u-btn-ghost u-btn-sm cmdk-btn" type="button" id="cmdk" aria-label="Commands (Ctrl+K)">Commands <kbd class="u-kbd">Ctrl</kbd><kbd class="u-kbd">K</kbd></button>
+  <span data-u-theme-toggle></span>
   <div id="account" class="no-present"></div>
 </header>
 
@@ -1175,7 +1204,7 @@ function syncGlassBtn() {
 function maybeGlass() {
   if (glass || glassLoading || document.readyState !== 'complete' || $('#landing').hidden) return;
   glassLoading = true;
-  import('/ui/glass3d.js?v=1')
+  import('/ui/glass3d.js?v=2')
     .then((m) => m.start($('.glass-3d'), { reduced: U.reduced, paused: glassPausedPref() }))
     .then((ctrl) => { glass = ctrl || null; syncGlassBtn(); })
     .catch(() => {})

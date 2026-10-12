@@ -6,8 +6,8 @@
 <title>Unprompted</title>
 <meta name="description" content="Find the creators already talking about your brand on camera.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/ui/ui.css?v=4">
-<script src="/ui/ui.js?v=3"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=6">
+<script src="/ui/ui.js?v=4"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
@@ -124,14 +124,14 @@
   #search { view-transition-name: search-form; }
   .wordmark { view-transition-name: wordmark; }
   .landing { min-height: 100vh; }
-  .landing-top { background: color-mix(in oklch, #060708 72%, transparent); color-scheme: dark; color: var(--text); backdrop-filter: blur(14px) saturate(1.3); }
+  .landing-top { background: color-mix(in oklch, var(--bg) 88%, transparent); color: var(--text); backdrop-filter: blur(14px) saturate(1.3); }
   .landing-top .wordmark { font-size: 1.25rem; }
   .landing-top .u-btn { flex: none; }
   #landing-slot { width: 100%; }
   .hero-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
   .hero-ctas .u-btn { min-height: 44px; }
 
-  .b-hero { position: relative; isolation: isolate; color-scheme: dark; background: #060708; color: var(--text); overflow: clip;
+  .b-hero { position: relative; isolation: isolate; background: var(--bg); color: var(--text); overflow: clip;
             min-height: min(100svh - 64px, 1040px); display: grid; align-content: end; }
   .b-hero-in { display: grid; gap: var(--s-6); padding-block: var(--s-8) var(--s-8); }
   .hero-top { display: flex; justify-content: space-between; gap: var(--s-4); padding-bottom: var(--s-3); border-bottom: 1px solid var(--border);
@@ -142,8 +142,8 @@
   .b-hero-copy { display: grid; gap: var(--s-5); justify-items: start; }
   .b-hero-copy .u-lead { max-width: 46ch; color: var(--text-2); }
   .b-hero-copy .u-lead strong { color: var(--text); font-weight: 600; }
-  .b-hero-form { display: grid; gap: var(--s-3); max-width: 660px; padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border);
-                 background: oklch(0.14 0.005 160 / 0.62); backdrop-filter: blur(18px) saturate(1.4); box-shadow: 0 30px 80px -30px oklch(0 0 0 / 0.8), inset 0 1px 0 oklch(1 0 0 / 0.07); }
+  .b-hero-form { display: grid; gap: var(--s-3); max-width: 660px; padding: var(--s-5); border-radius: var(--r-5); border: 1px solid var(--border-strong);
+                 background: color-mix(in oklch, var(--surface) 92%, transparent); backdrop-filter: blur(18px) saturate(1.4); box-shadow: var(--shadow-pop), inset 0 1px 0 var(--border); }
   .b-fine { margin: 0; font-size: var(--fs-xs); color: var(--text-3); }
   .hero-scroll { position: absolute; inset-inline-start: 50%; bottom: 14px; translate: -50% 0; display: grid; justify-items: center; gap: 6px;
                  font: 500 0.625rem/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3); }
@@ -152,10 +152,10 @@
 
   /* The stage: the listening drum (hero3d.js) on wide screens with a fine pointer; everyone else gets the poster,
      a tilted wall of the same video stills drifting slowly upward. */
-  .hero-stage { position: absolute; inset: 0 0 0 36%; z-index: -1; margin: 0; overflow: hidden; background: #060708; color: var(--on-cinema);
+  .hero-stage { position: absolute; inset: 0 0 0 36%; z-index: -1; margin: 0; overflow: hidden; background: transparent; color: var(--text);
                 -webkit-mask-image: linear-gradient(90deg, transparent, #000 24%); mask-image: linear-gradient(90deg, transparent, #000 24%); }
   .hero-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
-                       background: linear-gradient(90deg, #060708, transparent 32%), linear-gradient(#060708, transparent 14%, transparent 62%, #060708); }
+                       background: linear-gradient(90deg, var(--bg), transparent 32%), linear-gradient(var(--bg), transparent 14%, transparent 62%, var(--bg)); }
   .hero-poster { position: absolute; inset: 0; display: grid; place-items: center; perspective: 1400px; transition: opacity 1200ms var(--ease-out); }
   .hero-mosaic { position: absolute; inset: -30% -10% -30% 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; align-content: start;
                  transform: rotateX(18deg) rotateY(-24deg) rotateZ(6deg); transform-origin: 60% 50%; }
@@ -164,16 +164,18 @@
   .hero-mosaic img { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 14px; opacity: 0.62; filter: saturate(0.85) brightness(0.8);
                      box-shadow: 0 0 0 1px oklch(1 0 0 / 0.07); }
   .hero-mosaic img.said { opacity: 1; filter: none; box-shadow: 0 0 0 2px var(--highlight), 0 0 60px -6px color-mix(in oklch, var(--highlight) 60%, transparent); }
+  :root[data-theme="light"] .hero-mosaic img { opacity: 0.74; filter: saturate(0.9) brightness(0.94); box-shadow: 0 0 0 1px var(--border); }
+  :root[data-theme="light"] .hero-mosaic img.said { opacity: 1; filter: none; }
   @keyframes mosaic-drift { to { translate: 0 -50%; } }
   .hero-poster-bars { position: relative; z-index: 2; display: flex; align-items: center; gap: 4px; height: 88px; padding: 18px 22px; border-radius: var(--r-pill);
-                      background: oklch(0.1 0.004 160 / 0.7); backdrop-filter: blur(10px); box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.1); }
+                      background: var(--cinema); backdrop-filter: blur(10px); box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.1); }
   .hero-poster-bars i { width: 4px; height: calc(var(--h) * 0.62); border-radius: 2px; background: color-mix(in oklch, var(--on-cinema) 34%, transparent); }
   .hero-poster-bars i.said { background: var(--highlight); }
   .hero-3d { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 1200ms var(--ease-out); }
   .hero-stage.has-3d .hero-3d { opacity: 1; }
   .hero-stage.has-3d .hero-poster { opacity: 0; }
   .hero-receipt { position: absolute; top: 0; left: 0; z-index: 2; width: min(250px, 62%); padding: 12px 14px 11px; border-radius: var(--r-3); pointer-events: none;
-                  background: oklch(0.12 0.005 160 / 0.86); backdrop-filter: blur(10px); color: var(--on-cinema);
+                  background: var(--cinema); backdrop-filter: blur(10px); color: var(--on-cinema);
                   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--highlight) 34%, transparent), var(--shadow-pop);
                   opacity: 0; translate: 0 6px; transition: opacity var(--dur-base) var(--ease-out), translate var(--dur-slow) var(--ease-out); will-change: transform; }
   .hero-receipt.on { opacity: 1; translate: 0 0; }
@@ -181,10 +183,10 @@
   .hero-receipt-q mark { padding: 0 3px; border-radius: 3px; background: var(--highlight); color: var(--on-highlight); font: normal 600 0.84em var(--sans); }
   .hero-receipt-meta { margin: 0; font: 500 0.6875rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: color-mix(in oklch, var(--on-cinema) 75%, transparent); }
   .hero-stage figcaption { position: absolute; z-index: 2; inset-inline-end: 20px; bottom: 16px; max-width: 34ch; text-align: end;
-                           font: 400 0.6875rem/1.4 var(--mono); color: color-mix(in oklch, var(--on-cinema) 62%, transparent); }
-  .hero-pause { position: absolute; z-index: 3; inset-inline-end: 20px; top: 20px; min-width: 88px; background: oklch(0 0 0 / 0.4); color: var(--text);
-                border-color: oklch(1 0 0 / 0.24); backdrop-filter: blur(8px); }
-  .hero-pause:hover { background: oklch(0 0 0 / 0.7); border-color: oklch(1 0 0 / 0.5); }
+                           font: 400 0.6875rem/1.4 var(--mono); color: var(--text-2); }
+  .hero-pause { position: absolute; z-index: 3; inset-inline-end: 20px; top: 20px; min-width: 88px; background: color-mix(in oklch, var(--surface) 88%, transparent); color: var(--text);
+                border-color: var(--border-strong); backdrop-filter: blur(8px); }
+  .hero-pause:hover { background: var(--surface); border-color: var(--border-strong); }
   @media (prefers-reduced-motion: reduce) { .hero-mosaic > div, .hero-scroll i { animation: none; } }
   :root[data-motion="reduce"] .hero-mosaic > div, :root[data-motion="reduce"] .hero-scroll i { animation: none; }
 
@@ -318,7 +320,7 @@
   .b-inbox-foot { margin: 0; font: 500 0.6875rem var(--mono); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
 
   /* ---------- the end card and the oversized wordmark footer */
-  .end { color-scheme: dark; background: #060708; color: var(--text); border-top: 1px solid var(--border); overflow: clip; padding-top: clamp(80px, 12vw, 180px); }
+  .end { background: var(--bg); color: var(--text); border-top: 1px solid var(--border); overflow: clip; padding-top: clamp(80px, 12vw, 180px); }
   .end-in { display: grid; gap: var(--s-6); }
   .end-h { font: 600 var(--fs-5xl)/0.9 var(--display); letter-spacing: -0.05em; text-transform: uppercase; max-width: 14ch; }
   .end-h .u-voice { display: block; text-transform: none; }
@@ -326,7 +328,11 @@
   .end-links { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
   .end-links a { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); } .end-links a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
   .end-word { margin: clamp(48px, 8vw, 120px) 0 0; font: 700 clamp(3rem, 15.5vw, 17rem)/0.74 var(--display); letter-spacing: -0.075em; text-transform: uppercase; text-align: center;
-              background: linear-gradient(oklch(0.96 0.008 110), oklch(0.96 0.008 110 / 0.06)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+              background: linear-gradient(var(--text), color-mix(in oklch, var(--text) 6%, transparent)); -webkit-background-clip: text; background-clip: text; color: transparent; user-select: none; }
+  :root[data-theme="light"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="system"] .end-word { background-image: linear-gradient(var(--text), color-mix(in oklch, var(--text) 70%, var(--bg))); }
+  }
 
   .examples, .recent { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
   .examples > span, .recent-h { font-size: var(--fs-sm); color: var(--text-2); margin-inline-end: 4px; }
@@ -346,7 +352,7 @@
   @media (max-width: 960px) {
     .b-hero { min-height: 0; align-content: start; }
     .hero-stage { inset: 0 0 auto 0; height: 520px; -webkit-mask-image: none; mask-image: none; opacity: 0.9; }
-    .hero-stage::after { background: linear-gradient(#060708, transparent 20%, transparent 40%, #060708); }
+    .hero-stage::after { background: linear-gradient(var(--bg), transparent 20%, transparent 40%, var(--bg)); }
     .hero-mosaic { inset: -20% -30% -20% -20%; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .hero-stage figcaption { display: none; }
     .b-hero-in { padding-block: 300px var(--s-7); gap: var(--s-5); }
@@ -658,6 +664,7 @@
     <a href="/creators/">Creators</a><a href="/brands/" aria-current="page">Brands</a><a href="/creators/roster">Managers</a>
   </nav>
   <span class="grow"></span>
+  <span data-u-theme-toggle></span>
   <div id="app-account"></div>
 </header>
 <div class="app">
@@ -688,6 +695,7 @@
         <a class="u-bar-link no-narrow" href="#b-how">How it works</a>
         <a class="u-bar-link no-narrow" href="/digest/sample">Sample report</a>
         <button class="u-btn u-btn-ghost u-btn-sm no-narrow" type="button" data-open-palette>Commands <kbd class="u-kbd" aria-hidden="true">Ctrl K</kbd></button>
+        <span data-u-theme-toggle></span>
         <div id="landing-account"></div>
       </header>
 

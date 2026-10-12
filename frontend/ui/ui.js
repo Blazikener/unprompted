@@ -45,6 +45,32 @@
     return el;
   }
   const svg = (tag, attrs, ...kids) => h('svg:' + tag, attrs, ...kids);
+  const effectiveTheme = () => prefs.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : prefs.theme;
+  const themeIcon = (theme) => theme === 'dark'
+    ? svg('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' },
+      svg('circle', { cx: '12', cy: '12', r: '4' }),
+      svg('path', { d: 'M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42' }))
+    : svg('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' },
+      svg('path', { d: 'M20.2 15.4A8.5 8.5 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z' }));
+  function updateThemeToggles() {
+    const theme = effectiveTheme();
+    const label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+    const themeColor = $('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg').trim();
+    for (const slot of $$('[data-u-theme-toggle]')) {
+      let button = $('button', slot);
+      if (!button) {
+        button = h('button', { type: 'button', class: 'u-btn u-btn-icon u-theme-toggle-button', onclick: () => setPref('theme', effectiveTheme() === 'dark' ? 'light' : 'dark') });
+        slot.replaceChildren(button);
+      }
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+      button.replaceChildren(themeIcon(theme));
+    }
+  }
+  document.addEventListener('u:prefs', updateThemeToggles);
+  const mqTheme = matchMedia('(prefers-color-scheme: dark)');
+  mqTheme.addEventListener?.('change', () => { if (prefs.theme === 'system') updateThemeToggles(); });
 
   // ---------------------------------------------------------------- formatting
   const nfCompact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
@@ -506,6 +532,7 @@
   }
   function boot() {
     scan();
+    updateThemeToggles();
     new MutationObserver((muts) => { for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) scan(n); })
       .observe(document.body, { childList: true, subtree: true });
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
@@ -547,7 +574,7 @@
     });
     palette.add({ id: 'u-settings', label: 'Display settings', hint: 'Theme, density, motion, present mode', group: 'Settings', run: settings });
     palette.add({ id: 'u-present', label: 'Toggle present mode', hint: 'For projectors', group: 'Settings', run: () => { setPref('present', !prefs.present); toast(prefs.present ? 'Present mode on' : 'Present mode off', { kind: 'ok' }); } });
-    palette.add({ id: 'u-theme', label: 'Toggle dark theme', group: 'Settings', run: () => setPref('theme', prefs.theme === 'dark' ? 'light' : 'dark') });
+    palette.add({ id: 'u-theme', label: 'Toggle dark theme', group: 'Settings', run: () => setPref('theme', effectiveTheme() === 'dark' ? 'light' : 'dark') });
     palette.add({ id: 'u-help', label: 'Keyboard shortcuts', group: 'Settings', shortcut: '?', run: shortcutSheet });
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', boot) : boot();
