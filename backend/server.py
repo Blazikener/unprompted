@@ -759,6 +759,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: packaging.admin_route(self))
         elif path == "/api/admin/health":
             self.api(lambda: ops.admin_route(self))
+        elif path == "/api/admin/coverage":
+            self.api(lambda: coverage.admin_route(self))
         elif path == "/api/admin/waitlist":
             self.api(lambda: waitlist.admin_route(self))
         elif path == "/api/brands/arabic":
@@ -835,6 +837,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.api(lambda: eval_mentions.admin_route(self))
         if self.path == "/api/feedback":
             return self.api(lambda: flag_mention(digest.read_json(self), creator.current_user(self.headers)))
+        if urlparse(self.path).path == "/api/admin/coverage":
+            return self.api(lambda: coverage.admin_route(self))
         if self.path.startswith("/api/admin/"):
             return self.api(lambda: digest.admin(self))
         if not route:
@@ -905,6 +909,7 @@ import brands  # noqa: E402
 import eval_mentions  # noqa: E402
 import packaging  # noqa: E402
 import ops  # noqa: E402
+import coverage  # noqa: E402
 import waitlist  # noqa: E402
 
 

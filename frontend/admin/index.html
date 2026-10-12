@@ -39,6 +39,15 @@
   #health p { font-size: var(--fs-sm); }
   #health .warn { color: var(--danger-text); font-weight: 600; }
   #health .ok { color: var(--ok-text); }
+  #coverage { grid-column: 1 / -1; }
+  .coverage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .coverage-head h2 { font-size: var(--fs-md); }
+  .coverage-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--s-4); }
+  .coverage-cols h3 { margin-bottom: 4px; }
+  .coverage-list { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+  .coverage-list li { min-width: 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-2); overflow-wrap: anywhere; }
+  .coverage-list .title { display: block; font-weight: 600; }
+  .coverage-list .detail { display: block; margin-top: 2px; color: var(--text-2); font-size: var(--fs-sm); }
 
   /* the license queue */
   .queue { display: grid; gap: var(--s-3); }
@@ -158,6 +167,16 @@
         <div><h3 class="sec-title">Waiting on you</h3><div id="health-waiting"></div></div>
         <div><h3 class="sec-title">Weekly jobs</h3><div id="health-weekly"></div></div>
         <div><h3 class="sec-title">Production settings</h3><ul id="health-setup"></ul></div>
+      </div>
+    </section>
+    <section id="coverage" class="u-card panel" hidden aria-labelledby="coverage-sum">
+      <div class="coverage-head">
+        <h2 id="coverage-sum">Coverage gaps for Oriane</h2>
+        <button class="u-btn u-btn-sm" type="button" id="coverage-csv">Download CSV</button>
+      </div>
+      <div class="coverage-cols">
+        <div><h3 class="sec-title">Thin brand searches</h3><ul id="coverage-brands" class="coverage-list"></ul></div>
+        <div><h3 class="sec-title">Creators with no videos</h3><ul id="coverage-creators" class="coverage-list"></ul></div>
       </div>
     </section>
     <section id="claims" class="u-card panel" hidden aria-labelledby="claims-h">
@@ -291,12 +310,13 @@
     live: 'Starts the licence window and sets its end date. If the brand paid through Stripe, the creator’s share is transferred.',
     ended: 'Ends the licence.',
   };
-  let token = '', list = [], filter = 'all', sheetId = null, selectedId = null, health = null, tabsCtl = null, hashDone = false;
+  let token = '', list = [], filter = 'all', sheetId = null, selectedId = null, health = null, coverageData = null, tabsCtl = null, hashDone = false;
   const drafts = new Map();          // unsaved edits per request, kept while you move between requests
   try { token = sessionStorage.getItem('opToken') || ''; } catch {}
   const kbd = (k) => h('kbd', { class: 'u-kbd' }, k);
   const ext = (href, text, attrs = {}) => h('a', { href, target: '_blank', rel: 'noopener', ...attrs }, text);
   const day = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+  const peopleLabel = (n) => `${n} ${n === 1 ? 'person' : 'people'}`;
   const age = (hrs) => { const x = Math.max(0, Math.round(hrs)); return x < 48 ? `${x}h` : `${Math.round(x / 24)}d`; };
   const CREATOR_SHARE = 0.85;                 // the pilot pays creators 85% of what the brand pays
   const price = (r) => r.finalPriceUsd ?? r.creatorPriceUsd ?? r.priceUsd;
@@ -803,6 +823,56 @@
         h('b', {}, x.name), x.ok ? '' : `: ${x.unlocks}`, x.ok || !x.settings.length ? '' : h('span', { class: 'u-muted' }, ` (${x.settings.join(', ')})`))));
     } catch {}
   }
+  const COVERAGE_REASON = {
+    profile_only: 'profile known, no videos',
+    other_platform: 'only on the other platform',
+    unknown: 'not indexed',
+  };
+  function downloadCoverageCsv() {
+    if (!coverageData) return;
+    const cols = ['type', 'platform', 'name', 'best_results', 'searches_or_attempts', 'people', 'reason', 'last_seen'];
+    const rows = [
+      ...coverageData.brands.map((x) => ({
+        type: 'brand', platform: '', name: x.brand, best_results: x.best, searches_or_attempts: x.searches,
+        people: x.people, reason: '', last_seen: x.lastAt,
+      })),
+      ...coverageData.creators.map((x) => ({
+        type: 'creator', platform: x.platform, name: `@${x.handle}`, best_results: '', searches_or_attempts: x.attempts,
+        people: x.people, reason: x.reason, last_seen: x.lastAt,
+      })),
+    ];
+    const esc = (value) => {
+      const text = value == null ? '' : String(value);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const body = [cols.join(','), ...rows.map((row) => cols.map((col) => esc(row[col])).join(','))].join('\n');
+    const url = URL.createObjectURL(new Blob([body], { type: 'text/csv;charset=utf-8' }));
+    const a = h('a', { href: url, download: `oriane-coverage-gaps-${new Date().toISOString().slice(0, 10)}.csv` });
+    document.body.append(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+  async function loadCoverage() {
+    try {
+      const d = await call('/api/admin/coverage');
+      coverageData = d;
+      $('#coverage').hidden = false;
+      $('#coverage-sum').textContent = `Coverage gaps for Oriane: ${d.brands.length} brands, ${d.creators.length} creators (last ${d.days} days)`;
+      const brandRows = d.brands.map((x) => h('li', {},
+        h('span', { class: 'title', dir: 'auto' }, x.brand),
+        h('span', { class: 'detail' }, `Best ${x.best} result${x.best === 1 ? '' : 's'} · ${x.searches} search${x.searches === 1 ? '' : 'es'} · ${peopleLabel(x.people)} · last ${day(x.lastAt)}`))).filter(Boolean);
+      const creatorRows = d.creators.map((x) => h('li', {},
+        h('span', { class: 'title' }, h('bdi', {}, `@${x.handle}`), ` · ${x.platform}`),
+        h('span', { class: 'detail' }, COVERAGE_REASON[x.reason] || 'not indexed'),
+        h('span', { class: 'detail' }, `${x.attempts} attempt${x.attempts === 1 ? '' : 's'} · ${peopleLabel(x.people)} · last ${day(x.lastAt)}`))).filter(Boolean);
+      $('#coverage-brands').replaceChildren(...(brandRows.length ? brandRows : [
+        h('li', { class: 'u-muted small' }, `Nothing thin in the last ${d.days} days.`),
+      ]).filter(Boolean));
+      $('#coverage-creators').replaceChildren(...(creatorRows.length ? creatorRows : [
+        h('li', { class: 'u-muted small' }, `No creators with scan misses in the last ${d.days} days.`),
+      ]).filter(Boolean));
+    } catch {}
+  }
+  $('#coverage-csv').addEventListener('click', downloadCoverageCsv);
   // Receipts pricing test (packaging.py, Phase 7): the three offers side by side.
   async function loadPackaging() {
     try {
@@ -883,6 +953,7 @@
       loadEval();
       loadPackaging();
       loadHealth();
+      loadCoverage();
       openFromHash();
     } catch (ex) { $('#msg').className = 'err'; $('#msg').textContent = ex.message; $('#wrap').hidden = true; }
     btn.removeAttribute('aria-busy');
@@ -927,6 +998,7 @@
   U.palette.add({ id: 'op-reload', label: 'Reload the console', hint: 'Requests, health, tests and pilots', group: 'Console', shortcut: 'r', run: () => (token ? load() : $('#token').focus()) });
   U.palette.add({ id: 'op-token', label: 'Change the operator token', group: 'Console', run: () => $('#token').focus() });
   U.palette.add({ id: 'op-health', label: 'Go to setup and health', group: 'Console', run: () => { const s = $('#health'); if (!s.hidden) { s.scrollIntoView({ block: 'start' }); } else U.toast('Setup and health hasn’t loaded.', { kind: 'info' }); } });
+  U.palette.add({ id: 'op-coverage', label: 'Go to coverage gaps', group: 'Console', run: () => { const s = $('#coverage'); if (!s.hidden) s.scrollIntoView({ block: 'start' }); else U.toast('Coverage gaps haven’t loaded.', { kind: 'info' }); } });
   U.palette.add({ id: 'op-claims', label: 'Go to handle claims to verify', group: 'Console', run: () => { const s = $('#claims'); if (!s.hidden) s.scrollIntoView({ block: 'start' }); else U.toast('No handle claims waiting.', { kind: 'ok' }); } });
   U.palette.add({ id: 'op-reservations', label: 'Copy reservation emails', hint: 'People who reserved a paid plan', group: 'Console', run: copyReservations });
   U.palette.add({ id: 'op-pricing', label: 'Open the pricing test', group: 'Tests and pilots', run: () => showTab('pricing') });
