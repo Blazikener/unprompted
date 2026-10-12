@@ -80,3 +80,10 @@ def test_design_system_is_served(base):
                          ("/ui/kit.html", b"Make the receipt the whole interface.")):
         status, body = call(base, "GET", path)
         assert status == 200 and marker in body
+
+
+def test_verify_page_routes(base):
+    for path in ("/verify", "/verify/"):
+        status, body = call(base, "GET", path)
+        assert status == 200 and b"Verify your channel." in body
+        assert b"Brands can only invite verified creators they find to collabs." in body

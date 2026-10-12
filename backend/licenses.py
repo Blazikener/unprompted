@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS creator_handles (
   handle      text NOT NULL,                        -- lowercase, no @
   code        text NOT NULL,                        -- goes in the TikTok bio, or to the operator for Instagram
   verified_at timestamptz,
-  verified_by text,                                 -- bio | operator
+  verified_by text,                                 -- bio | operator | oauth
   created_at  timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, platform, handle)
 );
