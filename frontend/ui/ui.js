@@ -664,14 +664,15 @@
     const renderSheetAdd = () => sheetBody.replaceChildren(
       h('button', { type: 'button', class: 'u-side-back', onclick: renderSheetSides }, '← Your sides'),
       h('div', { class: 'u-side-add-list' }, ...addOptions(() => sheet.close())));
-    const renderSheetSides = () => sheetBody.replaceChildren(
+    const renderSheetSides = () => sheetBody.replaceChildren(...[
       h('div', { class: 'u-side-sheet-options', role: 'group', 'aria-label': 'Choose a side' },
         ...roles.map((role) => h('button', {
           type: 'button', class: `u-side-sheet-option${role === active ? ' is-current' : ''}`,
           'aria-current': role === active ? 'page' : null, onclick: () => go(role),
         }, h('span', {}, SIDE_LABEL[role]), h('span', { 'aria-hidden': 'true' }, role === active ? 'Current' : '→')))),
       missing.length ? h('button', { type: 'button', class: 'u-side-sheet-add', onclick: renderSheetAdd },
-        h('span', {}, '+'), h('span', {}, 'Add a side'), h('span', { 'aria-hidden': 'true' }, '→')) : null);
+        h('span', {}, '+'), h('span', {}, 'Add a side'), h('span', { 'aria-hidden': 'true' }, '→')) : null,
+    ].filter(Boolean));
     const sheetHead = h('div', { class: 'u-side-sheet-head' },
       h('span', { class: 'u-side-sheet-mark', 'aria-hidden': 'true' }, 'U'),
       h('div', {}, h('strong', {}, 'Your sides'), h('small', {}, 'One account, every way you work.')),

@@ -38,7 +38,9 @@
   // ---------------------------------------------------------------- one collab, answered from its link (no account)
   async function viewCollab(token) {
     const api = `/api/collabs/t/${token}`;
-    const render = (c, collabSide) => {
+    let collabSide = null, current = null;
+    const render = (c) => {
+      current = c;
       document.title = `${C.headline(c)} · Unprompted`;
       show(h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, c.side === 'creator' ? 'For @' + c.handle : 'For ' + c.brand),
           h('h1', {}, C.headline(c), '.')),
@@ -52,10 +54,15 @@
           ' · signed-in creators and brands see these in one inbox.'));
     };
     try {
-      const [c, user] = await Promise.all([C.call(api), accountReady]);
-      const collabSide = user && U.hasRole(user, c.side) ? c.side : null;
-      if (collabSide) { U.rememberSide(collabSide); who(user, collabSide); }
-      render(c, collabSide);
+      const c = await C.call(api);
+      render(c);
+      accountReady.then((user) => {
+        if (!user || !U.hasRole(user, c.side)) return;
+        collabSide = c.side;
+        U.rememberSide(collabSide);
+        who(user, collabSide);
+        render(current);
+      });
     } catch (e) { fail(e.message); }
   }
 
