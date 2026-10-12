@@ -29,6 +29,7 @@
   .tour-layout { display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.2fr); align-items: center; gap: clamp(28px, 6vw, 88px); min-height: 0; }
   .tour-copy { display: grid; align-content: center; gap: var(--s-4); min-width: 0; }
   .tour-copy h1 { max-width: 10ch; font: 600 clamp(2.8rem, 3.3vw + 1rem, 5.2rem)/0.94 var(--display); letter-spacing: -0.055em; text-wrap: balance; }
+  #tour-headline:focus { outline: none; }
   .tour-copy p { max-width: 35ch; color: var(--text-2); font-size: clamp(1rem, 1.2vw, 1.2rem); line-height: 1.5; }
   .tour-art { display: grid; place-items: center; min-width: 0; }
   .tour-scene { width: min(100%, 660px); min-width: 0; opacity: 0; translate: 0 12px; transition: opacity 220ms var(--ease-out), translate 220ms var(--ease-out); }
@@ -163,15 +164,13 @@
   </div>
   <div class="tour-layout" id="tour-swipe">
     <section class="tour-copy">
-      <span class="u-eyebrow" id="tour-eyebrow">1 / 6</span>
       <h1 id="tour-headline" tabindex="-1">Creators mention brands every day.</h1>
-      <p id="tour-copy">A real video gives every brand mention a starting point.</p>
+      <p id="tour-copy">Unprompted, on camera. That's proof you already love them.</p>
     </section>
     <div class="tour-art" id="tour-art"></div>
   </div>
   <nav class="tour-nav" aria-label="Tour navigation">
     <button class="u-btn u-btn-ghost" id="tour-back" type="button">← Back</button>
-    <span class="tour-progress-label" id="tour-nav-count">1 / 6</span>
     <button class="u-btn u-btn-primary" id="tour-next" type="button">Next →</button>
   </nav>
   <div class="tour-live" id="tour-live" aria-live="polite" aria-atomic="true"></div>
@@ -280,7 +279,7 @@ function choicesScene() {
 }
 
 const steps = [
-  { title: 'Creators mention brands every day.', copy: 'A real video gives every brand mention a starting point.', visual: videoScene },
+  { title: 'Creators mention brands every day.', copy: "Unprompted, on camera. That's proof you already love them.", visual: videoScene },
   { title: 'We turn each mention into a receipt.', copy: 'Quote, frame, timestamp, and views make past content proof.', visual: receiptScene },
   { title: 'Creators pitch their next paid collab.', copy: 'A receipt proves your fit; the offer pays for new work.', visual: pitchScene },
   { title: 'Brands find creators who already love them.', copy: 'Search authentic mentions, then invite creators to work together.', visual: searchScene },
@@ -292,8 +291,6 @@ function setStep(index, updateUrl = true) {
   currentStep = Math.max(0, Math.min(steps.length - 1, index));
   const step = steps[currentStep];
   $('#tour-progress-label').textContent = `${currentStep + 1} / ${steps.length}`;
-  $('#tour-nav-count').textContent = `${currentStep + 1} / ${steps.length}`;
-  $('#tour-eyebrow').textContent = `${currentStep + 1} / ${steps.length}`;
   $('#tour-headline').textContent = step.title;
   $('#tour-copy').textContent = step.copy;
   $('#tour-art').replaceChildren(step.visual());
