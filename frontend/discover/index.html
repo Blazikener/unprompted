@@ -95,7 +95,6 @@
       U.sideSwitcher(account, role, (nextRole) =>
         ['creator', 'brand'].includes(nextRole) ? `/discover?as=${nextRole}` : `/dashboard?as=${nextRole}`),
       h('span', { class: 'email' }, account.email),
-      h('a', { href: '/dashboard' }, 'Dashboard'),
       h('a', { href: '#', onclick: async (event) => {
         event.preventDefault();
         await C.call('/api/creators/logout', {});

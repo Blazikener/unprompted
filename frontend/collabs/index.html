@@ -169,7 +169,6 @@
 
   function accountHeader(user, role = user.role) {
     $('#who').replaceChildren(U.sideSwitcher(user, role), h('span', { class: 'email' }, user.email),
-      h('a', { href: '/dashboard' }, 'Dashboard'),
       h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await C.call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
   }
 

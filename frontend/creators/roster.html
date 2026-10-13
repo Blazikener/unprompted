@@ -338,7 +338,7 @@
       user = me.user;
       if (!me.user) { $('#who').replaceChildren(); signIn(); return; }
       $('#who').replaceChildren(U.sideSwitcher(me.user, U.hasRole(me.user, 'manager') ? 'manager' : me.user.role),
-        h('span', { class: 'email' }, me.user.email), h('a', { href: '/dashboard' }, 'Dashboard'),
+        h('span', { class: 'email' }, me.user.email),
         h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', onclick: signOut }, 'Sign out'));
       if (!U.hasRole(me.user, 'manager')) { showRoleNotice(me.user); return; }
       render(await call('/api/rosters/mine'));

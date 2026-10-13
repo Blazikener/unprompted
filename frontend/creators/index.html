@@ -738,7 +738,6 @@ function renderAccount() {
     U.sideSwitcher(S.user, 'creator'),
     h('span', { class: 'who' }, S.user.email),
     h('span', { class: `u-pill${paid ? ' u-pill-ok' : ''}` }, PLAN_NAME[S.user.plan] || 'Free'),
-    h('a', { class: 'u-btn u-btn-ghost u-btn-sm', href: '/dashboard' }, 'Dashboard'),
     paid ? (S.user.billing ? h('button', { class: 'u-btn u-btn-sm', type: 'button', id: 'portal', onclick: openPortal }, 'Billing') : '')
       : S.offer.plan ? h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', id: 'up', onclick: () => openUpgrade() }, S.offer.arm === 'a' ? 'Go Pro' : S.offer.name) : '',
     h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button', id: 'signout', onclick: signOut }, 'Sign out'));

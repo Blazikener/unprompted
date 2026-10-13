@@ -17,6 +17,12 @@
 
 html[data-u-signed-in] .u-aud { display: none; }
 html[data-u-signed-in] .u-main-nav { display: none; }
+html[data-u-signed-in] .u-signed-out-only { display: none; }
+
+@media (min-width: 601px) and (max-width: 1472px) {
+  html[data-u-signed-in] .landing-top #landing-account { flex: 0 1 auto; }
+  html[data-u-signed-in] .landing-top .brand-account-chip { width: auto; }
+}
 
 @layer reset {
   *, *::before, *::after { box-sizing: border-box; }

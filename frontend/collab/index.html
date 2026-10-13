@@ -161,8 +161,7 @@
   }
 
   function who(user, role = user.role) {
-    $('#who').replaceChildren(U.sideSwitcher(user, role), h('span', { class: 'email' }, user.email),
-      h('a', { href: '/collabs' }, 'Collabs'), h('a', { href: '/dashboard' }, 'Dashboard'));
+    $('#who').replaceChildren(U.sideSwitcher(user, role), h('span', { class: 'email' }, user.email));
   }
 
   accountReady = C.call('/api/creators/me').then(({ user }) => {
