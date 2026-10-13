@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verify your channel · Receipts</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/ui/ui.css?v=8">
-<script src="/ui/ui.js?v=7"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=10">
+<script src="/ui/ui.js?v=8"></script>
 <style>
 @layer page {
   .u-bar { gap: var(--s-3); }
@@ -174,11 +174,12 @@
       error.textContent = '';
       await pending(submit, async () => {
         try {
-          await call(`/api/creators/${signup ? 'signup' : 'login'}`, {
+          const { user } = await call(`/api/creators/${signup ? 'signup' : 'login'}`, {
             email: email.value,
             password: password.value,
             ...(signup ? { role: 'creator', also: sides.values() } : {}),
           });
+          U.syncAccountNav(user);
           await load();
         } catch (ex) { error.textContent = ex.message; }
       });
