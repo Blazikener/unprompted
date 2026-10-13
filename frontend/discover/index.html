@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discover · Unprompted</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/ui/ui.css?v=6">
+<link rel="stylesheet" href="/collab/collab.css?v=1">
+<script src="/ui/ui.js?v=4"></script>
+<script src="/collab/collab.js?v=1"></script>
+<style>
+@layer page {
+  .u-bar { gap: var(--s-3); }
+  .bar-note { font: 500 var(--fs-xs)/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
+  #who { display: flex; gap: var(--s-3); align-items: center; font-size: var(--fs-sm); }
+  @media (max-width: 600px) { .u-bar { flex-wrap: wrap; padding-inline: var(--s-4); } .u-logo small, #who .email, .bar-note { display: none; } }
+  .page { width: min(980px, 100% - 32px); margin-inline: auto; padding-block: var(--s-6) var(--s-8); display: grid; gap: var(--s-5); }
+  .discover-page { display: grid; gap: var(--s-4); min-width: 0; }
+  .discover-intro { display: grid; gap: var(--s-2); }
+  .discover-intro h1 { font-size: var(--fs-3xl); letter-spacing: -0.03em; line-height: 1.02; }
+  .discover-intro .u-lead { max-width: 60ch; }
+  .discover-filter { display: grid; gap: 6px; width: min(440px, 100%); }
+  .discover-filter > span { color: var(--text-3); font: 500 0.66rem/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .discover-table { display: grid; column-gap: clamp(12px, 2.4vw, 30px); min-width: 0; }
+  .discover-table-brands { grid-template-columns: minmax(0, 1fr) minmax(96px, auto) auto; }
+  .discover-table-creators { grid-template-columns: minmax(0, 1.35fr) auto minmax(128px, 0.9fr) auto; }
+  .dt-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 56px; padding: 8px 10px; border-radius: var(--r-2); color: inherit; }
+  .dt-row:not(.dt-head) + .dt-row:not(.dt-head) { margin-top: 2px; }
+  .dt-head { min-height: 0; padding-block: 0 6px; color: var(--text-3); font: 500 0.66rem/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .dt-cell { min-width: 0; }
+  .dt-end { justify-self: end; text-align: end; color: var(--text-2); font: 500 var(--fs-sm) var(--mono); font-variant-numeric: tabular-nums; }
+  .dt-head .dt-end { color: var(--text-3); font: inherit; }
+  .discover-name { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+  .discover-copy { display: grid; gap: 3px; min-width: 0; }
+  .discover-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .discover-title strong { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; font-size: var(--fs-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .discover-title .u-pill { flex: none; white-space: nowrap; }
+  .discover-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .discover-copy small, .discover-top-brands { color: var(--text-3); font-size: var(--fs-xs); }
+  .discover-about { display: block; max-width: 60ch; }
+  .discover-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: none; overflow: hidden; border-radius: 50%;
+                     color: var(--text-2); background: var(--surface-3); font: 600 var(--fs-sm) var(--sans); object-fit: cover; }
+  .discover-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+  .discover-count { display: block; color: var(--text-2); font: 500 var(--fs-sm) var(--mono); font-variant-numeric: tabular-nums; text-align: end; }
+  .discover-top-brands { display: block; overflow: hidden; max-width: 190px; margin-top: 3px; text-align: end; text-overflow: ellipsis; white-space: nowrap; }
+  .discover-empty { padding-block: var(--s-4); color: var(--text-2); font-size: var(--fs-sm); }
+  .discover-empty p { margin-bottom: var(--s-2); }
+  .discover-footer { display: grid; gap: var(--s-3); margin-top: var(--s-2); }
+  .discover-note { color: var(--text-2); font-size: var(--fs-sm); }
+  .discover-note a { color: var(--text); }
+  @media (max-width: 560px) {
+    .discover-table { column-gap: 10px; }
+    .discover-table-brands { grid-template-columns: minmax(0, 1fr) auto; }
+    .discover-table-brands .dt-cell:nth-child(2) { display: none; }
+    .discover-table-creators { grid-template-columns: minmax(0, 1fr) 64px auto; }
+    .discover-table-creators .dt-cell:nth-child(2) { display: none; }
+    .discover-table-creators .discover-title .u-pill { padding-inline: 6px; font-size: 0.62rem; }
+    .dt-row { padding-inline: 5px; }
+    .discover-name { gap: 8px; }
+    .discover-avatar { width: 32px; height: 32px; }
+    .discover-top-brands { display: none; }
+    .discover-platform { display: none; }
+  }
+}
+</style>
+</head>
+<body class="u-stage">
+<header class="u-bar">
+  <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <span class="grow"></span>
+  <span data-u-theme-toggle></span>
+  <span class="bar-note">Discover</span>
+  <div id="who"></div>
+</header>
+<main class="page">
+  <section id="app" class="discover-page" aria-busy="true" tabindex="-1"><p class="u-muted">Loading Discover…</p></section>
+</main>
+<script>
+  const { h } = U;
+  const $ = (selector) => document.querySelector(selector);
+  const app = $('#app');
+  const params = new URLSearchParams(location.search);
+  let user = null, data = null;
+  const show = (...children) => { app.removeAttribute('aria-busy'); app.replaceChildren(...children.filter(Boolean)); };
+  const empty = (text, action = null) => h('div', { class: 'discover-empty', role: 'status' },
+    h('p', {}, text), action);
+  const intro = (title, lead) => h('section', { class: 'discover-intro' },
+    h('span', { class: 'u-eyebrow' }, 'Discover'),
+    h('h1', {}, title),
+    h('p', { class: 'u-lead' }, lead));
+
+  function accountHeader(account, role = account.role) {
+    $('#who').replaceChildren(U.sideSwitcher(account, role), h('span', { class: 'email' }, account.email),
+      h('a', { href: '/dashboard' }, 'Dashboard'),
+      h('a', { href: '#', onclick: async (event) => {
+        event.preventDefault();
+        await C.call('/api/creators/logout', {});
+        location.href = '/';
+      } }, 'Sign out'));
+  }
+
+  function table(kind, columns, rows) {
+    const cells = (values) => values.map((value, index) => h('span', {
+      role: index === 0 ? 'rowheader' : 'cell',
+      class: `dt-cell${columns[index].end ? ' dt-end' : ''}`,
+    }, value));
+    return h('div', { class: `discover-table discover-table-${kind}`, role: 'table' },
+      h('div', { class: 'dt-row dt-head', role: 'row' }, ...columns.map((column) =>
+        h('span', { role: 'columnheader', class: `dt-cell${column.end ? ' dt-end' : ''}` }, column.label))),
+      ...rows.map((row) => h('div', { class: 'dt-row', role: 'row' }, ...cells(row))));
+  }
+
+  function matching(items, query) {
+    const key = query.trim().toLocaleLowerCase();
+    return items.filter((item) => !key || [
+      item.handle, item.name, item.brand, item.about, ...(item.topBrands || []),
+    ].some((value) => String(value || '').toLocaleLowerCase().includes(key)));
+  }
+
+  function creatorView() {
+    const filter = h('input', { class: 'u-input', type: 'search', placeholder: 'Filter brands',
+      'aria-label': 'Filter brands' });
+    const tableSlot = h('div');
+    const footer = h('div', { class: 'discover-footer' });
+    const listed = h('input', { type: 'checkbox', checked: data.listed,
+      'aria-label': 'Show me to brands in Discover', onchange: async (event) => {
+        const control = event.currentTarget, value = control.checked;
+        control.disabled = true;
+        try {
+          data.listed = (await C.call('/api/collabs/listing', { listed: value })).listed;
+        } catch (error) {
+          control.checked = !value;
+          U.toast(error.message, { kind: 'error' });
+        } finally {
+          control.disabled = false;
+        }
+      } });
+    const render = () => {
+      const rows = matching(data.brands, filter.value);
+      tableSlot.replaceChildren(rows.length ? table('brands', [
+        { label: 'Brand' }, { label: 'Your receipts', end: true }, { label: 'Action', end: true },
+      ], rows.map((item) => [
+        h('span', { class: 'discover-name' },
+          h('span', { class: 'discover-copy' },
+            h('span', { class: 'discover-title' },
+              h('strong', {}, item.brand),
+              item.mentioned ? h('span', { class: 'u-pill u-pill-ok' }, 'You mention them') : null),
+            h('small', { class: 'discover-about' }, item.about || 'Open to future collabs'))),
+        item.receipts ? U.fmt(item.receipts) : '—',
+        h('span', { class: 'discover-actions' },
+          h('a', { class: 'u-btn u-btn-primary u-btn-sm',
+            href: `/collabs?as=creator&pitch=${encodeURIComponent(item.brand)}` }, 'Pitch'),
+          item.watched ? null : h('button', { class: 'u-btn u-btn-ghost u-btn-sm', type: 'button',
+            onclick: (event) => C.pending(event.currentTarget, async () => {
+              try {
+                await C.call('/api/collabs/watch', { brand: item.brand });
+                item.watched = true;
+                render();
+              } catch (error) {
+                U.toast(error.message, { kind: 'error' });
+              }
+            }) }, 'Watch'),
+        ),
+      ])) : empty(data.brands.length ? 'No matching brands.' : "No brands are open yet. Watch brands on /collabs and we'll tell you when they open.",
+        data.brands.length ? null : h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Open collabs')));
+      const footerItems = [h('label', { class: 'u-switch' }, listed, 'Show me to brands in Discover')];
+      if (!data.hasVerified) footerItems.push(h('p', { class: 'discover-note' },
+        h('a', { href: '/verify' }, 'Verify your channel to appear to brands')));
+      footer.replaceChildren(...footerItems);
+    };
+    filter.addEventListener('input', render);
+    render();
+    return [intro('Brands on Unprompted', 'Brands open to collabs. Pitch the ones you already talk about.'),
+      h('label', { class: 'discover-filter' }, h('span', {}, 'Filter'), filter), tableSlot, footer];
+  }
+
+  function avatar(item) {
+    const fallback = () => h('span', { class: 'discover-avatar', 'aria-hidden': 'true' },
+      (item.name || item.handle || '?').trim().slice(0, 1).toUpperCase());
+    if (!item.pfp) return fallback();
+    return h('img', { class: 'discover-avatar', src: item.pfp, alt: '', loading: 'lazy',
+      onerror: (event) => event.currentTarget.replaceWith(fallback()) });
+  }
+
+  function brandView() {
+    const filter = h('input', { class: 'u-input', type: 'search', placeholder: 'Filter creators',
+      'aria-label': 'Filter creators' });
+    const tableSlot = h('div');
+    const footer = h('div', { class: 'discover-footer' });
+    const invite = (item) => {
+      const query = new URLSearchParams({ platform: item.platform, handle: item.handle, brand: data.brand || '' });
+      return h('a', { class: 'u-btn u-btn-primary u-btn-sm', href: `/collab/new?${query}` }, 'Invite');
+    };
+    const render = () => {
+      const rows = matching(data.creators, filter.value);
+      tableSlot.replaceChildren(rows.length ? table('creators', [
+        { label: 'Creator' }, { label: 'Followers', end: true },
+        { label: 'Brands mentioned', end: true }, { label: 'Action', end: true },
+      ], rows.map((item) => [
+        h('span', { class: 'discover-name' }, avatar(item),
+          h('span', { class: 'discover-copy' },
+            h('span', { class: 'discover-title' },
+              h('strong', {}, `@${item.handle}`),
+              item.mentionsYou ? h('span', { class: 'u-pill u-pill-ok' }, 'Mentions you') : null),
+            h('small', {}, item.name || item.platform,
+              item.name ? h('span', { class: 'discover-platform' }, ` · ${item.platform}`) : null))),
+        item.followers == null ? '—' : U.fmt(item.followers),
+        h('span', {},
+          h('span', { class: 'discover-count' }, U.fmt(item.brands)),
+          h('small', { class: 'discover-top-brands' }, item.topBrands.join(' · ') || '—')),
+        invite(item),
+      ])) : empty(data.creators.length ? 'No matching creators.' : 'No verified creators yet.'));
+      const footerItems = data.brand ? [] : [h('p', { class: 'discover-note' },
+        'Set up your brand profile to see who mentions you. ',
+        h('a', { href: '/collabs?as=brand' }, 'Set it up in Collabs'))];
+      footer.replaceChildren(...footerItems);
+    };
+    filter.addEventListener('input', render);
+    render();
+    return [intro('Creators on Unprompted', 'Verified creators. Invite the ones who already mention you.'),
+      h('label', { class: 'discover-filter' }, h('span', {}, 'Filter'), filter), tableSlot, footer];
+  }
+
+  async function load() {
+    try {
+      user = (await C.call('/api/creators/me')).user;
+      if (!user) {
+        return show(intro('Discover future collabs', 'Browse verified creators and brands open to new paid work.'),
+          h('div', { class: 'c-card' },
+            h('p', { class: 'u-muted' }, 'Sign in to browse brands open to collabs or verified creators who can receive an invite.'),
+            h('div', { class: 'c-actions' },
+              h('a', { class: 'u-btn u-btn-primary', href: '/creators/?signin=1' }, 'Sign in as a creator'),
+              h('a', { class: 'u-btn', href: '/brands/?signin=1' }, 'Sign in as a brand'))));
+      }
+      const requested = params.get('as');
+      if (['creator', 'brand'].includes(requested) && !U.hasRole(user, requested)) {
+        const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+        U.roleNotice(notice, user, requested, 'Discover is for creator and brand accounts.');
+        return show(notice);
+      }
+      const side = ['creator', 'brand'].includes(requested) ? requested
+        : U.hasRole(user, 'brand') ? 'brand' : U.hasRole(user, 'creator') ? 'creator' : '';
+      if (!side) {
+        const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+        U.roleNotice(notice, user, 'creator', 'Discover is for creator and brand accounts.');
+        return show(notice);
+      }
+      const directory = await C.call(`/api/collabs/directory?as=${side}`);
+      data = directory;
+      accountHeader(user, side);
+      U.rememberSide(side);
+      if (side === 'creator') {
+        const [mine, licenses] = await Promise.all([
+          C.call('/api/collabs/mine?as=creator'),
+          C.call('/api/licenses/mine'),
+        ]);
+        data.listed = mine.listed;
+        data.hasVerified = licenses.handles.some((handle) => handle.verified);
+        document.title = 'Brands on Unprompted · Discover';
+        show(...creatorView());
+      } else {
+        data.brand = directory.brand || null;
+        document.title = 'Creators on Unprompted · Discover';
+        show(...brandView());
+      }
+    } catch (error) {
+      if (error.status === 403 && error.data?.role) {
+        const notice = h('div', { class: 'c-card role-notice u-card u-card-pad', role: 'status' });
+        U.roleNotice(notice, user || { role: error.data.role }, error.data.missing || 'creator',
+          'Discover is for creator and brand accounts.');
+        show(notice);
+        return;
+      }
+      show(h('div', { class: 'c-card', role: 'alert' }, h('p', {}, error.message)));
+    }
+  }
+  load();
+</script>
+</body>
+</html>

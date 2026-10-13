@@ -103,6 +103,19 @@ def test_collabs_signed_out_entry_has_direct_signin_and_tour(base):
         assert text in body
 
 
+def test_discover_signed_out_entry_has_direct_signin(base):
+    status, body = call(base, "GET", "/discover")
+    assert status == 200
+    for text in (
+        b"Discover future collabs",
+        b"Browse verified creators and brands open to new paid work.",
+        b"Sign in to browse brands open to collabs or verified creators who can receive an invite.",
+        b"Sign in as a creator", b"Sign in as a brand",
+        b"/creators/?signin=1", b"/brands/?signin=1",
+    ):
+        assert text in body
+
+
 def test_verify_page_routes(base):
     for path in ("/verify", "/verify/"):
         status, body = call(base, "GET", path)
@@ -112,7 +125,7 @@ def test_verify_page_routes(base):
 
 def test_top_bar_pages_have_synchronous_ui_and_theme_toggle(base):
     routes = (
-        "/", "/brands", "/brands/", "/tour", "/tour/", "/dashboard", "/collabs", "/collabs/",
+        "/", "/brands", "/brands/", "/tour", "/tour/", "/dashboard", "/collabs", "/collabs/", "/discover", "/discover/",
         "/collab/new", "/collab/new/maya", "/verify", "/creators/r/maya.eats",
         "/creators/roster", "/creators/licenses", "/digest/sample", "/offer/demo", "/license/demo/token",
         "/admin/", "/waitlist", "/join", "/waitlist/admin", "/demo/credits", "/ui/kit.html",

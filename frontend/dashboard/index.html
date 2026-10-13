@@ -854,7 +854,9 @@ function renderOverview() {
     ];
     chart = chartCard('Mentions over time', 'Receipts grouped by the video publish month, across your latest scan per handle.', timelineRows(), 'area', 'scan');
     signal = card('Latest creator signals', c.recent.length ? scanList(c.recent) : emptyState('No scans yet', 'Run your first scan to turn your mentions into shareable receipts.', 'scan', 'Run a first scan'));
-    actions = h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs');
+    actions = h('div', { class: 'action-grid' },
+      h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs'),
+      h('a', { class: 'u-btn', href: '/discover?as=creator' }, 'Find brands'));
   } else if (data.role === 'brand') {
     summary = 'Saved searches, creator mentions and weekly digests for your brands.';
     metrics = [
@@ -865,7 +867,9 @@ function renderOverview() {
     ];
     chart = chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar', 'brand');
     signal = card('Recent brand searches', b.recentSearches.length ? searchList(b.recentSearches) : emptyState('No saved brand searches yet', 'Search for a brand and keep listening with a weekly digest.', 'brand', 'Find your first brand'));
-    actions = h('div', { class: 'action-grid' }, h('a', { class: 'u-btn', href: '/brands/' }, 'Manage brand searches'), h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs'));
+    actions = h('div', { class: 'action-grid' }, h('a', { class: 'u-btn', href: '/brands/' }, 'Manage brand searches'),
+      h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs'),
+      h('a', { class: 'u-btn', href: '/discover?as=brand' }, 'Find creators'));
   } else {
     summary = 'Creators, reports and deals from the roster you manage.';
     metrics = [
@@ -918,7 +922,8 @@ function renderCreator() {
         h('div', { class: 'stat-box' }, h('strong', {}, format(value)), h('small', {}, label)))),
     h('div', { class: 'action-grid' },
       h('span', { class: 'u-pill' }, `$${format(k.bookedUsd)} booked`), h('span', { class: 'u-pill' }, `${format(k.partners)} brands taking pitches`),
-      h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs')));
+      h('a', { class: 'u-btn u-btn-sm', href: '/collabs' }, 'Pitch and answer collabs'),
+      h('a', { class: 'u-btn u-btn-sm', href: '/discover?as=creator' }, 'Find brands')));
   panel.replaceChildren(...[
     panelHead('Creator', 'Your receipts', summary),
     tourBanner(),
@@ -940,7 +945,8 @@ function renderBrand() {
   const maxRequest = Math.max(1, k.yourTurn, k.waiting, k.booked);
   const funnel = h('div', { class: 'request-funnel' },
     ...[['Pitches for you', k.yourTurn], ['Waiting on creators', k.waiting], ['Booked', k.booked]].map(([label, value]) =>
-      h('div', { class: 'funnel-row' }, h('span', {}, label), h('span', { class: 'funnel-track' }, h('i', { style: `width:${Math.max(0, value / maxRequest * 100)}%` })), h('b', {}, format(value)))));
+      h('div', { class: 'funnel-row' }, h('span', {}, label), h('span', { class: 'funnel-track' }, h('i', { style: `width:${Math.max(0, value / maxRequest * 100)}%` })), h('b', {}, format(value)))),
+    h('div', { class: 'action-grid' }, h('a', { class: 'u-btn u-btn-sm', href: '/discover?as=brand' }, 'Find creators')));
   const digest = h('div', { class: 'stat-strip' },
     h('div', { class: 'stat-box' }, h('strong', {}, format(b.digests.active)), h('small', {}, 'Active digests')),
     h('div', { class: 'stat-box' }, h('strong', {}, format(b.digests.pending)), h('small', {}, 'Pending confirmation')));

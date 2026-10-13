@@ -13,9 +13,6 @@
 <body class="u-stage">
 <header class="u-bar">
   <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
-  <nav class="u-aud" aria-label="Who it's for">
-    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
-  </nav>
   <span class="grow"></span>
   <span data-u-theme-toggle></span>
   <span class="bar-note">Collabs</span>
@@ -132,7 +129,8 @@
       : empty('No brands are taking pitches yet. Watch the ones you want and we’ll tell you the week they open.');
     return [h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Your collabs'),
         h('h1', {}, 'Future work with brands. ', h('span', { class: 'u-voice' }, 'On your terms.')),
-        h('p', { class: 'u-lead' }, 'Brands that find your receipts invite you to make new content. Pitch the brands you already talk about. Accept, counter or decline every offer.')),
+        h('p', { class: 'u-lead' }, 'Brands that find your receipts invite you to make new content. Pitch the brands you already talk about. Accept, counter or decline every offer.'),
+        h('a', { href: '/discover?as=creator' }, 'Browse all brands →')),
       h('div', { class: 'c-stats' }, stat(n.yourTurn, 'Waiting for you'), stat(n.waiting, 'Waiting on brands'), stat(n.booked, 'Booked'), stat(C.usd(n.bookedUsd), 'Booked value')),
       h('div', { class: 'c-grid' },
         h('div', { class: 'c-section' }, ...(data.collabs.length ? list(data.collabs)
@@ -158,7 +156,8 @@
       h('small', { class: 'u-hint' }, 'Creators who already mention you can send proposals. Each one shows up here with their receipt.'));
     return [h('div', { class: 'intro' }, h('span', { class: 'u-eyebrow' }, 'Collabs'),
         h('h1', {}, 'Book the creators ', h('span', { class: 'u-voice' }, 'who already love you.')),
-        h('p', { class: 'u-lead' }, 'Invite creators from your search results or weekly report to make new content, and answer the pitches creators send you.')),
+        h('p', { class: 'u-lead' }, 'Invite creators from your search results or weekly report to make new content, and answer the pitches creators send you.'),
+        h('a', { href: '/discover?as=brand' }, 'Browse creators →')),
       h('div', { class: 'c-stats' }, stat(n.yourTurn, 'Waiting for you'), stat(n.waiting, 'Waiting on creators'), stat(n.booked, 'Booked'), stat(C.usd(n.bookedUsd), 'Committed')),
       h('div', { class: 'c-grid' },
         h('div', { class: 'c-section' }, ...(data.collabs.length ? list(data.collabs)

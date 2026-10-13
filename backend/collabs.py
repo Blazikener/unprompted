@@ -148,6 +148,116 @@ def partner(name):
     return next((p for p in partners() if brand_key(p["brand"]).casefold() == key), None)
 
 
+def creator_listed(user):
+    with connect() as db:
+        row = db.execute("SELECT listed FROM creator_prefs WHERE user_id = %s", (user["id"],)).fetchone()
+    return row["listed"] if row else True
+
+
+def set_listing(user, body):
+    listed = body.get("listed")
+    if not isinstance(listed, bool):
+        raise ApiError(400, "Choose whether to appear in Discover.")
+    with connect() as db:
+        db.execute("INSERT INTO creator_prefs (user_id, listed) VALUES (%s, %s)"
+                   " ON CONFLICT (user_id) DO UPDATE SET listed = excluded.listed", (user["id"], listed))
+    return {"listed": listed}
+
+
+def receipt_count(brand):
+    receipts = brand.get("receipts")
+    if isinstance(receipts, list):
+        return len(receipts)
+    try:
+        return max(0, int(receipts or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def positive(value):
+    try:
+        return float(value or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def directory_brand(user):
+    viewer_brand = (profile(user) or {}).get("brand")
+    viewer_key = brand_key(viewer_brand).casefold()
+    with connect() as db:
+        rows = db.execute(
+            "SELECT h.platform, h.handle, s.profile, s.brands"
+            " FROM creator_handles h LEFT JOIN creator_prefs p ON p.user_id = h.user_id"
+            " LEFT JOIN LATERAL (SELECT profile, brands FROM scans"
+            " WHERE user_id = h.user_id AND platform = h.platform AND lower(handle) = lower(h.handle)"
+            " ORDER BY created_at DESC, id DESC LIMIT 1) s ON true"
+            " WHERE h.verified_at IS NOT NULL AND COALESCE(p.listed, true) AND h.user_id <> %s",
+            (user["id"],),
+        ).fetchall()
+    creators = []
+    for row in rows:
+        scan_profile = row["profile"] if isinstance(row["profile"], dict) else {}
+        scan_brands = row["brands"] if isinstance(row["brands"], list) else []
+        visible = [b for b in scan_brands if isinstance(b, dict) and
+                   (positive(b.get("organic")) or receipt_count(b) > 0) and brand_key(b.get("brand"))]
+        top = sorted(visible, key=lambda b: (-receipt_count(b), brand_key(b.get("brand")).casefold()))
+        creators.append({
+            "platform": row["platform"],
+            "handle": row["handle"],
+            "name": scan_profile.get("name"),
+            "pfp": scan_profile.get("pfp"),
+            "followers": scan_profile.get("followers"),
+            "medianViews": scan_profile.get("medianViews"),
+            "brands": len(visible),
+            "topBrands": [brand_key(b.get("brand")) for b in top[:3]],
+            "mentionsYou": bool(viewer_key and any(
+                positive(b.get("organic")) and brand_key(b.get("brand")).casefold() == viewer_key for b in scan_brands
+                if isinstance(b, dict))),
+        })
+    creators.sort(key=lambda c: (not c["mentionsYou"], c["followers"] is None,
+                                 -float(c["followers"] or 0), c["handle"].casefold()))
+    return {"side": "brand", "brand": viewer_brand, "creators": creators[:200]}
+
+
+def directory_creator(user):
+    open_brands = [p for p in partners() if p["user_id"] != user["id"]]
+    with connect() as db:
+        scans = db.execute(
+            "SELECT DISTINCT ON (platform, lower(handle)) platform, handle, brands FROM scans"
+            " WHERE user_id = %s ORDER BY platform, lower(handle), created_at DESC, id DESC",
+            (user["id"],),
+        ).fetchall()
+        watched_rows = db.execute("SELECT brand FROM creator_watch WHERE user_id = %s", (user["id"],)).fetchall()
+    watched = {brand_key(row["brand"]).casefold() for row in watched_rows}
+    brands = []
+    for item in open_brands:
+        key = brand_key(item["brand"]).casefold()
+        receipts = sum(receipt_count(b) for scan in scans for b in (scan["brands"] or [])
+                       if isinstance(b, dict) and brand_key(b.get("brand")).casefold() == key)
+        brands.append({"brand": item["brand"], "about": item["about"], "watched": key in watched,
+                       "receipts": receipts, "mentioned": receipts > 0})
+    brands.sort(key=lambda b: (not b["mentioned"], -b["receipts"], b["brand"].casefold()))
+    return {"side": "creator", "brands": brands}
+
+
+def directory(user, requested=None):
+    if requested == "creator":
+        if not creator.has_role(user, "creator"):
+            raise ApiError(403, "Not allowed.")
+        side = "creator"
+    elif requested == "brand":
+        if not creator.has_role(user, "brand"):
+            raise ApiError(403, "Not allowed.")
+        side = "brand"
+    elif creator.has_role(user, "brand"):
+        side = "brand"
+    elif creator.has_role(user, "creator"):
+        side = "creator"
+    else:
+        raise ApiError(403, "Not allowed.")
+    return directory_brand(user) if side == "brand" else directory_creator(user)
+
+
 # ---------------------------------------------------------------- proof: the receipt that makes the ask credible
 
 def video_proof(video_id, platform, handle):
@@ -375,6 +485,7 @@ def mine(user, as_role=None):
     else:
         out["watch"] = watchlist(user)
         out["partners"] = [{"brand": p["brand"], "about": p["about"]} for p in partners()]
+        out["listed"] = creator_listed(user)
     return out
 
 
@@ -551,8 +662,8 @@ def run_weekly(force=False):
 # ---------------------------------------------------------------- routes
 
 def dispatch(handler):
-    """GET  /api/collabs/mine | /partners | /t/<token> | /proof?v=&platform=&handle= (brand) | /digest/<token>?v=
-    POST /api/collabs/propose (brand) | /pitch (creator) | /watch (creator) | /profile (brand)
+    """GET  /api/collabs/mine | /partners | /directory?as=brand|creator | /t/<token> | /proof?v=&platform=&handle= (brand) | /digest/<token>?v=
+    POST /api/collabs/propose (brand) | /pitch (creator) | /watch (creator) | /listing (creator) | /profile (brand)
          /t/<token> (either side, no account) | /<id> (either side, signed in)
          /digest/<token> (a brand from its weekly report link)"""
     path, method = urlparse(handler.path).path.removeprefix("/api/collabs"), handler.command
@@ -563,6 +674,9 @@ def dispatch(handler):
             return view(c, side)
         if path == "/mine":
             return mine(creator.require_user(handler.headers), (parse_qs(urlparse(handler.path).query).get("as") or [None])[0])
+        if path == "/directory":
+            requested = (parse_qs(urlparse(handler.path).query).get("as") or [None])[0]
+            return directory(creator.require_user(handler.headers), requested)
         dg = re.fullmatch(r"/digest/([A-Za-z0-9_-]{16,32})", path)
         if dg:
             d, _, _ = digest.load_digest(dg.group(1))
@@ -617,4 +731,6 @@ def dispatch(handler):
         return pitch(creator.require_role(handler.headers, "creator"), body)
     if path == "/watch":
         return watch(creator.require_role(handler.headers, "creator"), body)
+    if path == "/listing":
+        return set_listing(creator.require_role(handler.headers, "creator"), body)
     raise ApiError(404, "Not found.")
