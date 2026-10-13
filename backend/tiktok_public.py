@@ -256,6 +256,26 @@ def video_detail(handle, video_id):
         return None
 
 
+def bio_from_video(handle, video_id):
+    try:
+        html = get(VIDEO_URL % (handle, video_id))
+        match = VIDEO_OBJECT_RE.search(html)
+        if not match:
+            return None
+        data = json.loads(match.group(1))
+        if not isinstance(data, dict):
+            return None
+        creator = data.get("creator") or {}
+        if not isinstance(creator, dict) or str(creator.get("alternateName", "")).lower() != handle.lower():
+            return None
+        bio = creator.get("description") or ""
+        log(handle, "bio via video %s" % video_id)
+        return bio
+    except (error.URLError, OSError, ValueError, KeyError, TypeError) as e:
+        log(handle, "video %s failed: %r" % (video_id, e))
+        return None
+
+
 def seconds(h, m, s, frac):
     return int(h or 0) * 3600 + int(m) * 60 + int(s) + float("0." + frac)
 
