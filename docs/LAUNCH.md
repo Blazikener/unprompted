@@ -55,7 +55,7 @@ Show HN title: "Show HN: Receipts – find brands you already mention on camera,
 ## 3. The scan-as-content loop
 
 Every scan can be published as `/creators/r/<token>`. Ask each early user for permission to quote their receipt page
-in a post ("@creator has said Rhode on camera 6 times, 410K views, never paid"). Creators share these because it is
+in a post ("@creator has said Rhode on camera 6 times, 410K views; no paid post found in the videos we read"). Creators share these because it is
 flattering and brands read them because it is evidence. Track shares in the `events` table (`name = 'share'`).
 
 ## 4. What to measure (all in the `events` table)

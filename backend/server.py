@@ -212,6 +212,19 @@ def mention_re(terms):
     return re.compile("|".join("(?:%s)" % term_pattern(t) for t in terms), re.IGNORECASE)
 
 
+def bounded_mention_re(terms):
+    patterns = []
+    for term in terms:
+        pattern = term_pattern(term)
+        if term.isascii():
+            words = re.findall(r"[^\W_]+", term.lower().replace("'", "").replace("’", ""))
+            if words and not words[-1].endswith("s"):
+                pattern += "s?"
+            pattern += "(?![^\\W_])"
+        patterns.append("(?:%s)" % pattern)
+    return re.compile("|".join(patterns), re.IGNORECASE)
+
+
 def nearest_frame(raw, seconds):
     frames = raw.get("frames") or []
     if not frames:
@@ -257,27 +270,56 @@ def classify(raw, brand, variants, about=()):
     the same quote or caption.
     """
     everyday = {v: everyday_spellings().get(" ".join(fold(v).split())) for v in variants}
-    context = [w for v in variants for w in everyday[v] or []]
-    rx = mention_re([brand, *(v for v in variants if not everyday[v])])
-    rx_everyday = mention_re([v for v in variants if everyday[v]]) if context else None
+    arabic_context = [w for v in variants for w in everyday[v] or []]
+    search_terms = {fold(term) for term in [brand, *variants]}
+    match = next((row for row in brands.BRANDS
+                  if any(fold(term) in search_terms for term in (row[0], *row[2]))), None)
+    ambiguous_name = match[0] if match else brand
+    ambiguous = next((ws for name, ws in brands.AMBIGUOUS.items() if fold(name) == fold(ambiguous_name)), [])
+    english_context = [fold(w) for w in ambiguous]
+    context = arabic_context + english_context
+    rx = bounded_mention_re([brand, *(v for v in variants if not everyday[v])])
+    rx_everyday = mention_re([v for v in variants if everyday[v]]) if arabic_context else None
 
-    def in_context(text):
-        return any(w in fold(text) for w in context)
+    def in_context(text, words=context):
+        return any(w in fold(text) for w in words)
     caption = " ".join([raw.get("caption") or "", *(raw.get("hashtags") or [])])
     tags = {t[1:] for t in re.findall(r"#[^\W_]+", caption.lower())}
-    co_authors = " ".join(c["profileHandle"] for c in raw.get("coAuthors") or [])
-    mentioned = " ".join(m["profileHandle"] for m in raw.get("mentions") or [])
-    in_caption = bool(rx.search(caption + " " + mentioned)) or bool(rx_everyday and rx_everyday.search(caption) and in_context(caption))
+    co_author_profiles = {c["profileHandle"].casefold() for c in raw.get("coAuthors") or []}
+    mentioned_profiles = {m["profileHandle"].casefold() for m in raw.get("mentions") or []}
+    co_authors = " ".join(co_author_profiles)
+    mentioned = " ".join(mentioned_profiles)
+    handles = {h.casefold() for h in match[3]} if match else set()
+    def handle_in_text(text):
+        return any(re.search(r"(?<![A-Za-z0-9_])@?%s(?![A-Za-z0-9_])" % re.escape(h), text, re.IGNORECASE)
+                   for h in handles)
+
+    tagged_handle = bool(handles & (mentioned_profiles | co_author_profiles)) or handle_in_text(caption)
+    direct_caption = bool(rx.search(caption))
+    direct_mentioned = bool(rx.search(mentioned))
+    in_caption = direct_caption or direct_mentioned or tagged_handle
+    everyday_caption = bool(rx_everyday and rx_everyday.search(caption) and in_context(caption, arabic_context))
+    if everyday_caption:
+        in_caption = True
     transcript = raw.get("transcript") or ""
     q = find_quote(raw, rx)
+    everyday_quote = False
     if not q and rx_everyday:
         q = find_quote(raw, rx_everyday)
-        q = q if q and in_context(q["text"]) else None
-    on_topic = (not about or bool(mention_re(about).search(caption) or mention_re(about).search(transcript)
+        everyday_quote = bool(q)
+        q = q if q and in_context(q["text"], arabic_context) else None
+    if english_context and not tagged_handle:
+        direct_caption = direct_caption and in_context(caption, english_context)
+        direct_mentioned = direct_mentioned and in_context(mentioned, english_context)
+        if not everyday_quote:
+            q = q if q and in_context(q["text"], english_context) else None
+        in_caption = direct_caption or direct_mentioned or everyday_caption
+    on_topic = (not about or tagged_handle or bool(mention_re(about).search(caption) or mention_re(about).search(transcript)
                                   or mention_re([brand]).search(mentioned)))
-    if mention_re([brand]).search(raw.get("profileHandle") or ""):
+    owned_handle = str(raw.get("profileHandle") or "").casefold() in handles
+    if owned_handle or bounded_mention_re([brand]).search(raw.get("profileHandle") or ""):
         kind = "owned"
-    elif rx.search(co_authors):
+    elif rx.search(co_authors) or bool(handles & co_author_profiles):
         kind = "sponsored"
     elif not on_topic:
         kind = "unverified"
@@ -289,7 +331,7 @@ def classify(raw, brand, variants, about=()):
         kind = "tagged"
     else:
         kind = "spoken"
-    hits = len(rx.findall(transcript)) + (len(rx_everyday.findall(transcript)) if rx_everyday and in_context(transcript) else 0)
+    hits = len(rx.findall(transcript)) + (len(rx_everyday.findall(transcript)) if rx_everyday and in_context(transcript, arabic_context) else 0)
     return kind, hits, q
 
 
@@ -718,12 +760,35 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT / "frontend"), **kwargs)
 
+    def send_error(self, code, message=None, explain=None):
+        path = urlparse(self.path).path
+        if code == 404 and (path == "/api" or path.startswith("/api/")):
+            body = dumps({"error": "Not found."})
+            self.send_response(404, "Not Found")
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+            return
+        if code == 404:
+            body = (ROOT / "frontend" / "404.html").read_bytes()
+            self.send_response(404, "Not Found")
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+            return
+        super().send_error(code, message, explain)
+
     def _waitlist_gate(self, method):
         url = urlparse(self.path)
         path = posixpath.normpath(unquote(unquote(url.path)))
+        api_path = path == "/api" or path.startswith("/api/")
         if not waitlist_only() or WAITLIST_ALLOW.fullmatch(path):
             return False
-        if method in ("GET", "HEAD") and not path.startswith("/api/"):
+        if method in ("GET", "HEAD") and not api_path:
             location = "/waitlist" + ("?" + url.query if url.query else "")
             self.send_response(302)
             self.send_header("Location", location)
@@ -794,7 +859,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.api(lambda: load(int(m.group(1))))
         elif video:
             self.api(lambda: video_detail(video.group(1), {k: v[0] for k, v in parse_qs(url.query).items()}))
-        elif path.startswith("/api/"):
+        elif path == "/api" or path.startswith("/api/"):
             self.api(not_found)
         else:
             if path == "/":
