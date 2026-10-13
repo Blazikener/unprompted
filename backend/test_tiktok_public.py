@@ -301,6 +301,39 @@ def test_video_detail_uses_jsonld_without_refetching(monkeypatch, capsys):
     assert "video %s: caption only (json-ld)" % video_id in capsys.readouterr().err
 
 
+def test_bio_from_video_returns_description_when_handle_matches_case_insensitively(monkeypatch, capsys):
+    video_id = "123456789"
+    bio = "Creator bio with private details"
+    html = ('<html><script id="VideoObject">' +
+            json.dumps({"creator": {"alternateName": "Maya.Eats", "description": bio}}) + "</script></html>")
+    calls = []
+    monkeypatch.setattr(tiktok_public, "get", lambda url: calls.append(url) or html)
+
+    assert tiktok_public.bio_from_video("maya.eats", video_id) == bio
+    assert calls == [tiktok_public.VIDEO_URL % ("maya.eats", video_id)]
+    stderr = capsys.readouterr().err
+    assert "bio via video %s" % video_id in stderr
+    assert bio not in stderr
+
+
+def test_bio_from_video_returns_none_for_mismatched_handle(monkeypatch):
+    html = '<script id="VideoObject">' + json.dumps(
+        {"creator": {"alternateName": "someone.else", "description": "bio"}}
+    ) + "</script>"
+    monkeypatch.setattr(tiktok_public, "get", lambda _url: html)
+    assert tiktok_public.bio_from_video("maya.eats", "123456789") is None
+
+
+def test_bio_from_video_returns_none_without_jsonld(monkeypatch):
+    monkeypatch.setattr(tiktok_public, "get", lambda _url: "<html>no bio data</html>")
+    assert tiktok_public.bio_from_video("maya.eats", "123456789") is None
+
+
+def test_bio_from_video_returns_none_when_get_fails(monkeypatch):
+    monkeypatch.setattr(tiktok_public, "get", lambda _url: (_ for _ in ()).throw(URLError("offline")))
+    assert tiktok_public.bio_from_video("maya.eats", "123456789") is None
+
+
 def test_fetch_uses_jsonld_and_embed_caption_fallback(monkeypatch):
     first_id, second_id = "7502836286051421471", "7502836286051421472"
     entries = [

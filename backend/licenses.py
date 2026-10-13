@@ -265,7 +265,19 @@ def verify(user, body):
         raise ApiError(409, instagram_verification_message(h["code"]))
     info, _ = tiktok_public.creator_page(handle)
     if info is None:
-        raise ApiError(503, "TikTok didn't show @%s's profile just now. Try again in a minute." % handle)
+        with connect() as db:
+            videos = db.execute(
+                "SELECT raw->>'platformId' AS pid FROM videos WHERE platform = 'tiktok' "
+                "AND lower(ltrim(btrim(handle), '@')) = %s AND raw->>'platformId' IS NOT NULL "
+                "ORDER BY published_at DESC NULLS LAST LIMIT 3", (handle,)
+            ).fetchall()
+        for video in videos:
+            bio = tiktok_public.bio_from_video(handle, video["pid"])
+            if bio is not None:
+                info = {"signature": bio}
+                break
+        if info is None:
+            raise ApiError(503, "TikTok didn't show @%s's profile just now. Try again in a minute." % handle)
     if h["code"].lower() not in (info.get("signature") or "").lower():
         raise ApiError(409, "%s isn't in @%s's bio yet. Bios can take a minute to update after you save." % (h["code"], handle))
     return mark_verified(h["id"], "bio")

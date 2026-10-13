@@ -75,6 +75,27 @@ def request_for(monkeypatch, *vids, handle="ali"):
                 for v in vids]
 
 
+@pytest.fixture
+def cached_tiktok_videos():
+    inserted = []
+
+    def add(pid, *, handle="ALI", order=0):
+        video_id = "bio-fallback-" + pid
+        inserted.append(video_id)
+        with server.connect() as db:
+            db.execute(
+                "INSERT INTO videos (id, platform, handle, published_at, views, raw) "
+                "VALUES (%s, 'tiktok', %s, now() + (%s * interval '1 day'), 0, %s::jsonb) "
+                "ON CONFLICT (id) DO UPDATE SET handle = EXCLUDED.handle, published_at = EXCLUDED.published_at, "
+                "raw = EXCLUDED.raw, updated_at = now()",
+                (video_id, handle, order, json.dumps({"platformId": pid})),
+            )
+
+    yield add
+    with server.connect() as db:
+        db.execute("DELETE FROM videos WHERE id = ANY(%s)", (inserted,))
+
+
 def test_offer_link_answers_without_an_account(monkeypatch, mail):
     [token] = request_for(monkeypatch, "lo1")
     assert any(licenses.offer_url(token) in body for to, _, body in mail if to == "ops@u.test")   # the operator gets the link
@@ -146,6 +167,63 @@ def test_claim_verify_rules_and_inbox(monkeypatch, mail):
     assert licenses.remove(ali, {"platform": "tiktok", "handle": "ali"})["handles"] == []
     with pytest.raises(server.ApiError):
         licenses.claim(ali, {"platform": "youtube", "handle": "ali"})
+
+
+def test_verify_uses_cached_video_bio_with_code(monkeypatch, cached_tiktok_videos):
+    ali = user(EMAILS[0])
+    claim = licenses.claim(ali, {"platform": "tiktok", "handle": "@Ali"})
+    pid = "7500000000000000001"
+    cached_tiktok_videos(pid)
+    monkeypatch.setattr(tiktok_public, "creator_page", lambda _handle: (None, []))
+    calls = []
+    monkeypatch.setattr(tiktok_public, "bio_from_video",
+                        lambda handle, video_id: calls.append((handle, video_id)) or "bio " + claim["code"])
+
+    assert licenses.verify(ali, {"platform": "tiktok", "handle": "ali"})["verified"]
+    assert calls == [("ali", pid)]
+
+
+def test_verify_returns_conflict_when_cached_bio_has_no_code(monkeypatch, cached_tiktok_videos):
+    ali = user(EMAILS[0])
+    claim = licenses.claim(ali, {"platform": "tiktok", "handle": "ali"})
+    cached_tiktok_videos("7500000000000000002")
+    monkeypatch.setattr(tiktok_public, "creator_page", lambda _handle: (None, []))
+    monkeypatch.setattr(tiktok_public, "bio_from_video", lambda _handle, _video_id: "bio without the code")
+
+    with pytest.raises(server.ApiError) as err:
+        licenses.verify(ali, {"platform": "tiktok", "handle": "ali"})
+    assert err.value.status == 409 and claim["code"] in str(err.value)
+
+
+def test_verify_without_cached_video_bio_keeps_service_unavailable(monkeypatch):
+    ali = user(EMAILS[0])
+    handle = "bioempty"
+    licenses.claim(ali, {"platform": "tiktok", "handle": handle})
+    monkeypatch.setattr(tiktok_public, "creator_page", lambda _handle: (None, []))
+    monkeypatch.setattr(tiktok_public, "bio_from_video", lambda *_args: pytest.fail("no cached ids should be tried"))
+
+    with pytest.raises(server.ApiError) as err:
+        licenses.verify(ali, {"platform": "tiktok", "handle": handle})
+    assert err.value.status == 503
+    assert str(err.value) == "TikTok didn't show @bioempty's profile just now. Try again in a minute."
+
+
+def test_verify_tries_next_cached_video_when_first_has_no_bio(monkeypatch, cached_tiktok_videos):
+    ali = user(EMAILS[0])
+    claim = licenses.claim(ali, {"platform": "tiktok", "handle": "ali"})
+    first, second = "7500000000000000003", "7500000000000000004"
+    cached_tiktok_videos(first, order=2)
+    cached_tiktok_videos(second, order=1)
+    monkeypatch.setattr(tiktok_public, "creator_page", lambda _handle: (None, []))
+    calls = []
+
+    def bio(_handle, video_id):
+        calls.append(video_id)
+        return None if video_id == first else "bio " + claim["code"]
+
+    monkeypatch.setattr(tiktok_public, "bio_from_video", bio)
+    assert licenses.verify(ali, {"platform": "tiktok", "handle": "ali"})["verified"]
+    assert calls == [first, second]
 
 
 @pytest.mark.parametrize(("contact", "notify_to", "expected_contact"), [
