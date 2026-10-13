@@ -259,18 +259,29 @@ def video_detail(handle, video_id):
 def bio_from_video(handle, video_id):
     try:
         html = get(VIDEO_URL % (handle, video_id))
+        state = embedded_state(html)
+        scope = state.get("__DEFAULT_SCOPE__") if isinstance(state, dict) else None
+        page = scope.get("webapp.video-detail") if isinstance(scope, dict) else None
+        info = page.get("itemInfo") if isinstance(page, dict) else None
+        item = info.get("itemStruct") if isinstance(info, dict) else None
+        author = item.get("author") if isinstance(item, dict) else None
+        if isinstance(author, dict) and str(author.get("uniqueId", "")).lower() == handle.lower():
+            bio = author.get("signature") or ""
+            log(handle, "bio via video %s" % video_id)
+            return bio
+
         match = VIDEO_OBJECT_RE.search(html)
-        if not match:
-            return None
-        data = json.loads(match.group(1))
-        if not isinstance(data, dict):
-            return None
-        creator = data.get("creator") or {}
-        if not isinstance(creator, dict) or str(creator.get("alternateName", "")).lower() != handle.lower():
-            return None
-        bio = creator.get("description") or ""
-        log(handle, "bio via video %s" % video_id)
-        return bio
+        if match:
+            data = json.loads(match.group(1))
+            if isinstance(data, dict):
+                creator = data.get("creator") or {}
+                if (isinstance(creator, dict)
+                        and str(creator.get("alternateName", "")).lower() == handle.lower()):
+                    bio = creator.get("description") or ""
+                    log(handle, "bio via video %s" % video_id)
+                    return bio
+        log(handle, "video %s: no bio in page (%d bytes)" % (video_id, len(html)))
+        return None
     except (error.URLError, OSError, ValueError, KeyError, TypeError) as e:
         log(handle, "video %s failed: %r" % (video_id, e))
         return None
