@@ -9,6 +9,12 @@ from backend import tiktok_public
 JSON_LD_FIXTURE = Path(__file__).parent / "fixtures" / "tiktok-video-jsonld.html"
 
 
+def video_state_html(author):
+    state = {"__DEFAULT_SCOPE__": {"webapp.video-detail": {"itemInfo": {"itemStruct": {"author": author}}}}}
+    return ('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+            + json.dumps(state) + "</script>")
+
+
 class Response:
     def __init__(self, body):
         self.body = body
@@ -316,6 +322,28 @@ def test_bio_from_video_returns_description_when_handle_matches_case_insensitive
     assert bio not in stderr
 
 
+def test_bio_from_video_reads_matching_rehydration_author(monkeypatch, capsys):
+    video_id = "123456789"
+    bio = "Creator bio from rehydration state"
+    html = video_state_html({"uniqueId": "Maya.Eats", "signature": bio})
+    calls = []
+    monkeypatch.setattr(tiktok_public, "get", lambda url: calls.append(url) or html)
+
+    assert tiktok_public.bio_from_video("maya.eats", video_id) == bio
+    assert calls == [tiktok_public.VIDEO_URL % ("maya.eats", video_id)]
+    stderr = capsys.readouterr().err
+    assert "bio via video %s" % video_id in stderr
+    assert bio not in stderr
+
+
+def test_bio_from_video_rejects_mismatched_rehydration_author(monkeypatch, capsys):
+    html = video_state_html({"uniqueId": "someone.else", "signature": "other creator bio"})
+    monkeypatch.setattr(tiktok_public, "get", lambda _url: html)
+
+    assert tiktok_public.bio_from_video("maya.eats", "123456789") is None
+    assert "video 123456789: no bio in page (%d bytes)" % len(html) in capsys.readouterr().err
+
+
 def test_bio_from_video_returns_none_for_mismatched_handle(monkeypatch):
     html = '<script id="VideoObject">' + json.dumps(
         {"creator": {"alternateName": "someone.else", "description": "bio"}}
@@ -324,9 +352,11 @@ def test_bio_from_video_returns_none_for_mismatched_handle(monkeypatch):
     assert tiktok_public.bio_from_video("maya.eats", "123456789") is None
 
 
-def test_bio_from_video_returns_none_without_jsonld(monkeypatch):
-    monkeypatch.setattr(tiktok_public, "get", lambda _url: "<html>no bio data</html>")
+def test_bio_from_video_returns_none_without_jsonld(monkeypatch, capsys):
+    html = "<html>no bio data</html>"
+    monkeypatch.setattr(tiktok_public, "get", lambda _url: html)
     assert tiktok_public.bio_from_video("maya.eats", "123456789") is None
+    assert "video 123456789: no bio in page (%d bytes)" % len(html) in capsys.readouterr().err
 
 
 def test_bio_from_video_returns_none_when_get_fails(monkeypatch):
