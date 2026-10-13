@@ -81,9 +81,9 @@
   .chart-head h3 { font-size: var(--fs-lg); }
   .chart-head p { margin-top: 4px; color: var(--text-3); font-size: var(--fs-xs); }
   .chart-wrap { position: relative; min-width: 0; }
-  .chart-svg { width: 100%; height: 220px; overflow: visible; }
+  .chart-svg { display: block; width: 100%; height: 240px; overflow: visible; }
   .chart-gridline { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 7; }
-  .chart-axis, .chart-y { fill: var(--text-3); font: 15px var(--mono); }
+  .chart-axis, .chart-y { fill: var(--text-3); font: 11px var(--mono); }
   .chart-line { fill: none; stroke: var(--highlight); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .chart-area { fill: color-mix(in oklch, var(--highlight) 18%, transparent); }
   .chart-dot { fill: var(--surface); stroke: var(--highlight); stroke-width: 2; }
@@ -91,7 +91,7 @@
   :root:not([data-theme="light"]) .chart-bar { fill: var(--highlight); }
   :root[data-motion="reduce"] .chart-bar { animation: none; }
   @media (prefers-reduced-motion: reduce) { .chart-bar { animation: none; } }
-  .chart-value { fill: var(--text-2); font: 500 13px var(--mono); }
+  .chart-value { fill: var(--text-2); font: 500 11px var(--mono); }
   .chart-point { cursor: crosshair; }
   .chart-tooltip { position: absolute; z-index: 2; max-width: 180px; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: var(--r-2);
                    background: var(--surface); color: var(--text); box-shadow: var(--shadow-lift); font: 500 11px var(--mono); pointer-events: none; white-space: nowrap; }
@@ -115,6 +115,30 @@
   .list-copy strong { font-size: var(--fs-sm); }
   .list-copy small { margin-top: 2px; color: var(--text-3); font-size: var(--fs-xs); }
   .list-value { flex: none; color: var(--text-2); font: 500 var(--fs-xs) var(--mono); text-align: end; }
+  .dtable { display: grid; column-gap: clamp(16px, 3vw, 40px); }
+  .dtable-brands { grid-template-columns: minmax(0, 1fr) auto clamp(56px, 10vw, 120px) auto; }
+  .dtable-scans, .dtable-searches, .dtable-creators { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .dt-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 52px; padding: 8px 10px; border-radius: var(--r-2); color: inherit; text-decoration: none; }
+  .dt-row + .dt-row:not(.dt-head) { margin-top: 2px; }
+  a.dt-row { transition: background-color 160ms var(--ease-out); }
+  a.dt-row:hover { background: var(--surface-2); color: inherit; }
+  a.dt-row:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+  .dt-head { min-height: 0; padding-block: 0 6px; color: var(--text-3); font: 500 0.66rem/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .dt-cell { min-width: 0; }
+  .dt-end { justify-self: end; text-align: end; color: var(--text-2); font: 500 var(--fs-sm) var(--mono); font-variant-numeric: tabular-nums; }
+  .dt-head .dt-end { color: var(--text-3); font: inherit; }
+  .dt-name { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+  .dt-copy { display: grid; gap: 2px; min-width: 0; }
+  .dt-copy strong, .dt-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dt-copy strong { font-size: var(--fs-sm); font-weight: 500; }
+  .dt-copy small { color: var(--text-3); font-size: var(--fs-xs); text-transform: capitalize; }
+  .dtable .u-pill { justify-self: start; }
+  .dtable .brand-meter { display: block; width: 100%; margin: 0; }
+  @media (max-width: 560px) {
+    .dtable-brands { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .dtable-brands .dt-cell:nth-child(3) { display: none; }
+    .dt-row { padding-inline: 6px; }
+  }
   .found-heading { display: grid; justify-content: start; align-items: start; gap: var(--s-1); }
   .found-heading h3 { margin: 0; }
   .found-subtitle { max-width: 64ch; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.45; }
@@ -158,7 +182,7 @@
   .stat-box strong { display: block; font: 500 var(--fs-xl) var(--mono); }
   .stat-box small { display: block; margin-top: 4px; color: var(--text-3); font-size: var(--fs-xs); }
   .request-funnel { display: grid; gap: var(--s-3); }
-  .funnel-row { display: grid; grid-template-columns: 88px minmax(0, 1fr) 28px; align-items: center; gap: var(--s-2); color: var(--text-2); font-size: var(--fs-sm); }
+  .funnel-row { display: grid; grid-template-columns: max-content minmax(0, 1fr) 28px; column-gap: var(--s-4); align-items: center; gap: var(--s-2); color: var(--text-2); font-size: var(--fs-sm); }
   .funnel-track { height: 7px; border-radius: var(--r-pill); overflow: hidden; background: var(--surface-3); }
   .funnel-track i { display: block; height: 100%; border-radius: inherit; background: var(--highlight); }
   .funnel-row b { color: var(--text); font: 500 var(--fs-xs) var(--mono); text-align: end; }
@@ -175,8 +199,8 @@
   .account-facts dt { color: var(--text-3); font-size: var(--fs-sm); }
   .account-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: var(--fs-sm); }
   .activity-list { display: grid; gap: 0; }
-  .activity-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: baseline; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--border); }
-  .activity-row:first-child { border-top: 0; padding-top: 0; }
+  .activity-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: baseline; gap: var(--s-3); padding: var(--s-2) 0; }
+  .activity-row:first-child { padding-top: 0; }
   .activity-dot { width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--highlight); }
   .activity-row time { color: var(--text-3); font: 400 0.69rem var(--mono); white-space: nowrap; }
   .plan-note { color: var(--text-2); font-size: var(--fs-sm); }
@@ -251,9 +275,6 @@
 <body>
 <header class="u-bar dash-bar">
   <a class="u-logo" href="/dashboard"><mark>Unprompted</mark><small>Dashboard</small></a>
-  <nav class="u-aud" aria-label="Who it's for">
-    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
-  </nav>
   <span class="grow"></span>
   <button class="u-btn u-btn-ghost u-btn-sm dash-command" type="button" id="command" aria-label="Open command palette">Commands</button>
   <span data-u-theme-toggle></span>
@@ -489,19 +510,8 @@ function chartCard(title, description, rows, type, emptyTarget = 'scan') {
       h('div', { class: 'chart-empty' }, h('p', {}, 'Your chart will take shape when new mentions arrive.'),
         h('a', { class: 'u-btn u-btn-sm', href: target }, action))));
   } else {
-    const svg = svgEl('svg', { class: 'chart-svg', viewBox: '0 0 360 270', preserveAspectRatio: 'none', role: 'group', 'aria-label': description });
-    const plot = { left: 78, right: 350, top: 30, bottom: 218 };
-    const max = Math.max(1, ...rows.map((row) => row.value));
-    let lastTick = null;
-    for (let i = 0; i <= 4; i++) {
-      const y = plot.top + (plot.bottom - plot.top) * i / 4;
-      const value = Math.round(max * (4 - i) / 4);
-      svg.append(svgEl('line', { x1: plot.left, y1: y, x2: plot.right, y2: y, class: 'chart-gridline' }));
-      if (value !== lastTick || i === 4) {
-        svg.append(svgEl('text', { x: plot.left - 6, y: y + 4, 'text-anchor': 'end', class: 'chart-y' }, format(value)));
-      }
-      lastTick = value;
-    }
+    const H = 240;
+    const svg = svgEl('svg', { class: 'chart-svg', role: 'group', 'aria-label': description });
     const wrap = h('div', { class: 'chart-wrap' }, svg, h('div', { class: 'chart-tooltip', role: 'tooltip', hidden: true }));
     const tooltip = $('.chart-tooltip', wrap);
     tooltip.id = `chart-tooltip-${++chartTooltipId}`;
@@ -530,48 +540,72 @@ function chartCard(title, description, rows, type, emptyTarget = 'scan') {
         if (event.key === 'Escape') { tooltip.hidden = true; point.blur(); }
       });
     };
-    if (type === 'area') {
-      const pts = rows.map((row, i) => ({
-        x: plot.left + i * ((plot.right - plot.left) / Math.max(1, rows.length - 1)),
-        y: plot.bottom - (row.value / max) * (plot.bottom - plot.top),
-      }));
-      const linePath = `M ${pts.map((pt) => `${pt.x} ${pt.y}`).join(' L ')}`;
-      const areaPath = `${linePath} L ${pts.at(-1).x} ${plot.bottom} L ${pts[0].x} ${plot.bottom} Z`;
-      svg.append(svgEl('path', { d: areaPath, class: 'chart-area' }));
-      const path = svgEl('path', { d: linePath, class: 'chart-line' });
-      svg.append(path);
-      rows.forEach((row, i) => {
-        const dot = svgEl('circle', { cx: pts[i].x, cy: pts[i].y, r: 4, class: 'chart-dot' });
-        attachPoint(dot, row);
-        if (i % 2 === 0) {
-          svg.append(svgEl('text', { x: pts[i].x, y: 254, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
+    const peak = Math.max(1, ...rows.map((row) => row.value));
+    const magnitude = 10 ** Math.floor(Math.log10(peak / 4));
+    const tick = Math.max(1, [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((t) => t * 4 >= peak && Number.isInteger(t)) || 10 * magnitude);
+    const ticks = Math.ceil(peak / tick);
+    const max = tick * ticks;
+    let drawnWidth = 0;
+    const draw = () => {
+      const W = Math.round(wrap.clientWidth);
+      if (!W || W === drawnWidth) return;
+      const firstDraw = !drawnWidth;
+      drawnWidth = W;
+      svg.replaceChildren();
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      const plot = { left: 36, right: W - 8, top: 24, bottom: H - 32 };
+      const axisY = H - 8;
+      const every = Math.max(1, Math.ceil(rows.length / Math.max(1, Math.floor((plot.right - plot.left) / 72))));
+      let lastTick = null;
+      for (let i = 0; i <= ticks; i++) {
+        const y = plot.top + (plot.bottom - plot.top) * i / ticks;
+        const value = tick * (ticks - i);
+        svg.append(svgEl('line', { x1: plot.left, y1: y, x2: plot.right, y2: y, class: 'chart-gridline' }));
+        if (value !== lastTick || i === ticks) {
+          svg.append(svgEl('text', { x: plot.left - 8, y: y + 4, 'text-anchor': 'end', class: 'chart-y' }, format(value)));
         }
-        svg.append(dot);
-      });
-      if (!U.reduced()) {
-        const length = path.getTotalLength();
-        path.style.strokeDasharray = String(length);
-        path.style.strokeDashoffset = String(length);
-        requestAnimationFrame(() => { path.style.transition = 'stroke-dashoffset 900ms var(--ease-out)'; path.style.strokeDashoffset = '0'; });
+        lastTick = value;
       }
-    } else {
-      const step = (plot.right - plot.left) / rows.length;
-      const barWidth = Math.min(24, step * 0.58);
-      rows.forEach((row, i) => {
-        const x = plot.left + step * i + (step - barWidth) / 2;
-        const height = row.value ? Math.max(4, (row.value / max) * (plot.bottom - plot.top)) : 2;
-        const y = plot.bottom - height;
-        const bar = svgEl('rect', {
-          x, y, width: barWidth, height, rx: 4, class: 'chart-bar', style: `animation-delay:${i * 35}ms`,
+      if (type === 'area') {
+        const pts = rows.map((row, i) => ({
+          x: plot.left + 8 + i * ((plot.right - plot.left - 16) / Math.max(1, rows.length - 1)),
+          y: plot.bottom - (row.value / max) * (plot.bottom - plot.top),
+        }));
+        const linePath = `M ${pts.map((pt) => `${pt.x} ${pt.y}`).join(' L ')}`;
+        const areaPath = `${linePath} L ${pts.at(-1).x} ${plot.bottom} L ${pts[0].x} ${plot.bottom} Z`;
+        svg.append(svgEl('path', { d: areaPath, class: 'chart-area' }));
+        const path = svgEl('path', { d: linePath, class: 'chart-line' });
+        svg.append(path);
+        rows.forEach((row, i) => {
+          const dot = svgEl('circle', { cx: pts[i].x, cy: pts[i].y, r: 4, class: 'chart-dot' });
+          attachPoint(dot, row);
+          if (i % every === 0) svg.append(svgEl('text', { x: pts[i].x, y: axisY, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
+          svg.append(dot);
         });
-        attachPoint(bar, row);
-        svg.append(bar);
-        if (row.value) svg.append(svgEl('text', { x: x + barWidth / 2, y: Math.max(plot.top + 12, y - 7), 'text-anchor': 'middle', class: 'chart-value' }, row.value >= 1000 ? compact(row.value) : format(row.value)));
-        if (i % 2 === 0) {
-          svg.append(svgEl('text', { x: x + barWidth / 2, y: 254, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
+        if (firstDraw && !U.reduced()) {
+          const length = path.getTotalLength();
+          path.style.strokeDasharray = String(length);
+          path.style.strokeDashoffset = String(length);
+          requestAnimationFrame(() => { path.style.transition = 'stroke-dashoffset 900ms var(--ease-out)'; path.style.strokeDashoffset = '0'; });
         }
-      });
-    }
+      } else {
+        const step = (plot.right - plot.left) / rows.length;
+        const barWidth = Math.max(6, Math.min(36, step * 0.5));
+        rows.forEach((row, i) => {
+          const x = plot.left + step * i + (step - barWidth) / 2;
+          const height = row.value ? Math.max(4, (row.value / max) * (plot.bottom - plot.top)) : 2;
+          const y = plot.bottom - height;
+          const bar = svgEl('rect', {
+            x, y, width: barWidth, height, rx: Math.min(6, barWidth / 3), class: 'chart-bar', style: firstDraw ? `animation-delay:${i * 35}ms` : 'animation:none',
+          });
+          attachPoint(bar, row);
+          svg.append(bar);
+          if (row.value) svg.append(svgEl('text', { x: x + barWidth / 2, y: Math.max(plot.top - 6, y - 8), 'text-anchor': 'middle', class: 'chart-value' }, row.value >= 1000 ? compact(row.value) : format(row.value)));
+          if (i % every === 0) svg.append(svgEl('text', { x: x + barWidth / 2, y: axisY, 'text-anchor': 'middle', class: 'chart-axis' }, row.label));
+        });
+      }
+    };
+    new ResizeObserver(draw).observe(wrap);
     figure.append(wrap);
   }
   const table = h(
@@ -604,22 +638,31 @@ function avatar(src, handle) {
   if (src) return h('img', { class: 'avatar', width: 38, height: 38, src, alt: '', loading: 'eager', onerror: (event) => event.target.replaceWith(avatar(null, handle)) });
   return h('span', { class: 'avatar', 'aria-hidden': 'true' }, (handle || '?').slice(0, 1).toUpperCase());
 }
-function listRow(title, detail, trailing, link = null, image = null) {
-  const main = h('span', { class: 'list-main' }, image, h('span', { class: 'list-copy' }, h('strong', {}, title), h('small', {}, detail)));
-  const body = link ? h('a', { class: 'list-row', href: link }, main, h('span', { class: 'list-value' }, trailing)) :
-    h('div', { class: 'list-row' }, main, h('span', { class: 'list-value' }, trailing));
-  return body;
+function count(value, singular) {
+  return `${format(value)} ${Number(value) === 1 ? singular : `${singular}s`}`;
+}
+function nameCell(title, detail, image = null) {
+  return h('span', { class: 'dt-name' }, image, h('span', { class: 'dt-copy' }, h('strong', {}, title), detail ? h('small', {}, detail) : null));
+}
+function dataTable(kind, columns, rows) {
+  const cell = (content, i) => h('span', { role: i ? 'cell' : 'rowheader', class: columns[i].end ? 'dt-cell dt-end' : 'dt-cell' }, content);
+  return h('div', { class: `dtable dtable-${kind}`, role: 'table' },
+    h('div', { class: 'dt-row dt-head', role: 'row' }, ...columns.map((column) =>
+      h('span', { role: 'columnheader', class: column.end ? 'dt-cell dt-end' : 'dt-cell' }, column.label))),
+    ...rows.map((row) => h(row.link ? 'a' : 'div', { class: 'dt-row', role: 'row', href: row.link || null }, ...row.cells.map(cell))));
 }
 function brandList(rows, limit = 6) {
-  const max = Math.max(1, ...rows.slice(0, limit).map((row) => row.mentions || 0));
-  return h('ul', { class: 'list' }, ...rows.slice(0, limit).map((row) => {
-    const item = listRow(row.brand, row.category || 'Brand mention', `${format(row.mentions)} mentions`,
-      row.scanId ? `/creators/?scanId=${row.scanId}` : null);
-    const main = $('.list-main', item);
-    main.append(h('span', { class: `u-pill ${row.status === 'unpaid' ? 'u-pill-ok' : ''}` }, row.status === 'unpaid' ? 'Unpaid' : row.status === 'past-sponsor' ? 'Past sponsor' : 'Sponsored'));
-    main.querySelector('.list-copy').append(h('span', { class: 'brand-meter', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.max(4, (row.mentions / max) * 100)}%` })));
-    return h('li', {}, item);
-  }));
+  const shown = rows.slice(0, limit);
+  const max = Math.max(1, ...shown.map((row) => row.mentions || 0));
+  return dataTable('brands', [{ label: 'Brand' }, { label: 'Status' }, { label: 'Share' }, { label: 'Mentions', end: true }], shown.map((row) => ({
+    link: row.scanId ? `/creators/?scanId=${row.scanId}` : null,
+    cells: [
+      nameCell(row.brand, row.category || 'Brand mention'),
+      h('span', { class: `u-pill ${row.status === 'unpaid' ? 'u-pill-ok' : ''}` }, row.status === 'unpaid' ? 'Unpaid' : row.status === 'past-sponsor' ? 'Past sponsor' : 'Sponsored'),
+      h('span', { class: 'brand-meter', 'aria-label': `${Math.round((row.mentions / max) * 100)}% of the top brand` }, h('i', { style: `width:${Math.max(4, (row.mentions / max) * 100)}%` })),
+      format(row.mentions),
+    ],
+  })));
 }
 async function trackFoundBrand(brand, button) {
   button.setAttribute('aria-busy', 'true');
@@ -697,18 +740,21 @@ function foundCard(found = {}) {
     content);
 }
 function scanList(rows) {
-  return h('ul', { class: 'list' }, ...rows.map((row) => h('li', {}, listRow(
-    `@${row.handle}`, `${row.platform === 'tiktok' ? 'TikTok' : 'Instagram'} · ${format(row.brands)} brands · ${date(row.createdAt)}`,
-    'Open', `/creators/?scanId=${row.id}`, avatar(row.pfp, row.handle)))));
+  return dataTable('scans', [{ label: 'Handle' }, { label: 'Brands', end: true }, { label: 'Scanned', end: true }], rows.map((row) => ({
+    link: `/creators/?scanId=${row.id}`,
+    cells: [nameCell(`@${row.handle}`, row.platform === 'tiktok' ? 'TikTok' : 'Instagram', avatar(row.pfp, row.handle)), format(row.brands), date(row.createdAt)],
+  })));
 }
 function searchList(rows) {
-  return h('ul', { class: 'list' }, ...rows.map((row) => h('li', {}, listRow(
-    row.brand, `${format(row.totalCount)} results · ${date(row.createdAt)}`, 'Open', `/brands/#search=${row.id}`))));
+  return dataTable('searches', [{ label: 'Brand' }, { label: 'Results', end: true }, { label: 'Saved', end: true }], rows.map((row) => ({
+    link: `/brands/#search=${row.id}`,
+    cells: [nameCell(row.brand), format(row.totalCount), date(row.createdAt)],
+  })));
 }
 function topCreatorList(rows) {
-  return h('ul', { class: 'list' }, ...rows.map((row) => h('li', {}, listRow(
-    `@${row.handle}`, row.platform === 'tiktok' ? 'TikTok creator' : 'Instagram creator',
-    `${format(row.mentions)} mentions · ${compact(row.views)} views`, null, avatar(null, row.handle)))));
+  return dataTable('creators', [{ label: 'Creator' }, { label: 'Mentions', end: true }, { label: 'Views', end: true }], rows.map((row) => ({
+    cells: [nameCell(`@${row.handle}`, row.platform === 'tiktok' ? 'TikTok' : 'Instagram', avatar(null, row.handle)), format(row.mentions), compact(row.views)],
+  })));
 }
 function card(title, content, href, linkText = 'View all') {
   const el = h('article', { class: 'content-card u-card u-card-pad', 'data-reveal': '' },
