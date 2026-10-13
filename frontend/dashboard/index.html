@@ -867,7 +867,7 @@ function renderOverview() {
     ];
     chart = chartCard('New mentions per week', 'Distinct videos found in your saved brand searches, grouped by publish week.', weeklyRows(), 'bar', 'brand');
     signal = card('Recent brand searches', b.recentSearches.length ? searchList(b.recentSearches) : emptyState('No saved brand searches yet', 'Search for a brand and keep listening with a weekly digest.', 'brand', 'Find your first brand'));
-    actions = h('div', { class: 'action-grid' }, h('a', { class: 'u-btn', href: '/brands/' }, 'Manage brand searches'),
+    actions = h('div', { class: 'action-grid' }, h('a', { class: 'u-btn', href: '/brands/?home=1' }, 'Manage brand searches'),
       h('a', { class: 'u-btn', href: '/collabs' }, 'Open collabs'),
       h('a', { class: 'u-btn', href: '/discover?as=brand' }, 'Find creators'));
   } else {
@@ -932,8 +932,8 @@ function renderCreator() {
     c.scans ? null : emptyState('Start with the handle your audience knows', 'Your top brands, unpaid mentions and collabs will gather here after the first scan.', 'scan', 'Run your first scan'),
     c.scans ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('scan-launch') }, 'New scan')) : null,
     h('div', { class: 'content-grid section-gap' },
-      card('Top brands', brands, '/creators/', 'Open receipts'),
-      card('Recent scans', scans, '/creators/', 'Open Receipts')),
+      card('Top brands', brands, '/creators/?home=1', 'Open receipts'),
+      card('Recent scans', scans, '/creators/?home=1', 'Open Receipts')),
     card('Future collabs', collab, '/collabs', 'Open collabs'),
   ].filter(Boolean));
   animateCounts(panel);
@@ -956,8 +956,8 @@ function renderBrand() {
     b.searches ? null : emptyState('Start with a brand worth listening for', 'Search once, then receive new on-camera mentions in a weekly digest.', 'brand', 'Search for a brand'),
     b.searches ? h('div', { class: 'action-grid' }, h('button', { class: 'u-btn u-btn-primary u-btn-sm', type: 'button', onclick: () => focusQuickForm('brand-launch') }, 'New brand search')) : null,
     h('div', { class: 'content-grid' },
-      card('Saved searches', searches, '/brands/', 'Open brand search'),
-      card('Weekly digests', digest, '/brands/', 'Manage digests')),
+      card('Saved searches', searches, '/brands/?home=1', 'Open brand search'),
+      card('Weekly digests', digest, '/brands/?home=1', 'Manage digests')),
     h('div', { class: 'split-grid' },
       chartCard('New mentions per week', 'Distinct videos in your brand searches, by publish week.', weeklyRows(), 'bar', 'brand'),
       card('Top creators', b.topCreators.length ? topCreatorList(b.topCreators) : emptyState('No creators found yet', 'Creators will appear as searches find on-camera brand mentions.', 'brand', 'Start a brand search'))),
@@ -1046,10 +1046,10 @@ function addPaletteActions() {
   U.palette.add({ id: 'dashboard-tour', label: 'Tour', hint: '60-second product walkthrough', group: 'Go to', keywords: 'guided tour new here', run: () => { location.href = '/tour'; } });
   if (data.role === 'creator') {
     U.palette.add({ id: 'dashboard-verify', label: 'Verify channel', group: 'Go to', keywords: 'verify channel ownership', run: () => { location.href = '/verify'; } });
-    U.palette.add({ id: 'dashboard-receipts', label: 'Creator receipts', group: 'Go to', keywords: 'scans mentions', run: () => { location.href = '/creators/'; } });
+    U.palette.add({ id: 'dashboard-receipts', label: 'Creator receipts', group: 'Go to', keywords: 'scans mentions', run: () => { location.href = '/creators/?home=1'; } });
     U.palette.add({ id: 'dashboard-collabs', label: 'Collabs', group: 'Go to', keywords: 'collab invites pitches offers', run: () => { location.href = '/collabs'; } });
   } else if (data.role === 'brand') {
-    U.palette.add({ id: 'dashboard-searches', label: 'Brand searches', group: 'Go to', keywords: 'brand weekly digest mentions', run: () => { location.href = '/brands/'; } });
+    U.palette.add({ id: 'dashboard-searches', label: 'Brand searches', group: 'Go to', keywords: 'brand weekly digest mentions', run: () => { location.href = '/brands/?home=1'; } });
   } else {
     U.palette.add({ id: 'dashboard-roster', label: 'Manager roster', group: 'Go to', keywords: 'creators reports deals', run: () => { location.href = '/creators/roster'; } });
   }

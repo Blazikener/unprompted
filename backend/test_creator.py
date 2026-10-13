@@ -76,6 +76,14 @@ def test_word_boundaries_and_ambiguous_names():
     assert kinds(video("we checked in to the Jumeirah beach hotel"))["Jumeirah"] == "spoken"
     assert kinds(video("hi", mentions=["jumeirahgroup"]))["Jumeirah"] == "tagged"
     assert "Beats" not in kinds(video("nothing beats a sunday roast"))
+    assert "MAC Cosmetics" not in kinds(video("Cajun Mac and cheese"))
+    assert kinds(video("my MAC lipstick in Ruby Woo"))["MAC Cosmetics"] == "spoken"
+    assert "Dior Beauty" not in kinds(video("my Dior bag"))
+    assert kinds(video("Dior lip oil"))["Dior Beauty"] == "spoken"
+    assert kinds(video("my favorite lipstick", mentions=["maccosmetics"]))["MAC Cosmetics"] == "tagged"
+    assert "MAC Cosmetics" not in kinds(video("my MacBook is new"))
+    assert "Huda Beauty" not in kinds(video("Huda said hello"))
+    assert kinds(video("Huda lipstick review"))["Huda Beauty"] == "spoken"
 
 
 def test_spoken_disclosure_is_sponsored():

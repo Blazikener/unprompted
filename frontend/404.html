@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found · Receipts</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/ui/ui.css?v=6">
+<script src="/ui/ui.js?v=5"></script>
+<style>
+  .not-found {
+    min-height: calc(100svh - 72px);
+    display: grid;
+    place-items: center;
+    padding: var(--s-8) var(--s-4);
+    text-align: center;
+  }
+  .not-found-card { max-width: 560px; }
+  .not-found-code {
+    color: var(--ink-muted);
+    font: 700 var(--fs-xs)/1 var(--mono);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .not-found h1 { margin: var(--s-3) 0 var(--s-2); }
+  .not-found p { margin: 0 auto var(--s-6); max-width: 420px; color: var(--ink-muted); }
+  .not-found-actions { display: flex; justify-content: center; gap: var(--s-2); flex-wrap: wrap; }
+</style>
+</head>
+<body class="u-stage">
+<header class="u-bar">
+  <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <span class="grow"></span>
+  <span data-u-theme-toggle></span>
+</header>
+<main class="not-found">
+  <section class="not-found-card" aria-labelledby="not-found-title">
+    <div class="not-found-code">404 · Not found</div>
+    <h1 id="not-found-title">That page isn't here.</h1>
+    <p>The link may be old, or the page may have moved.</p>
+    <div class="not-found-actions">
+      <a class="u-btn u-btn-primary" href="/">Home</a>
+      <a class="u-btn u-btn-ghost" href="/dashboard">Dashboard</a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

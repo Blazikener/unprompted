@@ -27,6 +27,14 @@ assert classify(raw(caption="إعلان", **said("Tim Hortons")), "Tim Hortons",
 assert classify(raw(mentions=[{"profileHandle": "timhortons"}], **said("Tim Hortons")), "Tim Hortons", [])[0] == "tagged"
 assert classify(raw(**said("Timmies run")), "Tim Hortons", ["Timmies"])[:2] == ("spoken", 1)
 assert classify(raw(**said("nothing here")), "Tim Hortons", [])[0] == "unverified"
+assert classify(raw(**said("Cajun Mac and cheese")), "MAC Cosmetics", ["MAC"])[0] == "unverified"
+assert classify(raw(**said("my MAC lipstick in Ruby Woo")), "MAC Cosmetics", ["MAC"])[0] == "spoken"
+assert classify(raw(**said("my Dior bag")), "Dior Beauty", ["Dior"])[0] == "unverified"
+assert classify(raw(**said("Dior lip oil")), "Dior Beauty", ["Dior"])[0] == "spoken"
+assert classify(raw(caption="@maccosmetics", **said("great lipstick")), "MAC Cosmetics", ["MAC"])[0] == "tagged"
+assert classify(raw(**said("my MacBook is new")), "MAC", [])[0] == "unverified"
+assert classify(raw(**said("my MAC lipstick")), "MAC", [])[0] == "spoken"
+assert classify(raw(caption="@maccosmetics", **said("no beauty words")), "MAC", [])[0] == "tagged"
 
 about_params = parse({"brand": "Baobab", "about": "candles, Candle, home fragrance"})[3]
 assert about_params["about"] == ["candles", "candle", "home fragrance"]

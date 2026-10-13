@@ -1020,7 +1020,7 @@ function render() {
   const stat = (v, label, href) => h('li', {}, href ? h('a', { href }, h('b', {}, v), label) : [h('b', {}, v), label]);
   const stats = h('ul', { class: 'stats', 'aria-label': 'Summary' },
     stat(String(s.totalBrands), 'brands you mention', s.brands.length ? '#brands' : null),
-    stat(String(s.unpaidBrands), 'never paid you', s.brands.length ? '#brands' : null),
+    stat(String(s.unpaidBrands), 'brands, no paid post found', s.brands.length ? '#brands' : null),
     stat(p.medianViews != null ? num(p.medianViews) : '–', p.medianViews != null ? 'median views' : 'median views unavailable'),
     stat(p.medianEr != null ? `${p.medianEr}%` : '–', p.medianEr != null ? 'median engagement' : 'engagement unavailable'),
     h('li', { class: 'u-computed-tag' }, 'Computed'));

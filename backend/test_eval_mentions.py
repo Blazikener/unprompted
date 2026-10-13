@@ -96,7 +96,7 @@ LABELLED = [  # (brand, transcript, caption, label): Latin-only and Arabic-spell
     ("Careem", "كريم مرطب للبشرة الجافة", "", "no"),                     # neither
     ("Careem", "careem captain was late", "", "yes"),                    # both
     ("Almarai", "حليب المراعي كل يوم", "", "yes"),                       # Arabic only
-    ("Noon", "we meet at noon tomorrow", "", "no"),                      # both count it: the one wrong find
+    ("Noon", "we meet at noon tomorrow", "", "no"),                      # everyday name needs order/shopping context
     ("Shein", "شي شين والله", "", "no"),                                  # "ugly": neither
 ]
 
@@ -107,13 +107,13 @@ def rows():
 
 def test_precision_and_recall_both_ways():
     latin, arabic = eval_mentions.evaluate(rows(), False), eval_mentions.evaluate(rows(), True)
-    assert (latin["tp"], latin["fp"], latin["fn"], latin["tn"]) == (2, 1, 4, 5)
-    assert (latin["precision"], latin["recall"]) == (0.667, 0.333)
-    assert (arabic["tp"], arabic["fp"], arabic["fn"], arabic["tn"]) == (6, 1, 0, 5)
-    assert (arabic["precision"], arabic["recall"]) == (0.857, 1.0)
-    assert [(e["brand"], e["error"], e["kind"]) for e in arabic["errors"]] == [("Noon", "fp", "spoken")]
+    assert (latin["tp"], latin["fp"], latin["fn"], latin["tn"]) == (2, 0, 4, 6)
+    assert (latin["precision"], latin["recall"]) == (1.0, 0.333)
+    assert (arabic["tp"], arabic["fp"], arabic["fn"], arabic["tn"]) == (6, 0, 0, 6)
+    assert (arabic["precision"], arabic["recall"]) == (1.0, 1.0)
+    assert arabic["errors"] == []
     noon = next(b for b in arabic["brands"] if b["brand"] == "Noon")
-    assert (noon["tp"], noon["fp"], noon["precision"]) == (1, 1, 0.5)
+    assert (noon["tp"], noon["fp"], noon["precision"]) == (1, 0, 1.0)
 
 
 def test_offline_run(tmp_path, capsys):
@@ -121,8 +121,8 @@ def test_offline_run(tmp_path, capsys):
     path.write_text("".join(json.dumps({"brand": r["brand"], "label": r["label"], "raw": r["raw"]}) + "\n" for r in rows()), encoding="utf-8")
     assert eval_mentions.main(str(path)) == 1                                  # 12 videos: too few for the gate
     out = capsys.readouterr().out
-    assert "Latin name only        12 labelled   precision   67%   recall   33%" in out
-    assert "With Arabic spellings  12 labelled   precision   86%   recall  100%" in out and "Gate 6" in out
+    assert "Latin name only        12 labelled   precision  100%   recall   33%" in out
+    assert "With Arabic spellings  12 labelled   precision  100%   recall  100%" in out and "Gate 6" in out
 
 
 @pytest.fixture

@@ -36,7 +36,8 @@ def call(base, method, path, body=None):
             raw = res.read()
             return res.status, (json.loads(raw) if res.headers.get_content_type() == "application/json" else raw)
     except urllib.error.HTTPError as e:
-        return e.code, json.load(e)
+        raw = e.read()
+        return e.code, (json.loads(raw) if e.headers.get_content_type() == "application/json" else raw)
 
 
 def video(vid, transcript, kind_caption="", views=1000, handle="fan"):
@@ -149,3 +150,19 @@ def test_dashboard_found_links_use_verify(base):
     assert b"`/verify?claim=${item.platform}:${encodeURIComponent(item.handle)}`" in body
     assert b"Learn how creators are discovered" in body
     assert b"Claim your handle" not in body
+
+
+def test_dashboard_product_links_escape_signed_in_home_redirects(base):
+    status, body = call(base, "GET", "/dashboard")
+    assert status == 200
+    html = body.decode()
+    assert "/brands/?home=1" in html and "/creators/?home=1" in html
+    assert not re.search(r"""['"]/(?:brands|creators)/['"]""", html)
+
+
+def test_unknown_pages_use_branded_404_and_api_errors_stay_json(base):
+    status, body = call(base, "GET", "/this-page-does-not-exist")
+    assert status == 404
+    assert b"That page isn't here." in body
+    assert b"href=\"/dashboard\"" in body
+    assert call(base, "GET", "/api/this-route-does-not-exist") == (404, {"error": "Not found."})
