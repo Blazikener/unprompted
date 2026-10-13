@@ -7,6 +7,9 @@
    newer platform features (View Transitions, anchor positioning) are enhancements with plain fallbacks. */
 (() => {
   const root = document.documentElement;
+  try {
+    if (localStorage.getItem('u-signed-in') === '1') root.dataset.uSignedIn = '1';
+  } catch {}
   const mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
 
   // ---------------------------------------------------------------- preferences (applied before first paint)
@@ -530,7 +533,25 @@
     for (const el of $$('[data-u-count], .u-reveal', rootEl)) { if (el.dataset.uSeen) continue; el.dataset.uSeen = '1'; io.observe(el); }
     for (const el of $$('[data-u-seg]', rootEl)) seg(el);
   }
+  function syncAudienceNavigation() {
+    const audience = $$('.u-aud');
+    if (!audience.length) return;
+    const update = (signedIn) => {
+      if (signedIn) root.dataset.uSignedIn = '1';
+      else delete root.dataset.uSignedIn;
+      audience.forEach((nav) => { nav.hidden = signedIn; });
+      try {
+        if (signedIn) localStorage.setItem('u-signed-in', '1');
+        else localStorage.removeItem('u-signed-in');
+      } catch {}
+    };
+    fetch('/api/creators/me', { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => update(Boolean(data && data.user)))
+      .catch(() => update(false));
+  }
   function boot() {
+    syncAudienceNavigation();
     scan();
     updateThemeToggles();
     new MutationObserver((muts) => { for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) scan(n); })

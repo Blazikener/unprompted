@@ -15,6 +15,8 @@
 
 @layer reset, tokens, base, components, utilities, page;
 
+html[data-u-signed-in] .u-aud { display: none; }
+
 @layer reset {
   *, *::before, *::after { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
