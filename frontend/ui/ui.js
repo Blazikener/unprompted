@@ -533,13 +533,44 @@
     for (const el of $$('[data-u-count], .u-reveal', rootEl)) { if (el.dataset.uSeen) continue; el.dataset.uSeen = '1'; io.observe(el); }
     for (const el of $$('[data-u-seg]', rootEl)) seg(el);
   }
-  function syncAudienceNavigation() {
+  let appNavUser = null;
+  function renderAppNav() {
+    if (!appNavUser) return;
+    const roles = Array.isArray(appNavUser.roles) ? appNavUser.roles : [appNavUser.role];
+    const remembered = activeSide();
+    const side = roles.includes(remembered) ? remembered : appNavUser.role;
+    const discoverSide = side === 'manager' ? (roles.includes('brand') ? 'brand' : 'creator') : side;
+    const path = location.pathname.replace(/\/+$/, '') || '/';
+    const sideLink = side === 'creator'
+      ? { label: 'Receipts', href: '/creators/?home=1', current: roles.includes('creator') && ['/', '/creators'].includes(path) }
+      : side === 'brand'
+        ? { label: 'Search', href: '/brands/?home=1', current: path === '/brands' }
+        : { label: 'Roster', href: '/creators/roster', current: path === '/creators/roster' };
+    const links = [
+      { label: 'Dashboard', href: '/dashboard', current: path === '/dashboard' },
+      sideLink,
+      { label: 'Discover', href: `/discover?as=${encodeURIComponent(discoverSide)}`, current: path === '/discover' },
+      { label: 'Collabs', href: '/collabs', current: path === '/collabs' || path === '/collab' || path.startsWith('/collab/') },
+    ];
+    for (const nav of $$('[data-u-appnav]')) {
+      nav.replaceChildren(...links.map(({ label, href, current }) => h('a', {
+        class: 'u-bar-link', href, 'aria-current': current ? 'page' : null,
+      }, label)));
+      nav.hidden = false;
+    }
+  }
+  function syncSignedInNav() {
     const audience = $$('.u-aud');
-    if (!audience.length) return;
-    const update = (signedIn) => {
+    const appNavs = $$('[data-u-appnav]');
+    if (!audience.length && !appNavs.length) return;
+    const update = (user) => {
+      const signedIn = Boolean(user);
       if (signedIn) root.dataset.uSignedIn = '1';
       else delete root.dataset.uSignedIn;
       audience.forEach((nav) => { nav.hidden = signedIn; });
+      appNavUser = signedIn ? user : null;
+      if (signedIn) renderAppNav();
+      else appNavs.forEach((nav) => { nav.replaceChildren(); nav.hidden = true; });
       try {
         if (signedIn) localStorage.setItem('u-signed-in', '1');
         else localStorage.removeItem('u-signed-in');
@@ -547,11 +578,11 @@
     };
     fetch('/api/creators/me', { credentials: 'same-origin' })
       .then((response) => response.ok ? response.json() : null)
-      .then((data) => update(Boolean(data && data.user)))
-      .catch(() => update(false));
+      .then((data) => update(data && data.user))
+      .catch(() => update(null));
   }
   function boot() {
-    syncAudienceNavigation();
+    syncSignedInNav();
     scan();
     updateThemeToggles();
     new MutationObserver((muts) => { for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) scan(n); })
@@ -614,6 +645,7 @@
   };
   function rememberSide(role) {
     try { localStorage.setItem(SIDE_KEY, role); } catch {}
+    renderAppNav();
   }
   async function setRole(role, on = true) {
     const response = await fetch('/api/me/roles', {
