@@ -2,6 +2,8 @@
 
 DATABASE_URL=postgresql:///unprompted_test pytest backend/test_collabs.py
 """
+import io
+import json
 import os
 import secrets
 
@@ -91,6 +93,44 @@ def proof_request(user, handle, video_id, side=None):
     return collabs.dispatch(Handler())
 
 
+def api_request(user, method, path, body=None):
+    raw = json.dumps(body).encode() if body is not None else b""
+    with server.connect() as db:
+        cookie = creator.start_session(db, user["id"])[1].split(";", 1)[0]
+
+    class Handler:
+        pass
+
+    handler = Handler()
+    handler.command = method
+    handler.headers = {"Cookie": cookie, "Content-Type": "application/json", "Content-Length": str(len(raw))}
+    handler.rfile = io.BytesIO(raw)
+    handler.path = path
+    return collabs.dispatch(handler)
+
+
+def directory_handle(user, handle, verified=True):
+    with server.connect() as db:
+        db.execute("INSERT INTO creator_handles (user_id, platform, handle, code, verified_at, verified_by)"
+                   " VALUES (%s, 'tiktok', %s, 'c', CASE WHEN %s THEN now() END, 'operator')",
+                   (user["id"], handle, verified))
+
+
+def directory_scan(user, handle, profile, brands, created_at=None):
+    with server.connect() as db:
+        if created_at:
+            return db.execute(
+                "INSERT INTO scans (user_id, platform, handle, source, profile, brands, created_at)"
+                " VALUES (%s, 'tiktok', %s, 'demo', %s, %s, %s) RETURNING id",
+                (user["id"], handle, Jsonb(profile), Jsonb(brands), created_at),
+            ).fetchone()["id"]
+        return db.execute(
+            "INSERT INTO scans (user_id, platform, handle, source, profile, brands)"
+            " VALUES (%s, 'tiktok', %s, 'demo', %s, %s) RETURNING id",
+            (user["id"], handle, Jsonb(profile), Jsonb(brands)),
+        ).fetchone()["id"]
+
+
 def test_video_proof_includes_brand_and_kind_and_null_brand_without_mention():
     mentioned_video = proof_video(HANDLE)
     unmentioned_video = proof_video("collab.other")
@@ -115,6 +155,81 @@ def add_scan(u, brand):
     with server.connect() as db:
         return db.execute("INSERT INTO scans (user_id, platform, handle, source, profile, brands) VALUES (%s, 'tiktok', %s, 'demo', %s, %s)"
                           " RETURNING id", (u["id"], HANDLE, Jsonb({}), Jsonb([{"brand": brand, "receipts": receipts}]))).fetchone()["id"]
+
+
+def test_brand_directory_lists_verified_creators_and_honors_listing_preferences():
+    brand = new_user("brand")
+    collabs.set_profile(brand, {"brand": "CollabTest Gymshark", "about": "Training gear", "open": True})
+    listed = new_user("creator")
+    listed_handle = "discover." + secrets.token_hex(4)
+    directory_handle(listed, listed_handle)
+    directory_scan(listed, listed_handle, {"name": "Asha Lee", "pfp": "https://img.test/asha.jpg",
+                                           "followers": 123000, "medianViews": 45000},
+                   [{"brand": "CollabTest Gymshark", "organic": 2, "receipts": [{}, {}]},
+                    {"brand": "Other Label", "organic": 3, "receipts": [{}, {}, {}]},
+                    {"brand": "Sponsored Only", "organic": 0, "receipts": [], "sponsored": 4}])
+
+    unverified = new_user("creator")
+    unverified_handle = "discover." + secrets.token_hex(4)
+    directory_handle(unverified, unverified_handle, verified=False)
+    own_handle = "discover." + secrets.token_hex(4)
+    directory_handle(brand, own_handle)
+
+    response = api_request(brand, "GET", "/api/collabs/directory?as=brand")
+    assert response["side"] == "brand" and response["brand"] == "CollabTest Gymshark"
+    by_handle = {row["handle"]: row for row in response["creators"]}
+    creator_row = by_handle[listed_handle]
+    assert creator_row["name"] == "Asha Lee" and creator_row["pfp"] == "https://img.test/asha.jpg"
+    assert creator_row["followers"] == 123000 and creator_row["medianViews"] == 45000
+    assert creator_row["brands"] == 2
+    assert creator_row["topBrands"] == ["Other Label", "CollabTest Gymshark"]
+    assert creator_row["mentionsYou"] is True
+    assert unverified_handle not in by_handle and own_handle not in by_handle
+    assert collabs.mine(listed, "creator")["listed"] is True
+
+    assert api_request(listed, "POST", "/api/collabs/listing", {"listed": False}) == {"listed": False}
+    assert collabs.mine(listed, "creator")["listed"] is False
+    assert listed_handle not in {row["handle"] for row in api_request(brand, "GET", "/api/collabs/directory?as=brand")["creators"]}
+    assert api_request(listed, "POST", "/api/collabs/listing", {"listed": True}) == {"listed": True}
+    assert listed_handle in {row["handle"] for row in api_request(brand, "GET", "/api/collabs/directory?as=brand")["creators"]}
+
+    creator_only = new_user("creator")
+    with pytest.raises(ApiError) as error:
+        api_request(creator_only, "GET", "/api/collabs/directory?as=brand")
+    assert error.value.status == 403
+
+
+def test_creator_directory_shows_open_brands_with_receipts_and_watch_state():
+    user = new_user("creator")
+    with server.connect() as db:
+        db.execute("UPDATE users SET extra_roles = %s WHERE id = %s", (["brand"], user["id"]))
+    collabs.set_profile(user, {"brand": "CollabTest Own Profile", "open": True})
+
+    mentioned = new_user("brand")
+    collabs.set_profile(mentioned, {"brand": "CollabTest Mentioned", "about": "Open and mentioned", "open": True})
+    watched = new_user("brand")
+    collabs.set_profile(watched, {"brand": "CollabTest Watched", "about": "Open and watched", "open": True})
+    closed = new_user("brand")
+    collabs.set_profile(closed, {"brand": "CollabTest Closed", "open": False})
+    untouched = new_user("brand")
+    collabs.set_profile(untouched, {"brand": "CollabTest Untouched", "open": True})
+
+    collabs.watch(user, {"brand": "CollabTest Mentioned"})
+    collabs.watch(user, {"brand": "CollabTest Watched"})
+    handle_a, handle_b = "discover." + secrets.token_hex(4), "discover." + secrets.token_hex(4)
+    directory_scan(user, handle_a, {}, [{"brand": "CollabTest Mentioned", "receipts": [{}, {}]}], "2026-01-01T00:00:00Z")
+    directory_scan(user, handle_a, {}, [{"brand": "CollabTest Mentioned", "receipts": [{}]}], "2026-02-01T00:00:00Z")
+    directory_scan(user, handle_b, {}, [{"brand": "collabtest mentioned", "receipts": [{}]}])
+
+    response = api_request(user, "GET", "/api/collabs/directory?as=creator")
+    assert response["side"] == "creator"
+    brands = {row["brand"]: row for row in response["brands"]}
+    assert brands["CollabTest Mentioned"]["receipts"] == 2
+    assert brands["CollabTest Mentioned"]["mentioned"] is True
+    assert brands["CollabTest Mentioned"]["watched"] is True
+    assert brands["CollabTest Untouched"]["receipts"] == 0
+    assert brands["CollabTest Watched"]["watched"] is True
+    assert "CollabTest Closed" not in brands and "CollabTest Own Profile" not in brands
 
 
 def test_brand_invites_creator_counter_then_booked(mail):

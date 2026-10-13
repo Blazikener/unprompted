@@ -817,6 +817,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.path = "/collab/index.html"
             elif path in ("/collabs", "/collabs/"):
                 self.path = "/collabs/index.html"
+            elif path in ("/discover", "/discover/"):
+                self.path = "/discover/index.html"
             elif path in ("/creators/licenses", "/creators/licenses/"):
                 self.path = "/creators/licenses.html"
             elif path in ("/verify", "/verify/"):

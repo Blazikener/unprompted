@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS creator_prefs (
   block_brands   text[] NOT NULL DEFAULT '{}'       -- and from these, declined
 );
 ALTER TABLE creator_prefs ADD COLUMN IF NOT EXISTS weekly_summary boolean NOT NULL DEFAULT true;
+ALTER TABLE creator_prefs ADD COLUMN IF NOT EXISTS listed boolean NOT NULL DEFAULT true;
 CREATE TABLE IF NOT EXISTS creator_summaries (     -- when each creator last got the weekly summary email
   user_id int PRIMARY KEY REFERENCES users ON DELETE CASCADE,
   sent_at timestamptz NOT NULL
