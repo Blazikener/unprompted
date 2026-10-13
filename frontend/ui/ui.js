@@ -634,7 +634,7 @@
         h('label', { class: 'u-side-choice' }, input, h('span', {}, SIDE_LABEL[role])))));
     return { el, values: () => inputs.filter(({ input }) => input.checked).map(({ role }) => role) };
   }
-  function sideSwitcher(user, currentRole) {
+  function sideSwitcher(user, currentRole, hrefFor) {
     const roles = SIDE_ORDER.filter((role) => (user.roles || [user.role]).includes(role));
     if (!roles.length) return h('span');
     const remembered = activeSide();
@@ -643,7 +643,8 @@
     const rootEl = h('div', { class: 'u-side-switcher' });
     const go = (role) => {
       rememberSide(role);
-      location.href = `/dashboard?as=${encodeURIComponent(role)}`;
+      location.href = (typeof hrefFor === 'function' && hrefFor(role))
+        || `/dashboard?as=${encodeURIComponent(role)}`;
     };
     const options = roles.map((role) => h('button', {
       type: 'button', class: `u-side-option${role === active ? ' is-current' : ''}`,
