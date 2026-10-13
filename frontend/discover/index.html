@@ -33,14 +33,14 @@
   .dt-head .dt-end { color: var(--text-3); font: inherit; }
   .discover-name { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
   .discover-copy { display: grid; gap: 3px; min-width: 0; }
-  .discover-copy strong, .discover-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .discover-copy strong { font-size: var(--fs-sm); font-weight: 500; }
+  .discover-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .discover-title strong { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; font-size: var(--fs-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .discover-title .u-pill { flex: none; white-space: nowrap; }
+  .discover-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .discover-copy small, .discover-top-brands { color: var(--text-3); font-size: var(--fs-xs); }
   .discover-about { display: block; max-width: 60ch; }
   .discover-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: none; overflow: hidden; border-radius: 50%;
                      color: var(--text-2); background: var(--surface-3); font: 600 var(--fs-sm) var(--sans); object-fit: cover; }
-  .discover-badges { display: flex; flex-wrap: wrap; gap: 4px; }
-  .discover-badges .u-pill { justify-self: start; }
   .discover-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
   .discover-count { display: block; color: var(--text-2); font: 500 var(--fs-sm) var(--mono); font-variant-numeric: tabular-nums; text-align: end; }
   .discover-top-brands { display: block; overflow: hidden; max-width: 190px; margin-top: 3px; text-align: end; text-overflow: ellipsis; white-space: nowrap; }
@@ -53,12 +53,14 @@
     .discover-table { column-gap: 10px; }
     .discover-table-brands { grid-template-columns: minmax(0, 1fr) auto; }
     .discover-table-brands .dt-cell:nth-child(2) { display: none; }
-    .discover-table-creators { grid-template-columns: minmax(0, 1fr) minmax(84px, 0.7fr) auto; }
+    .discover-table-creators { grid-template-columns: minmax(0, 1fr) 64px auto; }
     .discover-table-creators .dt-cell:nth-child(2) { display: none; }
+    .discover-table-creators .discover-title .u-pill { padding-inline: 6px; font-size: 0.62rem; }
     .dt-row { padding-inline: 5px; }
     .discover-name { gap: 8px; }
     .discover-avatar { width: 32px; height: 32px; }
-    .discover-top-brands { max-width: 112px; }
+    .discover-top-brands { display: none; }
+    .discover-platform { display: none; }
   }
 }
 </style>
@@ -66,9 +68,6 @@
 <body class="u-stage">
 <header class="u-bar">
   <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
-  <nav class="u-aud" aria-label="Who it's for">
-    <a href="/creators/">Creators</a><a href="/brands/">Brands</a><a href="/creators/roster">Managers</a>
-  </nav>
   <span class="grow"></span>
   <span data-u-theme-toggle></span>
   <span class="bar-note">Discover</span>
@@ -144,9 +143,10 @@
       ], rows.map((item) => [
         h('span', { class: 'discover-name' },
           h('span', { class: 'discover-copy' },
-            h('strong', {}, item.brand),
-            h('small', { class: 'discover-about' }, item.about || 'Open to future collabs')),
-          item.mentioned ? h('span', { class: 'u-pill u-pill-ok' }, 'You mention them') : null),
+            h('span', { class: 'discover-title' },
+              h('strong', {}, item.brand),
+              item.mentioned ? h('span', { class: 'u-pill u-pill-ok' }, 'You mention them') : null),
+            h('small', { class: 'discover-about' }, item.about || 'Open to future collabs'))),
         item.receipts ? U.fmt(item.receipts) : '—',
         h('span', { class: 'discover-actions' },
           h('a', { class: 'u-btn u-btn-primary u-btn-sm',
@@ -200,9 +200,11 @@
       ], rows.map((item) => [
         h('span', { class: 'discover-name' }, avatar(item),
           h('span', { class: 'discover-copy' },
-            h('strong', {}, `@${item.handle}`),
-            h('small', {}, item.name ? `${item.name} · ${item.platform}` : item.platform),
-            item.mentionsYou ? h('span', { class: 'u-pill u-pill-ok' }, 'Mentions you') : null)),
+            h('span', { class: 'discover-title' },
+              h('strong', {}, `@${item.handle}`),
+              item.mentionsYou ? h('span', { class: 'u-pill u-pill-ok' }, 'Mentions you') : null),
+            h('small', {}, item.name || item.platform,
+              item.name ? h('span', { class: 'discover-platform' }, ` · ${item.platform}`) : null))),
         item.followers == null ? '—' : U.fmt(item.followers),
         h('span', {},
           h('span', { class: 'discover-count' }, U.fmt(item.brands)),
