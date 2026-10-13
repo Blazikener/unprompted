@@ -131,6 +131,14 @@ def directory_scan(user, handle, profile, brands, created_at=None):
         ).fetchone()["id"]
 
 
+def directory_brand_entry(brand, receipts, organic=1):
+    return {
+        "brand": brand, "receipts": [{} for _ in range(receipts)], "organic": organic,
+        "category": "brand", "spoken": 0, "tagged": 0, "sponsored": 0, "organicViews": 0,
+        "status": "unpaid", "score": 1,
+    }
+
+
 def test_video_proof_includes_brand_and_kind_and_null_brand_without_mention():
     mentioned_video = proof_video(HANDLE)
     unmentioned_video = proof_video("collab.other")
@@ -230,6 +238,79 @@ def test_creator_directory_shows_open_brands_with_receipts_and_watch_state():
     assert brands["CollabTest Untouched"]["receipts"] == 0
     assert brands["CollabTest Watched"]["watched"] is True
     assert "CollabTest Closed" not in brands and "CollabTest Own Profile" not in brands
+
+
+def test_creator_directory_omits_locked_brand_receipts():
+    user = new_user("creator")
+    unlocked = new_user("brand")
+    collabs.set_profile(unlocked, {"brand": "CollabTest Unlocked", "open": True})
+    locked = new_user("brand")
+    collabs.set_profile(locked, {"brand": "CollabTest Locked", "open": True})
+    limit = creator.PLANS["free"]["brands"]
+    rows = [directory_brand_entry("CollabTest Unlocked", 2)]
+    rows.extend(directory_brand_entry("CollabTest filler %d" % i, 0, organic=0) for i in range(1, limit))
+    rows.append(directory_brand_entry("CollabTest Locked", 5))
+    directory_scan(user, "discover." + secrets.token_hex(4), {}, rows)
+
+    response = api_request(user, "GET", "/api/collabs/directory?as=creator")
+    brands = {row["brand"]: row for row in response["brands"]}
+    assert brands["CollabTest Unlocked"]["receipts"] == 2
+    assert brands["CollabTest Unlocked"]["mentioned"] is True
+    assert brands["CollabTest Locked"]["receipts"] == 0
+    assert brands["CollabTest Locked"]["mentioned"] is False
+
+
+def test_brand_directory_omits_owner_locked_brand_names_and_mentions():
+    viewer = new_user("brand")
+    collabs.set_profile(viewer, {"brand": "CollabTest Locked Viewer", "open": True})
+    owner = new_user("creator")
+    handle = "discover." + secrets.token_hex(4)
+    directory_handle(owner, handle)
+    limit = creator.PLANS["free"]["brands"]
+    rows = [directory_brand_entry("CollabTest Visible %d" % i, i + 1) for i in range(limit)]
+    rows.append(directory_brand_entry("CollabTest Locked Viewer", 9))
+    directory_scan(owner, handle, {"name": "Asha", "followers": 500}, rows)
+
+    response = api_request(viewer, "GET", "/api/collabs/directory?as=brand")
+    creator_row = next(row for row in response["creators"] if row["handle"] == handle)
+    assert creator_row["brands"] == limit
+    assert len(creator_row["topBrands"]) == limit
+    assert "CollabTest Locked Viewer" not in creator_row["topBrands"]
+    assert creator_row["mentionsYou"] is False
+
+
+def test_brand_directory_q_finds_creators_beyond_the_cap(monkeypatch):
+    monkeypatch.setattr(collabs, "DIRECTORY_CAP", 1)
+    viewer = new_user("brand")
+    collabs.set_profile(viewer, {"brand": "CollabTest Search Viewer", "open": True})
+
+    featured = new_user("creator")
+    featured_handle = "discover.a" + secrets.token_hex(4)
+    directory_handle(featured, featured_handle)
+    directory_scan(featured, featured_handle, {"name": "Featured", "followers": 900}, [])
+
+    target = new_user("creator")
+    target_handle = "discover.z" + secrets.token_hex(4)
+    directory_handle(target, target_handle)
+    with server.connect() as db:
+        db.execute("UPDATE users SET plan = 'pro' WHERE id = %s", (target["id"],))
+    directory_scan(target, target_handle, {"name": "Hidden Creator", "followers": 10}, [
+        directory_brand_entry("Search top 1", 4),
+        directory_brand_entry("Search top 2", 3),
+        directory_brand_entry("Search top 3", 2),
+        directory_brand_entry("Search Brand Four", 1),
+    ])
+
+    response = api_request(viewer, "GET", "/api/collabs/directory?as=brand")
+    assert response["capped"] is True and len(response["creators"]) == 1
+
+    by_name = api_request(viewer, "GET", "/api/collabs/directory?as=brand&q=%20hIdDeN%20cReAtOr%20")
+    assert by_name["capped"] is False
+    assert [row["handle"] for row in by_name["creators"]] == [target_handle]
+
+    by_brand = api_request(viewer, "GET", "/api/collabs/directory?as=brand&q=search%20brand%20four")
+    assert by_brand["capped"] is False
+    assert [row["handle"] for row in by_brand["creators"]] == [target_handle]
 
 
 def test_brand_invites_creator_counter_then_booked(mail):

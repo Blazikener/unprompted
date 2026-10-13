@@ -74,6 +74,7 @@ OPEN = ("sent", "countered")
 MAX_WATCH = 25
 BRAND_PER_DAY = 20
 CREATOR_PER_WEEK = 10
+DIRECTORY_CAP = 200
 WEEKLY_EVERY = timedelta(days=7) - timedelta(hours=1)
 LABEL = {"sent": "Waiting for an answer", "countered": "Counter-offer", "accepted": "Booked", "declined": "Declined",
          "withdrawn": "Withdrawn"}
@@ -181,13 +182,15 @@ def positive(value):
         return False
 
 
-def directory_brand(user):
+def directory_brand(user, q=""):
     viewer_brand = (profile(user) or {}).get("brand")
     viewer_key = brand_key(viewer_brand).casefold()
+    query = str(q or "").strip()[:60].casefold()
     with connect() as db:
         rows = db.execute(
-            "SELECT h.platform, h.handle, s.profile, s.brands"
-            " FROM creator_handles h LEFT JOIN creator_prefs p ON p.user_id = h.user_id"
+            "SELECT h.platform, h.handle, s.profile, s.brands, u.plan AS owner_plan, u.arm AS owner_arm"
+            " FROM creator_handles h JOIN users u ON u.id = h.user_id"
+            " LEFT JOIN creator_prefs p ON p.user_id = h.user_id"
             " LEFT JOIN LATERAL (SELECT profile, brands FROM scans"
             " WHERE user_id = h.user_id AND platform = h.platform AND lower(handle) = lower(h.handle)"
             " ORDER BY created_at DESC, id DESC LIMIT 1) s ON true"
@@ -198,10 +201,11 @@ def directory_brand(user):
     for row in rows:
         scan_profile = row["profile"] if isinstance(row["profile"], dict) else {}
         scan_brands = row["brands"] if isinstance(row["brands"], list) else []
-        visible = [b for b in scan_brands if isinstance(b, dict) and
+        owner_plan = creator.plan_of({"plan": row["owner_plan"], "arm": row["owner_arm"]})
+        visible = [b for b in creator.gate(scan_brands, owner_plan) if isinstance(b, dict) and
                    (positive(b.get("organic")) or receipt_count(b) > 0) and brand_key(b.get("brand"))]
         top = sorted(visible, key=lambda b: (-receipt_count(b), brand_key(b.get("brand")).casefold()))
-        creators.append({
+        item = {
             "platform": row["platform"],
             "handle": row["handle"],
             "name": scan_profile.get("name"),
@@ -211,12 +215,17 @@ def directory_brand(user):
             "brands": len(visible),
             "topBrands": [brand_key(b.get("brand")) for b in top[:3]],
             "mentionsYou": bool(viewer_key and any(
-                positive(b.get("organic")) and brand_key(b.get("brand")).casefold() == viewer_key for b in scan_brands
+                positive(b.get("organic")) and brand_key(b.get("brand")).casefold() == viewer_key for b in visible
                 if isinstance(b, dict))),
-        })
+        }
+        if query and not any(query in str(value or "").casefold() for value in
+                             (item["handle"], item["name"], *(brand_key(b.get("brand")) for b in visible))):
+            continue
+        creators.append(item)
     creators.sort(key=lambda c: (not c["mentionsYou"], c["followers"] is None,
                                  -float(c["followers"] or 0), c["handle"].casefold()))
-    return {"side": "brand", "brand": viewer_brand, "creators": creators[:200]}
+    capped = len(creators) > DIRECTORY_CAP
+    return {"side": "brand", "brand": viewer_brand, "creators": creators[:DIRECTORY_CAP], "capped": capped}
 
 
 def directory_creator(user):
@@ -229,10 +238,15 @@ def directory_creator(user):
         ).fetchall()
         watched_rows = db.execute("SELECT brand FROM creator_watch WHERE user_id = %s", (user["id"],)).fetchall()
     watched = {brand_key(row["brand"]).casefold() for row in watched_rows}
+    plan = creator.plan_of(user)
+    scanned_brands = [
+        creator.gate(scan["brands"] if isinstance(scan["brands"], list) else [], plan)
+        for scan in scans
+    ]
     brands = []
     for item in open_brands:
         key = brand_key(item["brand"]).casefold()
-        receipts = sum(receipt_count(b) for scan in scans for b in (scan["brands"] or [])
+        receipts = sum(receipt_count(b) for visible in scanned_brands for b in visible
                        if isinstance(b, dict) and brand_key(b.get("brand")).casefold() == key)
         brands.append({"brand": item["brand"], "about": item["about"], "watched": key in watched,
                        "receipts": receipts, "mentioned": receipts > 0})
@@ -240,7 +254,7 @@ def directory_creator(user):
     return {"side": "creator", "brands": brands}
 
 
-def directory(user, requested=None):
+def directory(user, requested=None, q=""):
     if requested == "creator":
         if not creator.has_role(user, "creator"):
             raise ApiError(403, "Not allowed.")
@@ -255,7 +269,7 @@ def directory(user, requested=None):
         side = "creator"
     else:
         raise ApiError(403, "Not allowed.")
-    return directory_brand(user) if side == "brand" else directory_creator(user)
+    return directory_brand(user, q) if side == "brand" else directory_creator(user)
 
 
 # ---------------------------------------------------------------- proof: the receipt that makes the ask credible
@@ -662,7 +676,7 @@ def run_weekly(force=False):
 # ---------------------------------------------------------------- routes
 
 def dispatch(handler):
-    """GET  /api/collabs/mine | /partners | /directory?as=brand|creator | /t/<token> | /proof?v=&platform=&handle= (brand) | /digest/<token>?v=
+    """GET  /api/collabs/mine | /partners | /directory?as=brand|creator&q=... | /t/<token> | /proof?v=&platform=&handle= (brand) | /digest/<token>?v=
     POST /api/collabs/propose (brand) | /pitch (creator) | /watch (creator) | /listing (creator) | /profile (brand)
          /t/<token> (either side, no account) | /<id> (either side, signed in)
          /digest/<token> (a brand from its weekly report link)"""
@@ -675,8 +689,10 @@ def dispatch(handler):
         if path == "/mine":
             return mine(creator.require_user(handler.headers), (parse_qs(urlparse(handler.path).query).get("as") or [None])[0])
         if path == "/directory":
-            requested = (parse_qs(urlparse(handler.path).query).get("as") or [None])[0]
-            return directory(creator.require_user(handler.headers), requested)
+            query = parse_qs(urlparse(handler.path).query)
+            requested = (query.get("as") or [None])[0]
+            q = (query.get("q") or [""])[0]
+            return directory(creator.require_user(handler.headers), requested, q)
         dg = re.fullmatch(r"/digest/([A-Za-z0-9_-]{16,32})", path)
         if dg:
             d, _, _ = digest.load_digest(dg.group(1))
