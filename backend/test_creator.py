@@ -238,9 +238,9 @@ def test_free_tiktok_reads_public_first_pro_goes_oriane_first(monkeypatch):
         creator.fetch_videos("instagram", "fresh.face")
     assert "scan that handle" in str(e.value) and calls == ["contents", "profiles"]
     calls.clear()
-    assert creator.fetch_videos("tiktok", "fresh.face") == (public["fresh.face"], "public") and calls == ["public"]
+    assert creator.fetch_videos("tiktok", "fresh.face") == (public["fresh.face"], "captions") and calls == ["public"]
     calls.clear()
-    assert creator.fetch_videos("tiktok", "fresh.face", "pro") == (public["fresh.face"], "public") and calls == ["contents", "public"]
+    assert creator.fetch_videos("tiktok", "fresh.face", "pro") == (public["fresh.face"], "captions") and calls == ["contents", "public"]
     calls.clear()
     with pytest.raises(server.ApiError):
         creator.fetch_videos("tiktok", "ghost")
@@ -253,7 +253,33 @@ def test_free_tiktok_reads_public_first_pro_goes_oriane_first(monkeypatch):
     with psycopg.connect(server.DB_URL) as db:
         db.execute("INSERT INTO misses (platform, handle, body) VALUES ('tiktok', 'fresh.face', %s)",
                    (Jsonb({"error": "x", "reason": "unknown", "suggestions": []}),))
-    assert creator.fetch_videos("tiktok", "fresh.face", "pro")[1] == "public" and calls == ["public"]
+    assert creator.fetch_videos("tiktok", "fresh.face", "pro")[1] == "captions" and calls == ["public"]
+
+
+@pytest.mark.parametrize(
+    ("chunks", "expected"),
+    [([], "captions"), ([{"startSeconds": 1, "text": "Tim Hortons"}], "public")],
+)
+def test_public_tiktok_source_reflects_transcript_chunks(monkeypatch, chunks, expected):
+    monkeypatch.setattr(demo, "active", lambda: False)
+    videos = [video()]
+    videos[0]["transcriptChunks"] = chunks
+    monkeypatch.setattr(creator, "public_videos", lambda *_: videos)
+    assert creator.fetch_videos("tiktok", "source.handle") == (videos, expected)
+
+
+def test_full_tiktok_scan_goes_to_oriane_before_public_fallback(monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "")
+    monkeypatch.setattr(demo, "active", lambda: False)
+    calls = []
+    monkeypatch.setattr(creator, "public_videos", lambda *_: calls.append("public") or [])
+    monkeypatch.setattr(server, "oriane", lambda *args, **kwargs:
+                        calls.append("oriane") or {"data": {"results": [video("Tim Hortons on camera")]}})
+    with psycopg.connect(server.DB_URL) as db:
+        db.execute("DELETE FROM misses WHERE platform = 'tiktok' AND handle = 'full.scan.order'")
+    videos, source = creator.fetch_videos("tiktok", "full.scan.order", "free", full=True)
+    assert source == "live" and videos[0]["transcriptChunks"]
+    assert calls == ["oriane"]
 
 
 def test_misses_are_cached_so_retries_cost_no_credits(monkeypatch):
@@ -288,6 +314,83 @@ def test_stripe_signature():
 def test_password_hashing():
     h = creator.hash_password("correct horse")
     assert h.startswith("scrypt$") and creator.check_password("correct horse", h) and not creator.check_password("wrong", h)
+
+
+def signup_test_creator(base):
+    client = Client(base)
+    email = "caption-scan-%d@example.com" % time.time_ns()
+    status, result = client.call("POST", "/api/creators/signup", {"email": email, "password": "longenough"})
+    assert status == 201
+    return result["user"]
+
+
+def test_full_scan_upgrades_recent_caption_scan_without_quota_and_dedupes(base, monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "")
+    user = signup_test_creator(base)
+    calls = []
+
+    def fake_fetch(platform, handle, plan, full=False):
+        calls.append((platform, handle, full))
+        if full:
+            return [video("I love Tim Hortons on camera")], "live"
+        return [video(caption="coffee at Tim Hortons #timhortons")], "captions"
+
+    monkeypatch.setattr(creator, "fetch_videos", fake_fetch)
+    try:
+        caption_scan = creator.run_scan(user, {"platform": "tiktok", "handle": "caption.upgrade"})
+        assert caption_scan["source"] == "captions"
+        upgraded = creator.run_scan(user, {"platform": "tiktok", "handle": "caption.upgrade", "full": True})
+        assert upgraded["source"] == "live"
+        repeated = creator.run_scan(user, {"platform": "tiktok", "handle": "caption.upgrade", "full": True})
+        assert repeated["id"] == upgraded["id"]
+        assert calls == [("tiktok", "caption.upgrade", False), ("tiktok", "caption.upgrade", True)]
+        with psycopg.connect(server.DB_URL) as db:
+            event = db.execute("SELECT data FROM events WHERE user_id = %s AND name = 'scan' ORDER BY id DESC LIMIT 1",
+                               (user["id"],)).fetchone()[0]
+        assert event["full"] is True
+    finally:
+        with psycopg.connect(server.DB_URL) as db:
+            db.execute("DELETE FROM users WHERE id = %s", (user["id"],))
+
+
+def test_full_scan_without_recent_caption_scan_uses_weekly_quota(base, monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "")
+    user = signup_test_creator(base)
+    calls = []
+
+    def fake_fetch(platform, handle, plan, full=False):
+        calls.append((handle, full))
+        return [video(caption="coffee #timhortons")], "captions"
+
+    monkeypatch.setattr(creator, "fetch_videos", fake_fetch)
+    try:
+        creator.run_scan(user, {"platform": "tiktok", "handle": "quota.used"})
+        with pytest.raises(server.ApiError) as raised:
+            creator.run_scan(user, {"platform": "tiktok", "handle": "quota.unscanned", "full": True})
+        assert raised.value.status == 402
+        assert calls == [("quota.used", False)]
+    finally:
+        with psycopg.connect(server.DB_URL) as db:
+            db.execute("DELETE FROM users WHERE id = %s", (user["id"],))
+
+
+def test_instagram_ignores_full_scan_flag(base, monkeypatch):
+    monkeypatch.setenv("ORIANE_API_KEY", "")
+    user = signup_test_creator(base)
+    calls = []
+
+    def fake_fetch(platform, handle, plan, full=False):
+        calls.append((platform, full))
+        return [video("MyProtein on camera")], "live"
+
+    monkeypatch.setattr(creator, "fetch_videos", fake_fetch)
+    try:
+        result = creator.run_scan(user, {"platform": "instagram", "handle": "instagram.creator", "full": True})
+        assert result["source"] == "live"
+        assert calls == [("instagram", False)]
+    finally:
+        with psycopg.connect(server.DB_URL) as db:
+            db.execute("DELETE FROM users WHERE id = %s", (user["id"],))
 
 
 # ---------------------------------------------------------------- HTTP flow

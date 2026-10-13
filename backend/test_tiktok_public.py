@@ -1,9 +1,12 @@
 import json
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 
 import pytest
 
 from backend import tiktok_public
+
+JSON_LD_FIXTURE = Path(__file__).parent / "fixtures" / "tiktok-video-jsonld.html"
 
 
 class Response:
@@ -248,3 +251,94 @@ def test_video_detail_without_rehydration_data_returns_none(monkeypatch, capsys)
     stderr = capsys.readouterr().err
     assert "video 123456789: no item data in page" in stderr
     assert "TypeError" not in stderr
+
+
+def test_ld_item_parses_relay_video_jsonld():
+    item = tiktok_public.ld_item(JSON_LD_FIXTURE.read_text(), "7502836286051421471")
+    assert item["desc"] == "Things I will NEVER do when I’m a mom.. 👶🤱 #GRWM #beautytok #makeup #makeuptok #storytime #fyp"
+    assert item["createTime"] == 1746890228
+    assert item["stats"] == {
+        "playCount": 12300000, "diggCount": 2000000, "shareCount": 30600, "commentCount": 11500,
+    }
+    assert item["author"] == {"uniqueId": "haileyvanrenen", "nickname": "Hailey van Renen"}
+    assert item["video"]["duration"] == 72
+    assert {"hashtagName": "GRWM"} in item["textExtra"]
+    assert item["captionOnly"] is True
+
+
+def test_ld_item_does_not_treat_email_address_as_mention():
+    html = '<script id="VideoObject">{"name":"Hails@tiddle.io says #GRWM"}</script>'
+    item = tiktok_public.ld_item(html, "7502836286051421471")
+    assert item["textExtra"] == [{"hashtagName": "GRWM"}]
+
+
+@pytest.mark.parametrize("html", ["<html><body>no structured data</body></html>",
+                                  '<script id="VideoObject">{"uploadDate":</script>'])
+def test_ld_item_returns_none_for_missing_or_malformed_jsonld(html):
+    assert tiktok_public.ld_item(html, "7502836286051421471") is None
+
+
+def test_video_detail_prefers_rehydration_item(monkeypatch):
+    video_id = "7502836286051421471"
+    item = {"id": video_id, "desc": "hydrated"}
+    state = {"__DEFAULT_SCOPE__": {"webapp.video-detail": {"itemInfo": {"itemStruct": item}}}}
+    html = ('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+            + json.dumps(state) + "</script>")
+    calls = []
+    monkeypatch.setattr(tiktok_public, "get", lambda url: calls.append(url) or html)
+    assert tiktok_public.video_detail("haileyvanrenen", video_id) == item
+    assert calls == [tiktok_public.VIDEO_URL % ("haileyvanrenen", video_id)]
+
+
+def test_video_detail_uses_jsonld_without_refetching(monkeypatch, capsys):
+    video_id = "7502836286051421471"
+    html = JSON_LD_FIXTURE.read_text()
+    calls = []
+    monkeypatch.setattr(tiktok_public, "get", lambda url: calls.append(url) or html)
+    item = tiktok_public.video_detail("haileyvanrenen", video_id)
+    assert item == tiktok_public.ld_item(html, video_id)
+    assert calls == [tiktok_public.VIDEO_URL % ("haileyvanrenen", video_id)]
+    assert "video %s: caption only (json-ld)" % video_id in capsys.readouterr().err
+
+
+def test_fetch_uses_jsonld_and_embed_caption_fallback(monkeypatch):
+    first_id, second_id = "7502836286051421471", "7502836286051421472"
+    entries = [
+        {"id": first_id, "desc": "JSON-LD caption #GRWM", "playCount": 12300000,
+         "coverUrl": "https://cdn.example/first.jpg", "authorUniqueId": "haileyvanrenen"},
+        {"id": second_id, "desc": "Embed caption #coffee @maya.eats", "playCount": 900,
+         "coverUrl": "https://cdn.example/second.jpg", "authorUniqueId": "haileyvanrenen"},
+    ]
+    embed_state = {"userInfo": {"uniqueId": "haileyvanrenen", "nickname": "Hailey", "avatarThumbUrl": "https://cdn.example/avatar.jpg"},
+                   "videoList": entries}
+    embed_html = ('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+                  + json.dumps(embed_state) + "</script>")
+    detail_urls = []
+
+    def fake_get(url):
+        if url == tiktok_public.EMBED_URL % "haileyvanrenen":
+            return embed_html
+        detail_urls.append(url)
+        if url.endswith("/" + first_id):
+            return JSON_LD_FIXTURE.read_text()
+        raise URLError("video page unavailable")
+
+    monkeypatch.setattr(tiktok_public, "get", fake_get)
+    videos = tiktok_public.fetch("haileyvanrenen")
+    assert len(videos) == 2
+    assert all(video["captionOnly"] for video in videos)
+    assert [video["platformId"] for video in videos] == [first_id, second_id]
+    assert videos[0]["thumbnailMediaUrl"] == "https://cdn.example/first.jpg"
+    assert videos[0]["publishedAt"] == "2025-05-10T15:17:08Z"
+    assert videos[1]["caption"] == entries[1]["desc"]
+    assert videos[1]["publishedAt"] == tiktok_public.iso(int(second_id) >> 32)
+    assert videos[1]["thumbnailMediaUrl"] == "https://cdn.example/second.jpg"
+    assert videos[1]["profilePictureUrl"] == "https://cdn.example/avatar.jpg"
+    assert len(detail_urls) == 2
+
+
+def test_subtitles_skips_caption_only_items(monkeypatch):
+    monkeypatch.setattr(tiktok_public, "get", lambda _url: pytest.fail("caption-only item fetched subtitles"))
+    assert tiktok_public.subtitles(
+        {"captionOnly": True, "video": {"subtitleInfos": [{"Url": "https://example.com"}]}}
+    ) == ([], None)

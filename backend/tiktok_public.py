@@ -19,6 +19,10 @@ EMBED_URL = "https://www.tiktok.com/embed/@%s"
 VIDEO_URL = "https://www.tiktok.com/@%s/video/%s"
 STATE_RE = re.compile(r'<script id="(?:__FRONTITY_CONNECT_STATE__|__UNIVERSAL_DATA_FOR_REHYDRATION__)"'
                       r' type="application/json">(.*?)</script>', re.S)
+VIDEO_OBJECT_RE = re.compile(r'<script[^>]*id="VideoObject"[^>]*>(.*?)</script>', re.S)
+HASHTAG_RE = re.compile(r"#(\w+)")
+MENTION_RE = re.compile(r"(?<![\w.])@([\w.]{2,24})")
+DURATION_RE = re.compile(r"^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$")
 CUE_RE = re.compile(r"(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d+)\s+-->\s+(?:(\d+):)?(\d{1,2}):(\d{1,2})[.,](\d+)")
 MAX_VIDEOS = 12
 WORKERS = 5
@@ -168,31 +172,85 @@ def log(handle, what):
     print("tiktok_public @%s: %s" % (handle, what), file=sys.stderr, flush=True)
 
 
-def creator_page(handle):
-    """(user info, latest video ids) from the embed page; (None, []) when TikTok shows nothing public."""
+def creator_embed(handle):
+    """(user info, latest video entries) from the embed page; (None, []) when nothing is public."""
     try:
         html = get(EMBED_URL % handle)
     except (error.URLError, OSError, ValueError) as e:
         log(handle, "embed failed: %r" % e)
         return None, []
-    page = find_key(embedded_state(html), "videoList")
+    state = embedded_state(html)
+    page = find_key(state, "videoList")
     if not page:
-        log(handle, "embed had no videoList (%d bytes, state=%s)" % (len(html), embedded_state(html) is not None))
+        log(handle, "embed had no videoList (%d bytes, state=%s)" % (len(html), state is not None))
         return None, []
-    return page.get("userInfo") or {}, [v["id"] for v in page["videoList"] if v.get("id")]
+    return page.get("userInfo") or {}, page.get("videoList") or []
+
+
+def creator_page(handle):
+    """(user info, latest video ids) from the embed page; (None, []) when TikTok shows nothing public."""
+    user, entries = creator_embed(handle)
+    return user, [entry["id"] for entry in entries if isinstance(entry, dict) and entry.get("id")]
+
+
+def _caption_text_extra(desc):
+    return ([{"hashtagName": tag} for tag in HASHTAG_RE.findall(desc)]
+            + [{"userUniqueId": handle} for handle in MENTION_RE.findall(desc)])
+
+
+def ld_item(html, video_id):
+    match = VIDEO_OBJECT_RE.search(html)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(1))
+        stats = {"playCount": 0, "diggCount": 0, "shareCount": 0, "commentCount": int(data.get("commentCount") or 0)}
+        actions = {"WatchAction": "playCount", "LikeAction": "diggCount", "ShareAction": "shareCount"}
+        for stat in data.get("interactionStatistic") or []:
+            interaction = stat.get("interactionType") or {}
+            action = interaction.get("@type") if isinstance(interaction, dict) else interaction
+            field = actions.get(str(action).rsplit("/", 1)[-1])
+            if field:
+                stats[field] = int(stat.get("userInteractionCount") or 0)
+
+        creator = data.get("creator") or {}
+        upload_date = data.get("uploadDate")
+        create_time = int(datetime.fromisoformat(upload_date.replace("Z", "+00:00")).timestamp()) if upload_date else None
+        duration_match = DURATION_RE.fullmatch(data.get("duration") or "")
+        duration = (int(float(duration_match.group(1) or 0) * 3600
+                        + float(duration_match.group(2) or 0) * 60
+                        + float(duration_match.group(3) or 0)) if duration_match else None)
+        desc = data.get("name") or ""
+        return {
+            "id": video_id,
+            "desc": desc,
+            "createTime": create_time,
+            "stats": stats,
+            "author": {"uniqueId": creator.get("alternateName"), "nickname": creator.get("name")},
+            "video": {"duration": duration},
+            "textExtra": _caption_text_extra(desc),
+            "captionOnly": True,
+        }
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 def video_detail(handle, video_id):
     try:
-        state = embedded_state(get(VIDEO_URL % (handle, video_id)))
+        html = get(VIDEO_URL % (handle, video_id))
+        state = embedded_state(html)
         scope = state.get("__DEFAULT_SCOPE__") if isinstance(state, dict) else None
         page = scope.get("webapp.video-detail") if isinstance(scope, dict) else None
         info = page.get("itemInfo") if isinstance(page, dict) else None
         item = info.get("itemStruct") if isinstance(info, dict) else None
-        if not isinstance(item, dict):
-            log(handle, "video %s: no item data in page" % video_id)
-            return None
-        return item
+        if isinstance(item, dict):
+            return item
+        item = ld_item(html, video_id)
+        if item:
+            log(handle, "video %s: caption only (json-ld)" % video_id)
+            return item
+        log(handle, "video %s: no item data in page" % video_id)
+        return None
     except (error.URLError, OSError, ValueError, KeyError, TypeError) as e:
         log(handle, "video %s failed: %r" % (video_id, e))
         return None
@@ -228,6 +286,8 @@ def pick_subtitle(infos):
 
 def subtitles(item):
     """(transcriptChunks, language code) for one video, or ([], None)."""
+    if item.get("captionOnly"):
+        return [], None
     sub = pick_subtitle((item.get("video") or {}).get("subtitleInfos"))
     if not sub:
         return [], None
@@ -253,7 +313,7 @@ def as_oriane(handle, item, user, chunks, lang):
     return {
         "id": "tiktok-public-%s" % item["id"], "platform": "tiktok", "platformId": str(item["id"]), "profileHandle": handle,
         "profileDisplayName": author.get("nickname") or user.get("nickname"),
-        "profilePictureUrl": author.get("avatarMedium") or user.get("avatarMedium"),
+        "profilePictureUrl": author.get("avatarMedium") or user.get("avatarMedium") or user.get("avatarThumbUrl"),
         "profileFollowersCount": astats.get("followerCount") or user.get("followerCount") or 0,
         "profileVerified": bool(author.get("verified", user.get("verified"))),
         "publishedAt": iso(item["createTime"]) if item.get("createTime") else None,
@@ -266,19 +326,54 @@ def as_oriane(handle, item, user, chunks, lang):
         "duration": video.get("duration"), "thumbnailMediaUrl": cover,
         "frames": [{"timestampSeconds": 0, "url": cover}] if cover else [],
         "source": "public",
+        "captionOnly": bool(item.get("captionOnly")),
+    }
+
+
+def _embed_item(entry):
+    video_id = entry["id"]
+    try:
+        create_time = int(video_id) >> 32
+    except (TypeError, ValueError):
+        create_time = None
+    desc = entry.get("desc") or ""
+    return {
+        "id": video_id,
+        "desc": desc,
+        "createTime": create_time,
+        "stats": {"playCount": entry.get("playCount") or 0},
+        "author": {"uniqueId": entry.get("authorUniqueId")},
+        "video": {"cover": entry.get("coverUrl") or entry.get("originCoverUrl")},
+        "textExtra": _caption_text_extra(desc),
+        "captionOnly": True,
     }
 
 
 def fetch(handle, limit=MAX_VIDEOS):
     """Latest public videos for a TikTok handle in Oriane shape, or [] when nothing is reachable."""
-    user, ids = creator_page(handle)
-    if not ids:
+    user, entries = creator_embed(handle)
+    if not entries:
         time.sleep(1)  # one retry: TikTok occasionally serves the embed without its video list
-        user, ids = creator_page(handle)
-    if not ids:
+        user, entries = creator_embed(handle)
+    entries = [entry for entry in entries if isinstance(entry, dict) and entry.get("id")][:limit]
+    if not entries:
         return []
     with ThreadPoolExecutor(WORKERS) as pool:
-        items = [it for it in pool.map(lambda v: video_detail(handle, v), ids[:limit]) if it and it.get("id")]
+        details = list(pool.map(lambda entry: video_detail(handle, entry["id"]), entries))
+        items = []
+        for entry, item in zip(entries, details):
+            if item is None:
+                item = _embed_item(entry)
+            else:
+                video = item.get("video")
+                if not isinstance(video, dict):
+                    video = {}
+                cover = entry.get("coverUrl") or entry.get("originCoverUrl")
+                if cover:
+                    video["cover"] = cover
+                item["video"] = video
+            if item.get("id"):
+                items.append(item)
         subs = list(pool.map(subtitles, items))
-    log(handle, "%d/%d videos, %d with captions" % (len(items), len(ids[:limit]), sum(1 for c, _ in subs if c)))
+    log(handle, "%d/%d videos, %d with captions" % (len(items), len(entries), sum(1 for c, _ in subs if c)))
     return [as_oriane(handle, it, user or {}, chunks, lang) for it, (chunks, lang) in zip(items, subs)]
