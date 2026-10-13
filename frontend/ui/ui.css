@@ -16,6 +16,13 @@
 @layer reset, tokens, base, components, utilities, page;
 
 html[data-u-signed-in] .u-aud { display: none; }
+html[data-u-signed-in] .u-main-nav { display: none; }
+html[data-u-signed-in] .u-signed-out-only { display: none; }
+
+@media (min-width: 601px) and (max-width: 1472px) {
+  html[data-u-signed-in] .landing-top #landing-account { flex: 0 1 auto; }
+  html[data-u-signed-in] .landing-top .brand-account-chip { width: auto; }
+}
 
 @layer reset {
   *, *::before, *::after { box-sizing: border-box; }
@@ -519,9 +526,20 @@ html[data-u-signed-in] .u-aud { display: none; }
   .u-bar .grow { flex: 1; }
   .u-bar-link { color: var(--text-2); font-size: var(--fs-sm); font-weight: 500; text-decoration: none; white-space: nowrap; }
   .u-bar-link:hover, .u-bar-link[aria-current="page"] { color: var(--text); }
+  .u-appnav { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+  .u-appnav[hidden] { display: none; }
+  .u-appnav .u-bar-link { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding-inline: 10px; border-radius: var(--r-pill); }
+  .u-appnav .u-bar-link:hover { background: var(--surface-2); }
+  .u-appnav .u-bar-link[aria-current="page"] { color: var(--text); background: var(--surface-2); }
+  .u-appnav .u-bar-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; z-index: 1; }
   @media (max-width: 600px) {
+    .u-bar:has(> .u-appnav), .app-topbar:has(> .u-appnav) { flex-wrap: wrap; }
+    .u-bar:has(> .u-appnav) > :is(#who, #account, #app-account, #landing-account, .dash-account),
+    .app-topbar:has(> .u-appnav) > #app-account { order: 11; }
     .u-bar { height: auto; min-height: 64px; padding-block: 8px; }
     .u-theme-toggle-button { flex-basis: 32px; width: 32px; min-width: 32px; height: 32px; }
+    .u-appnav { flex-basis: 100%; order: 10; width: 100%; justify-content: space-between; }
+    .u-appnav .u-bar-link { flex: 1 1 0; min-height: 40px; padding-inline: 4px; }
   }
   .u-aud { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 3px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); }
   .u-aud a { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 10px; border-radius: var(--r-pill);

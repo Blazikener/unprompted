@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Collabs · Unprompted</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/ui/ui.css?v=7">
+<link rel="stylesheet" href="/ui/ui.css?v=8">
 <link rel="stylesheet" href="/collab/collab.css?v=1">
-<script src="/ui/ui.js?v=6"></script>
+<script src="/ui/ui.js?v=7"></script>
 <script src="/collab/collab.js?v=1"></script>
 </head>
 <body class="u-stage">
 <header class="u-bar">
   <a class="u-logo" href="/"><mark>Receipts</mark><small>by Unprompted</small></a>
+  <nav class="u-appnav" data-u-appnav aria-label="App" hidden></nav>
   <span class="grow"></span>
   <span data-u-theme-toggle></span>
-  <span class="bar-note">Collabs</span>
   <div id="who"></div>
 </header>
 <main class="page page-wide">
@@ -169,7 +169,6 @@
 
   function accountHeader(user, role = user.role) {
     $('#who').replaceChildren(U.sideSwitcher(user, role), h('span', { class: 'email' }, user.email),
-      h('a', { href: '/dashboard' }, 'Dashboard'),
       h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await C.call('/api/creators/logout', {}); location.href = '/'; } }, 'Sign out'));
   }
 
