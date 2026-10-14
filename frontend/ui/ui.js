@@ -538,8 +538,10 @@
     if (!appNavUser) return;
     const roles = Array.isArray(appNavUser.roles) ? appNavUser.roles : [appNavUser.role];
     const remembered = activeSide();
-    const side = roles.includes(remembered) ? remembered : appNavUser.role;
-    const discoverSide = side === 'manager' ? (roles.includes('brand') ? 'brand' : 'creator') : side;
+    const side = roles.includes(remembered) ? remembered
+      : roles.includes(appNavUser.role) ? appNavUser.role : roles[0];
+    const canDiscover = roles.includes('brand') || roles.includes('creator');
+    const discoverSide = ['creator', 'brand'].includes(side) ? side : roles.includes('brand') ? 'brand' : 'creator';
     const path = location.pathname.replace(/\/+$/, '') || '/';
     const sideLink = side === 'creator'
       ? { label: 'Receipts', href: '/creators/?home=1', current: roles.includes('creator') && ['/', '/creators'].includes(path) }
@@ -549,9 +551,13 @@
     const links = [
       { label: 'Dashboard', href: '/dashboard', current: path === '/dashboard' },
       sideLink,
-      { label: 'Discover', href: `/discover?as=${encodeURIComponent(discoverSide)}`, current: path === '/discover' },
-      { label: 'Collabs', href: '/collabs', current: path === '/collabs' || path === '/collab' || path.startsWith('/collab/') },
     ];
+    if (canDiscover) {
+      links.push(
+        { label: 'Discover', href: `/discover?as=${encodeURIComponent(discoverSide)}`, current: path === '/discover' },
+        { label: 'Collabs', href: '/collabs', current: path === '/collabs' || path === '/collab' || path.startsWith('/collab/') },
+      );
+    }
     for (const nav of $$('[data-u-appnav]')) {
       nav.replaceChildren(...links.map(({ label, href, current }) => h('a', {
         class: 'u-bar-link', href, 'aria-current': current ? 'page' : null,
@@ -559,30 +565,51 @@
       nav.hidden = false;
     }
   }
-  function syncSignedInNav() {
+  let accountNavRevision = 0;
+  function updateAccountNav(user) {
     const audience = $$('.u-aud');
     const appNavs = $$('[data-u-appnav]');
-    if (!audience.length && !appNavs.length) return;
-    const update = (user) => {
-      const signedIn = Boolean(user);
-      if (signedIn) root.dataset.uSignedIn = '1';
-      else delete root.dataset.uSignedIn;
-      audience.forEach((nav) => { nav.hidden = signedIn; });
-      appNavUser = signedIn ? user : null;
-      if (signedIn) renderAppNav();
-      else appNavs.forEach((nav) => { nav.replaceChildren(); nav.hidden = true; });
-      try {
-        if (signedIn) localStorage.setItem('u-signed-in', '1');
-        else localStorage.removeItem('u-signed-in');
-      } catch {}
-    };
+    const signedIn = Boolean(user);
+    if (signedIn) root.dataset.uSignedIn = '1';
+    else delete root.dataset.uSignedIn;
+    audience.forEach((nav) => { nav.hidden = signedIn; });
+    appNavUser = signedIn ? user : null;
+    if (signedIn) renderAppNav();
+    else appNavs.forEach((nav) => { nav.replaceChildren(); nav.hidden = true; });
+    try {
+      if (signedIn) localStorage.setItem('u-signed-in', '1');
+      else localStorage.removeItem('u-signed-in');
+    } catch {}
+  }
+  function syncAccountNav(user) {
+    accountNavRevision += 1;
+    updateAccountNav(user);
+  }
+  function syncSignedInNav() {
+    if (!$$('.u-aud, [data-u-appnav]').length) return;
+    const revision = accountNavRevision;
     fetch('/api/creators/me', { credentials: 'same-origin' })
       .then((response) => response.ok ? response.json() : null)
-      .then((data) => update(data && data.user))
-      .catch(() => update(null));
+      .then((data) => { if (revision === accountNavRevision) updateAccountNav(data && data.user); })
+      .catch(() => { if (revision === accountNavRevision) updateAccountNav(null); });
+  }
+  function observeBarHeight() {
+    const bars = $$('.u-bar, .app-topbar');
+    if (!bars.length || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const visibleBars = bars.filter((bar) => bar.isConnected && bar.getClientRects().length);
+      const bar = visibleBars.find((el) => getComputedStyle(el).position === 'sticky')
+        || visibleBars[0];
+      if (bar) root.style.setProperty('--u-bar-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+    };
+    const observer = new ResizeObserver(measure);
+    bars.forEach((bar) => observer.observe(bar));
+    window.addEventListener('resize', measure, { passive: true });
+    measure();
   }
   function boot() {
     syncSignedInNav();
+    observeBarHeight();
     scan();
     updateThemeToggles();
     new MutationObserver((muts) => { for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) scan(n); })
@@ -788,5 +815,5 @@
 
   window.U = { h, svg, $, $$, fmt, clock, ago, date, transition, toast, optimistic, copy, countUp, receipt, quoteEl, scoreRing, band, meter, why, sparkline,
                seg, tabs, card, keys, rovingList, palette, settings, shortcutSheet, type, scan, reduced, get prefs() { return { ...prefs }; }, setPref,
-               hasRole, activeSide, rememberSide, sideSwitcher, signupSides, setRole, roleNotice, PLATFORM, KIND };
+               hasRole, activeSide, rememberSide, sideSwitcher, signupSides, setRole, roleNotice, syncAccountNav, PLATFORM, KIND };
 })();

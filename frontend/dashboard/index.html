@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard · Unprompted</title>
 <meta name="description" content="Your creator receipts, brand searches and manager roster in one place.">
-<link rel="stylesheet" href="/ui/ui.css?v=8">
-<script src="/ui/ui.js?v=7"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=10">
+<script src="/ui/ui.js?v=8"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
@@ -210,7 +210,7 @@
   @media (max-width: 960px) {
     .dash-layout { grid-template-columns: minmax(0, 1fr); }
     .dash-rail { display: none; }
-    .mobile-tabs { position: sticky; inset-block-start: 64px; z-index: calc(var(--z-sticky) - 1); display: block; margin: 0 0 var(--s-4); padding: var(--s-2);
+    .mobile-tabs { position: sticky; inset-block-start: var(--u-bar-h, 106px); z-index: calc(var(--z-sticky) - 1); display: block; margin: 0 0 var(--s-4); padding: var(--s-2);
                    border: 1px solid var(--border); border-radius: var(--r-3); background: color-mix(in oklch, var(--bg) 92%, transparent); backdrop-filter: blur(16px); }
     .mobile-tabs .tab-list { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
     .mobile-tabs .tab-list::-webkit-scrollbar { display: none; }
@@ -224,7 +224,6 @@
     .dash-hero { padding: var(--s-4); }
     .dash-bar .dash-account { flex: 1 1 100%; justify-content: flex-end; }
     .dash-bar .account-actions { flex-wrap: wrap; }
-    .mobile-tabs { inset-block-start: 106px; }
     .usage-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
     .usage-card { padding: var(--s-3); }
     .usage-head { margin-bottom: var(--s-2); }

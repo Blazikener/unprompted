@@ -6,8 +6,8 @@
 <title>Receipts by Unprompted</title>
 <meta name="description" content="Receipts finds the brands you already talk about on camera, proves it, and connects you with brands for future paid collabs: pitch them, or answer their invites.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23173a2d'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23d4f05a'/%3E%3Cpath d='M11 8v8a5 5 0 0 0 10 0V8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/ui/ui.css?v=8">
-<script src="/ui/ui.js?v=7"></script>
+<link rel="stylesheet" href="/ui/ui.css?v=10">
+<script src="/ui/ui.js?v=8"></script>
 <script src="/ui/motion.js?v=2" defer></script>
 <style>
 @layer page {
@@ -745,7 +745,7 @@ function renderAccount() {
 async function openPortal() { try { location.href = (await api('/billing/portal', {})).url; } catch (e) { toast(e.message, 'error'); } }
 async function signOut() {
   try { await api('/logout', {}); } catch (e) { toast(e.message, 'error'); return; }
-  S.user = null; S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory();
+  S.user = null; U.syncAccountNav(null); S.scan = null; S.reserved = false; showLanding(); renderAccount(); loadHistory();
   $('#role-notice').hidden = true;
 }
 
@@ -775,7 +775,7 @@ $('#auth-form').onsubmit = async (e) => {
     const payload = { email: f.get('email'), password: f.get('password') };
     if (S.mode === 'signup') { payload.role = 'creator'; payload.also = authSides.values(); }
     const { user } = await api(S.mode === 'signup' ? '/signup' : '/login', payload);
-    S.user = user; $('#auth').close(); renderAccount();
+    S.user = user; U.syncAccountNav(user); $('#auth').close(); renderAccount();
     if (S.pending) { const p = S.pending; S.pending = null; await runScan(p.platform, p.handle); }
     else if (S.upgradePlan) { loadHistory(); openUpgrade(); }
     else { loadHistory(); location.href = '/dashboard'; }
