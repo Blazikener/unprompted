@@ -1,0 +1,13 @@
+name: Database keep-alive
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping production health endpoint
+        run: curl -fsS --retry 5 --retry-delay 30 --retry-all-errors --max-time 120 https://receipts-thc8.onrender.com/healthz

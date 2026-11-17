@@ -40,6 +40,19 @@ def call(base, method, path, body=None):
         return e.code, (json.loads(raw) if e.headers.get_content_type() == "application/json" else raw)
 
 
+def test_healthz_is_public_and_allowed_during_waitlist_only(base, monkeypatch):
+    monkeypatch.setenv("WAITLIST_ONLY", "1")
+    assert call(base, "GET", "/healthz") == (200, {"ok": True})
+
+
+def test_healthz_returns_unavailable_without_database_details(base, monkeypatch):
+    def unavailable():
+        raise psycopg.OperationalError("private connection detail")
+
+    monkeypatch.setattr(server, "connect", unavailable)
+    assert call(base, "GET", "/healthz") == (503, {"ok": False})
+
+
 def video(vid, transcript, kind_caption="", views=1000, handle="fan"):
     return {"id": vid, "platform": "tiktok", "platformId": vid, "profileHandle": handle, "viewsCount": views, "caption": kind_caption,
             "hashtags": [], "mentions": [], "coAuthors": [], "transcript": transcript, "thumbnailMediaUrl": "https://img.test/%s.jpg" % vid,
