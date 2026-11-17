@@ -56,6 +56,7 @@ WAITLIST_ALLOW = re.compile(
     r"(?:"
     r"/waitlist(?:/.*)?"
     r"|/join/?"
+    r"|/healthz"
     r"|/ui/.+"
     r"|/favicon\.ico"
     r"|/admin(?:/.*)?"
@@ -811,6 +812,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
+        if path == "/healthz":
+            self.healthz()
+            return
         m = re.fullmatch(r"/api/searches/(\d+)", path)
         video = re.fullmatch(r"/api/videos/([^/]+)", path)
         oauth_start = re.fullmatch(r"/auth/(tiktok|instagram)/start", path)
@@ -942,6 +946,25 @@ class Handler(SimpleHTTPRequestHandler):
             return route(body, require_brand_user(self.headers))
         self.api(handle)
 
+    def healthz(self):
+        try:
+            with connect() as db:
+                db.execute("SELECT 1")
+        except Exception:
+            self.send_json(503, {"ok": False})
+        else:
+            self.send_json(200, {"ok": True})
+
+    def send_json(self, status, body, headers=()):
+        data = dumps(body)
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        for k, v in headers:
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(data)
+
     def api(self, fn):
         try:
             status, body = 200, fn()
@@ -958,14 +981,7 @@ class Handler(SimpleHTTPRequestHandler):
         headers = []
         if isinstance(body, creator.Reply):
             status, body, headers = body.status, body.body, body.headers
-        data = dumps(body)
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        for k, v in headers:
-            self.send_header(k, v)
-        self.end_headers()
-        self.wfile.write(data)
+        self.send_json(status, body, headers)
 
     def stream(self, events):
         """One JSON event per line; the connection closing marks the end (HTTP/1.0)."""
